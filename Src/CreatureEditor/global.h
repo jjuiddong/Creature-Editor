@@ -15,7 +15,8 @@ public:
 	virtual ~cGlobal();
 
 	bool Init(graphic::cRenderer &renderer);
-	bool SelectRigidActor(const int id);
+	bool SelectRigidActor(const int id, const bool isToggle = false);
+	bool ClearSelection();
 	graphic::cRenderer& GetRenderer();
 	void Clear();
 
@@ -32,5 +33,10 @@ public:
 
 	graphic::cGizmo m_gizmo;
 
-	int m_selectActorId;
+	set<int> m_selects; // selection actor id
+	
+	// joint setting
+	bool m_isShowJointOption;
+	int m_jointActorId0;
+	int m_jointActorId1;
 };

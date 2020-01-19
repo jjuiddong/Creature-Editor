@@ -8,7 +8,7 @@ cGlobal::cGlobal()
 	: m_3dView(nullptr)
 	, m_editorView(nullptr)
 	, m_physSync(nullptr)
-	, m_selectActorId(-1)
+	, m_isShowJointOption(false)
 {
 }
 
@@ -36,17 +36,39 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 
 // pick rigidactor, selection actor
-bool cGlobal::SelectRigidActor(const int id)
+bool cGlobal::SelectRigidActor(const int id
+	, const bool isToggle //= false
+)
 {
-	using namespace graphic;
+	if (isToggle)
+	{
+		if (m_selects.end() == m_selects.find(id))
+		{
+			m_selects.insert(id);
+		}
+		else
+		{
+			m_selects.erase(id);
+		}
+	}
+	else
+	{
+		m_selects.insert(id);
+	}
 
-	if (m_selectActorId == id)
-		return true;
+	//using namespace graphic;
+	//if (m_selectActorId == id)
+	//	return true;
+	//SetRigidActorColor(m_selectActorId, cColor::WHITE);
+	//SetRigidActorColor(id, cColor::RED);
+	//m_selectActorId = id;
+	return true;
+}
 
-	SetRigidActorColor(m_selectActorId, cColor::WHITE);
-	SetRigidActorColor(id, cColor::RED);
 
-	m_selectActorId = id;
+bool cGlobal::ClearSelection()
+{
+	m_selects.clear();
 	return true;
 }
 

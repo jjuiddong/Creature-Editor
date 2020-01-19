@@ -22,7 +22,7 @@ bool c3DView::Init(cRenderer &renderer)
 	const Vector3 eyePos(30, 20, -30);
 	const Vector3 lookAt(0,0,0);
 	m_camera.SetCamera(eyePos, lookAt, Vector3(0, 1, 0));
-	m_camera.SetProjection(MATH_PI / 4.f, m_rect.Width() / m_rect.Height(), 1.f, 1000000.f);
+	m_camera.SetProjection(MATH_PI / 4.f, m_rect.Width() / m_rect.Height(), 0.1f, 100000.f);
 	m_camera.SetViewPort(m_rect.Width(), m_rect.Height());
 
 	GetMainLight().Init(graphic::cLight::LIGHT_DIRECTIONAL);
@@ -36,11 +36,16 @@ bool c3DView::Init(cRenderer &renderer)
 		, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
 	m_ccsm.Create(renderer);
+	cViewport dvp;
+	dvp.Create(0, 0, 1024, 1024, 0, 1);
+	m_depthBuff.Create(renderer, dvp, false);
 	m_grid.Create(renderer, 200, 200, 1.f, 1.f
 		, (eVertexType::POSITION | eVertexType::COLOR)
 		, cColor(0.6f, 0.6f, 0.6f, 0.5f)
 		, cColor(0.f, 0.f, 0.f, 0.5f)
 	);
+
+	m_skybox.Create(renderer, "./media/skybox/sky.dds");
 
 	return true;
 }
@@ -55,6 +60,8 @@ void c3DView::OnUpdate(const float deltaSeconds)
 void c3DView::OnPreRender(const float deltaSeconds)
 {
 	cRenderer &renderer = GetRenderer();
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
 	cAutoCam cam(&m_camera);
 
 	renderer.UnbindShaderAll();
@@ -62,6 +69,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	GetMainCamera().Bind(renderer);
 	GetMainLight().Bind(renderer);
 
+	// build shadowmap
 	{
 		m_ccsm.UpdateParameter(renderer, GetMainCamera());
 		for (int i = 0; i < cCascadedShadowMap::SHADOWMAP_COUNT; ++i)
@@ -72,6 +80,26 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		}
 	}
 
+	// Render Outline select object
+	if (!g_global->m_selects.empty())
+	{
+		if (m_depthBuff.Begin(renderer))
+		{
+			for (auto id : g_global->m_selects)
+			{
+				if (phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id))
+				{
+					GetMainCamera().Bind(renderer);
+						const Matrix44 parentTm = info->node->GetParentWorldMatrix();
+						info->node->SetTechnique("DepthTech");
+						info->node->Render(renderer, parentTm.GetMatrixXM());
+				}
+			}
+		}
+	}
+
+	const bool isShowGizmo = (g_global->m_selects.size() == 1);
+
 	bool isGizmoEdit = false;
 	if (m_renderTarget.Begin(renderer))
 	{
@@ -81,21 +109,26 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		GetMainCamera().Bind(renderer);
 		GetMainLight().Bind(renderer);
 
+		m_skybox.Render(renderer);
+
 		m_ccsm.Bind(renderer);
 		RenderScene(renderer, "ShadowMap", false);
-		isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
+		
+		if (isShowGizmo)
+			isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
 
-		renderer.RenderAxis();
+		renderer.RenderAxis2();
 	}
 	m_renderTarget.End(renderer);
 
 	// update rigid actor transform by Gizmo Edit
 	// before g_global->m_physics.PostUpdate() process
-	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	if (isGizmoEdit && g_global->m_gizmo.m_controlNode && physSync)
+	if (isShowGizmo && isGizmoEdit && g_global->m_gizmo.m_controlNode && physSync)
 	{
+		const int selectId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+
 		if (phys::cPhysicsSync::sActorInfo *info
-			= physSync->FindActorInfo(g_global->m_selectActorId))
+			= physSync->FindActorInfo(selectId))
 		{
 			if (info->actor->m_dynamic)
 			{
@@ -135,7 +168,39 @@ void c3DView::RenderScene(graphic::cRenderer &renderer
 	}
 
 	if (!isBuildShadowMap)
+	{
 		m_grid.Render(renderer);
+		RenderSelectModel(renderer, XMIdentity);
+	}
+}
+
+
+// Render Outline Selected model
+void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm)
+{
+	if (g_global->m_selects.empty())
+		return;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	for (auto id : g_global->m_selects)
+	{
+		phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id);
+		if (!info)
+			return;
+
+		CommonStates state(renderer.GetDevice());
+		renderer.GetDevContext()->OMSetDepthStencilState(state.DepthNone(), 0);
+		renderer.GetDevContext()->OMSetBlendState(state.NonPremultiplied(), NULL, 0xffffffff);
+
+		renderer.BindTexture(m_depthBuff, 7);
+		info->node->SetTechnique("Outline");
+		Matrix44 parentTm = info->node->GetParentWorldMatrix();
+		info->node->Render(renderer, parentTm.GetMatrixXM());
+
+		renderer.GetDevContext()->OMSetDepthStencilState(state.DepthDefault(), 0);
+		renderer.GetDevContext()->OMSetBlendState(state.Opaque(), NULL, 0xffffffff);
+	}
 }
 
 
@@ -164,8 +229,29 @@ void c3DView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("grid", &m_showGrid);
 		ImGui::End();
 	}
-
 	ImGui::PopStyleColor();
+
+	RenderPopupMenu();
+}
+
+
+void c3DView::RenderPopupMenu()
+{
+	if (m_showMenu)
+	{
+		//ImGui::OpenPopup("PopupMenu");
+		m_showMenu = false;
+	}
+
+	if (ImGui::BeginPopup("PopupMenu"))
+	{
+		if (ImGui::MenuItem("Joint Connection"))
+		{
+			g_global->m_isShowJointOption = true;
+		}
+
+		ImGui::EndPopup();
+	}
 }
 
 
@@ -175,6 +261,36 @@ void c3DView::OnResizeEnd(const framework::eDockResize::Enum type, const sRectf 
 	{
 		m_owner->RequestResetDeviceNextFrame();
 	}
+}
+
+
+// picing rigidactor
+// return actor id
+// if not found actor, return -1
+int c3DView::PickingRigidActor(const POINT &mousePos)
+{
+	const Ray ray = GetMainCamera().GetRay(mousePos.x, mousePos.y);
+
+	int minId = -1;
+	float minDist = FLT_MAX;
+	phys::cPhysicsSync *sync = g_global->m_physSync;
+	for (auto &p : sync->m_actors)
+	{
+		if (p->name == "plane")
+			continue;
+
+		graphic::cNode *node = p->node;
+		float distance = FLT_MAX;
+		if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+		{
+			if (distance < minDist)
+			{
+				minId = p->id;
+				minDist = distance;
+			}
+		}
+	}
+	return minId;
 }
 
 
@@ -307,48 +423,56 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	{
 		m_mouseDown[0] = false;
 
-		const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
-
-		int minId = -1;
-		float minDist = FLT_MAX;
-		graphic::cNode *selNode = nullptr;
+		const int actorId = PickingRigidActor(mousePt);
 		phys::cPhysicsSync *sync = g_global->m_physSync;
-		for (auto &p : sync->m_actors)
+		phys::cPhysicsSync::sActorInfo *info = sync->FindActorInfo(actorId);
+		if (info)
 		{
-			if (p->name == "plane")
-				continue;
-
-			graphic::cNode *node = p->node;
-			float distance = FLT_MAX;
-			if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+			if (::GetAsyncKeyState(VK_SHIFT))
 			{
-				if (distance < minDist)
-				{
-					minId = p->id;
-					minDist = distance;
-					selNode = node;
-				}				
+				g_global->SelectRigidActor(actorId);
 			}
-		}
+			else if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				g_global->SelectRigidActor(actorId, true);
+			}
+			else
+			{
+				g_global->ClearSelection();
+				g_global->SelectRigidActor(actorId);
+			}
 
-		if (minId >= 0)
-		{
-			g_global->SelectRigidActor(minId);
-			if (g_global->m_gizmo.m_controlNode != selNode)
-				g_global->m_gizmo.SetControlNode(selNode);
+			if ((g_global->m_selects.size() == 1)
+				&& (g_global->m_gizmo.m_controlNode != info->node))
+			{
+				g_global->m_gizmo.SetControlNode(info->node);
+			}
 		}
 		else
 		{
 			if (!g_global->m_gizmo.IsKeepEditMode())
+			{
 				g_global->m_gizmo.SetControlNode(nullptr);
+				g_global->m_selects.clear();
+			}
 		}
 	}
 	break;
 
 
 	case sf::Mouse::Right:
+	{
 		m_mouseDown[1] = false;
-		break;
+
+		// check show menu to joint connection
+		const int actorId = PickingRigidActor(mousePt);
+		if (actorId >= 0)
+		{
+			m_showMenu = true;
+		}
+	}
+	break;
+
 	case sf::Mouse::Middle:
 		m_mouseDown[2] = false;
 		break;

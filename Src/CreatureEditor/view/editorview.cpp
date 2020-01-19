@@ -6,7 +6,7 @@ using namespace graphic;
 
 cEditorView::cEditorView(const StrId &name)
 	: framework::cDockWindow(name)
-	, m_transform(Vector3(0, 10, 0), Vector3(0.5f,0.5f,0.5f))
+	, m_transform(Vector3(0, 2, 0), Vector3(0.5f,0.5f,0.5f))
 	, m_radius(0.5f)
 	, m_halfHeight(1.f)
 	, m_density(1.f)
@@ -33,6 +33,7 @@ void cEditorView::OnRender(const float deltaSeconds)
 
 	RenderSpawnTransform();
 	RenderSelectionInfo();
+	RenderJointInfo();
 }
 
 
@@ -114,7 +115,7 @@ void cEditorView::RenderSelectionInfo()
 	using namespace graphic;
 	cRenderer &renderer = g_global->GetRenderer();
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	const int selId = g_global->m_selectActorId;
+	int selId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("Selection"))
@@ -147,7 +148,8 @@ void cEditorView::RenderSelectionInfo()
 			if (ImGui::Checkbox("Kinematic", &isKinematic))
 			{
 				info->actor->m_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, isKinematic);
-				info->actor->m_dynamic->wakeUp();
+				if (!isKinematic)
+					info->actor->m_dynamic->wakeUp();
 			}
 		}
 
@@ -169,7 +171,190 @@ void cEditorView::RenderSelectionInfo()
 			//selectModel->m_transform.rot.Euler2(ryp);
 		}
 	}
+}
+
+
+void cEditorView::RenderJointInfo()
+{
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+	if (ImGui::CollapsingHeader("Joint"))
+	{
+		if (g_global->m_selects.size() == 2)
+		{
+			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
+			static int idx = 0;
+			ImGui::TextUnformatted("Joint");
+			ImGui::SameLine();
+			ImGui::Combo("##joint type", &idx, jointType);
+			ImGui::Separator();
+
+			switch ((phys::cJoint::eType)idx)
+			{
+			case phys::cJoint::eType::Fixed: RenderFixedJoint(); break;
+			case phys::cJoint::eType::Spherical: RenderSphericalJoint(); break;
+			case phys::cJoint::eType::Revolute: RenderRevoluteJoint(); break;
+			case phys::cJoint::eType::Prismatic: RenderPrismaticJoint(); break;
+			case phys::cJoint::eType::Distance: RenderDistanceJoint(); break;
+			case phys::cJoint::eType::D6: RenderD6Joint(); break;
+			}
+		}
+	}
+}
+
+
+void cEditorView::RenderFixedJoint()
+{
+	auto it = g_global->m_selects.begin();
+	const int actorId0 = *it++;
+	const int actorId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	if (!info0 || !info1)
+		return;
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Fixed Joint"))
+	{
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreateFixed(g_global->m_physics
+			, info0->actor, info0->node->m_transform
+			, info1->actor, info1->node->m_transform);
+		physSync->AddJoint(joint);
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderSphericalJoint()
+{
+	using namespace physx;
+
+	auto it = g_global->m_selects.begin();
+	const int actorId0 = *it++;
+	const int actorId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	if (!info0 || !info1)
+		return;
+
+	static Vector2 limit(PxPi / 2.f, PxPi / 6.f);
+	ImGui::Text("Limit Cone (Radian)");
+	ImGui::DragFloat("Y Limit Angle", &limit.x, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &limit.y, 0.001f);
+	
+	static bool isLimit;
+	ImGui::TextUnformatted("Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Spherical Joint"))
+	{
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreateSpherical(g_global->m_physics
+			, info0->actor, info0->node->m_transform
+			, info1->actor, info1->node->m_transform);
+
+		if (isLimit)
+		{
+			joint->m_sphericalJoint->setLimitCone(PxJointLimitCone(limit.x, limit.y, 0.01f));
+			joint->m_sphericalJoint->setSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
+		}
+
+		physSync->AddJoint(joint);
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderRevoluteJoint()
+{
+	using namespace physx;
+
+	auto it = g_global->m_selects.begin();
+	const int actorId0 = *it++;
+	const int actorId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	if (!info0 || !info1)
+		return;
+
+	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
+	static bool isDrive = false;
+	static float velocity = 1.f;
+	ImGui::Text("Angular Limit (Radian)");
+	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
+	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
+	ImGui::Checkbox("Drive", &isDrive);
+	ImGui::DragFloat("Velocity", &velocity, 0.001f);
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+
+	static bool isLimit = false;
+	ImGui::TextUnformatted("Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+
+	//static bool isDrive = false;
+	//ImGui::TextUnformatted("Drive");
+	//ImGui::SameLine();
+	//ImGui::Checkbox("##Drive", &isDrive);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Spherical Joint"))
+	{
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreateRevolute(g_global->m_physics
+			, info0->actor, info0->node->m_transform
+			, info1->actor, info1->node->m_transform
+			, axis[axisIdx]);
+
+		if (isLimit)
+		{
+			joint->m_revoluteJoint->setLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
+		}
+
+		if (isDrive)
+		{
+			joint->m_revoluteJoint->setDriveVelocity(velocity);
+			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
+		}
+
+		physSync->AddJoint(joint);
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderPrismaticJoint()
+{
 
 }
 
 
+void cEditorView::RenderDistanceJoint()
+{
+
+}
+
+
+void cEditorView::RenderD6Joint()
+{
+
+}

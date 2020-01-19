@@ -23,6 +23,9 @@ public:
 protected:
 	void RenderScene(graphic::cRenderer &renderer, const StrId &techiniqName
 		, const bool isBuildShadowMap);
+	void RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm);
+	void RenderPopupMenu();
+	int PickingRigidActor(const POINT &mousePos);
 
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
@@ -34,9 +37,12 @@ protected:
 public:
 	graphic::cRenderTarget m_renderTarget;
 	graphic::cCascadedShadowMap m_ccsm;
+	graphic::cDepthBuffer m_depthBuff;
 	graphic::cGridLine m_grid;
+	graphic::cSkyBoxCube m_skybox;
 
 	bool m_showGrid;
+	bool m_showMenu;
 
 	// MouseMove Variable
 	POINT m_viewPos;

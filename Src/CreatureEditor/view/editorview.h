@@ -18,7 +18,13 @@ public:
 protected:
 	void RenderSpawnTransform();
 	void RenderSelectionInfo();
-
+	void RenderJointInfo();
+	void RenderFixedJoint();
+	void RenderSphericalJoint();
+	void RenderRevoluteJoint();
+	void RenderPrismaticJoint();
+	void RenderDistanceJoint();
+	void RenderD6Joint();
 
 public:
 	Transform m_transform;
