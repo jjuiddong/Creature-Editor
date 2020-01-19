@@ -9,6 +9,7 @@
     <ClCompile Include="view\editorview.cpp">
       <Filter>view</Filter>
     </ClCompile>
+    <ClCompile Include="global.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -18,6 +19,7 @@
     <ClInclude Include="view\editorview.h">
       <Filter>view</Filter>
     </ClInclude>
+    <ClInclude Include="global.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="view">

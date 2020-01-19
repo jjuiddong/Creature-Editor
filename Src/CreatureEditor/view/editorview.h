@@ -15,5 +15,14 @@ public:
 	virtual void OnRender(const float deltaSeconds) override;
 
 
+protected:
+	void RenderSpawnTransform();
+	void RenderSelectionInfo();
+
+
 public:
+	Transform m_transform;
+	float m_radius;
+	float m_halfHeight;
+	float m_density;
 };

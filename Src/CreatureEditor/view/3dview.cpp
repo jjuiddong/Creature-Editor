@@ -14,14 +14,13 @@ c3DView::c3DView(const string &name)
 
 c3DView::~c3DView()
 {
-	m_physics.Clear();
 }
 
 
 bool c3DView::Init(cRenderer &renderer)
 {
-	const Vector3 eyePos(12.0439510f, 29.6167679f, -27.8085155f);
-	const Vector3 lookAt(-10.7197342f, 0.000000000f, 47.5336151f);
+	const Vector3 eyePos(30, 20, -30);
+	const Vector3 lookAt(0,0,0);
 	m_camera.SetCamera(eyePos, lookAt, Vector3(0, 1, 0));
 	m_camera.SetProjection(MATH_PI / 4.f, m_rect.Width() / m_rect.Height(), 1.f, 1000000.f);
 	m_camera.SetViewPort(m_rect.Width(), m_rect.Height());
@@ -36,20 +35,13 @@ bool c3DView::Init(cRenderer &renderer)
 	m_renderTarget.Create(renderer, vp, DXGI_FORMAT_R8G8B8A8_UNORM, true, true
 		, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
-	if (!m_physics.InitializePhysx())
-		return false;
-
-	m_physSync = new phys::cPhysicsSync();
-	m_physSync->Create(&m_physics);
-	m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
-
 	return true;
 }
 
 
 void c3DView::OnUpdate(const float deltaSeconds)
 {
-	m_physics.PreUpdate(deltaSeconds);
+	g_global->m_physics.PreUpdate(deltaSeconds);
 }
 
 
@@ -64,18 +56,20 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	GetMainCamera().Bind(renderer);
 	GetMainLight().Bind(renderer);
 
-	m_physics.PostUpdate(deltaSeconds);
+	g_global->m_physics.PostUpdate(deltaSeconds);
 
 	if (m_renderTarget.Begin(renderer))
 	{
 		CommonStates states(renderer.GetDevice());
 		renderer.GetDevContext()->RSSetState(states.CullNone());
 
-		if (m_physSync)
+		if (g_global->m_physSync)
 		{
-			for (auto &p : m_physSync->m_actors)
-				p.node->Render(renderer);
+			for (auto &p : g_global->m_physSync->m_actors)
+				p->node->Render(renderer);
 		}
+
+		g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
 
 		renderer.RenderAxis();
 		renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
@@ -107,7 +101,6 @@ void c3DView::OnRender(const float deltaSeconds)
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Checkbox("grid", &m_showGrid);
-		ImGui::Text("Press SpaceBar");
 		ImGui::End();
 	}
 
@@ -172,6 +165,9 @@ void c3DView::OnMouseMove(const POINT mousePt)
 	const POINT delta = { mousePt.x - m_mousePos.x, mousePt.y - m_mousePos.y };
 	m_mousePos = mousePt;
 	if (ImGui::IsMouseHoveringRect(ImVec2(-1000, -1000), ImVec2(1000, 200), false))
+		return;
+
+	if (g_global->m_gizmo.IsKeepEditMode())
 		return;
 
 	if (m_mouseDown[0])
@@ -247,8 +243,48 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	switch (button)
 	{
 	case sf::Mouse::Left:
+	{
 		m_mouseDown[0] = false;
-		break;
+
+		const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+
+		int minId = -1;
+		float minDist = FLT_MAX;
+		graphic::cNode *selNode = nullptr;
+		phys::cPhysicsSync *sync = g_global->m_physSync;
+		for (auto &p : sync->m_actors)
+		{
+			if (p->name == "plane")
+				continue;
+
+			graphic::cNode *node = p->node;
+			float distance = FLT_MAX;
+			if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+			{
+				if (distance < minDist)
+				{
+					minId = p->id;
+					minDist = distance;
+					selNode = node;
+				}				
+			}
+		}
+
+		if (minId >= 0)
+		{
+			g_global->SelectRigidActor(minId);
+			if (g_global->m_gizmo.m_controlNode != selNode)
+				g_global->m_gizmo.SetControlNode(selNode);
+		}
+		else
+		{
+			if (!g_global->m_gizmo.IsKeepEditMode())
+				g_global->m_gizmo.SetControlNode(nullptr);
+		}
+	}
+	break;
+
+
 	case sf::Mouse::Right:
 		m_mouseDown[1] = false;
 		break;
@@ -270,6 +306,15 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::Return:
 			break;
 		case sf::Keyboard::Space:
+			break;
+		case sf::Keyboard::R: 
+			g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE;
+			break;
+		case sf::Keyboard::T:
+			g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE;
+			break;
+		case sf::Keyboard::S:
+			g_global->m_gizmo.m_type = graphic::eGizmoEditType::SCALE;
 			break;
 		}
 		break;

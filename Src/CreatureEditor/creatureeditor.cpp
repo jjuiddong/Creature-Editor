@@ -5,6 +5,7 @@
 #include "view/3dview.h"
 #include "view/editorview.h"
 
+cGlobal *g_global = nullptr;
 
 using namespace graphic;
 using namespace framework;
@@ -27,14 +28,15 @@ cViewer::cViewer()
 {
 	m_windowName = L"Creature Editor";
 	m_isLazyMode = true;
-	const RECT r = { 0, 0, 1024, 768 };
-	//const RECT r = { 0, 0, 1280, 960 };
+	//const RECT r = { 0, 0, 1024, 768 };
+	const RECT r = { 0, 0, 1280, 960 };
 	m_windowRect = r;
 	graphic::cResourceManager::Get()->SetMediaDirectory("./media/");
 }
 
 cViewer::~cViewer()
 {
+	SAFE_DELETE(g_global);
 }
 
 
@@ -57,6 +59,10 @@ bool cViewer::OnInit()
 	GetMainLight().SetPosition(lightPos);
 	GetMainLight().SetDirection((lightLookat - lightPos).Normal());
 
+	g_global = new cGlobal();
+	if (!g_global->Init(m_renderer))
+		return false;
+
 	c3DView *p3dView = new c3DView("3D View");
 	p3dView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, NULL);
 	bool result = p3dView->Init(m_renderer);
@@ -65,6 +71,9 @@ bool cViewer::OnInit()
 	cEditorView *editView = new cEditorView("Editor");
 	editView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, p3dView, 0.25f
 		, framework::eDockSizingOption::PIXEL);
+
+	g_global->m_3dView = p3dView;
+	g_global->m_editorView = editView;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

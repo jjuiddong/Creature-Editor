@@ -1,5 +1,5 @@
 //
-// 2020-01-18, jjuiddong
+// 2020-01-19, jjuiddong
 // 3D View
 //
 #pragma once
@@ -30,8 +30,6 @@ protected:
 
 public:
 	graphic::cRenderTarget m_renderTarget;
-	phys::cPhysicsEngine m_physics;
-	phys::cPhysicsSync *m_physSync;
 
 	bool m_showGrid;
 

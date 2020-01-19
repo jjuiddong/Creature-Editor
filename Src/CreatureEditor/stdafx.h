@@ -6,3 +6,6 @@ using namespace common;
 #include "../../../Common/Framework11/framework11.h"
 #include "../../../Common/Physics/physics.h"
 
+
+#include "global.h"
+extern cGlobal *g_global;
