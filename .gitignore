@@ -348,3 +348,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+Package/errlog.txt
+Package/CreatureEditor.exe
+Package/imgui.ini
+Package/log.txt
