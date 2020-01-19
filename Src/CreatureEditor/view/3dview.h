@@ -21,6 +21,9 @@ public:
 
 
 protected:
+	void RenderScene(graphic::cRenderer &renderer, const StrId &techiniqName
+		, const bool isBuildShadowMap);
+
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
 	void OnMouseMove(const POINT mousePt);
@@ -30,6 +33,8 @@ protected:
 
 public:
 	graphic::cRenderTarget m_renderTarget;
+	graphic::cCascadedShadowMap m_ccsm;
+	graphic::cGridLine m_grid;
 
 	bool m_showGrid;
 

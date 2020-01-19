@@ -25,7 +25,9 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 	m_physSync = new phys::cPhysicsSync();
 	m_physSync->Create(&m_physics);
-	m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
+	const int id = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
+	//if (phys::cPhysicsSync::sActorInfo *info = m_physSync->FindActorInfo(id))
+	//	((graphic::cGrid*)info->node)->m_mtrl.InitGray3();
 
 	m_gizmo.Create(renderer);
 

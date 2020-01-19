@@ -35,6 +35,13 @@ bool c3DView::Init(cRenderer &renderer)
 	m_renderTarget.Create(renderer, vp, DXGI_FORMAT_R8G8B8A8_UNORM, true, true
 		, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
+	m_ccsm.Create(renderer);
+	m_grid.Create(renderer, 200, 200, 1.f, 1.f
+		, (eVertexType::POSITION | eVertexType::COLOR)
+		, cColor(0.6f, 0.6f, 0.6f, 0.5f)
+		, cColor(0.f, 0.f, 0.f, 0.5f)
+	);
+
 	return true;
 }
 
@@ -52,29 +59,83 @@ void c3DView::OnPreRender(const float deltaSeconds)
 
 	renderer.UnbindShaderAll();
 	renderer.UnbindTextureAll();
-
 	GetMainCamera().Bind(renderer);
 	GetMainLight().Bind(renderer);
 
-	g_global->m_physics.PostUpdate(deltaSeconds);
+	{
+		m_ccsm.UpdateParameter(renderer, GetMainCamera());
+		for (int i = 0; i < cCascadedShadowMap::SHADOWMAP_COUNT; ++i)
+		{
+			m_ccsm.Begin(renderer, i);
+			RenderScene(renderer, "BuildShadowMap", true);
+			m_ccsm.End(renderer, i);
+		}
+	}
 
+	bool isGizmoEdit = false;
 	if (m_renderTarget.Begin(renderer))
 	{
-		CommonStates states(renderer.GetDevice());
-		renderer.GetDevContext()->RSSetState(states.CullNone());
+		cAutoCam cam(&m_camera);
+		renderer.UnbindShaderAll();
+		renderer.UnbindTextureAll();
+		GetMainCamera().Bind(renderer);
+		GetMainLight().Bind(renderer);
 
-		if (g_global->m_physSync)
-		{
-			for (auto &p : g_global->m_physSync->m_actors)
-				p->node->Render(renderer);
-		}
-
-		g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
+		m_ccsm.Bind(renderer);
+		RenderScene(renderer, "ShadowMap", false);
+		isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
 
 		renderer.RenderAxis();
-		renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
 	}
 	m_renderTarget.End(renderer);
+
+	// update rigid actor transform by Gizmo Edit
+	// before g_global->m_physics.PostUpdate() process
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	if (isGizmoEdit && g_global->m_gizmo.m_controlNode && physSync)
+	{
+		if (phys::cPhysicsSync::sActorInfo *info
+			= physSync->FindActorInfo(g_global->m_selectActorId))
+		{
+			if (info->actor->m_dynamic)
+			{
+				using namespace physx;
+				cNode *node = g_global->m_gizmo.m_controlNode;
+				const Transform tfm = node->m_transform;
+
+				PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
+				info->actor->m_dynamic->setGlobalPose(tm);
+			}
+		}
+	}
+
+	g_global->m_physics.PostUpdate(deltaSeconds);
+}
+
+
+// scene render, shadowmap, scene
+void c3DView::RenderScene(graphic::cRenderer &renderer
+	, const StrId &techiniqName
+	, const bool isBuildShadowMap)
+{
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	RET(!physSync);
+
+	for (auto &p : physSync->m_actors)
+		p->node->SetTechnique(techiniqName.c_str());
+
+	CommonStates states(renderer.GetDevice());
+	renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
+
+	for (auto &p : physSync->m_actors)
+	{
+		if (isBuildShadowMap && (p->name == "plane"))
+			continue;
+		p->node->Render(renderer);
+	}
+
+	if (!isBuildShadowMap)
+		m_grid.Render(renderer);
 }
 
 

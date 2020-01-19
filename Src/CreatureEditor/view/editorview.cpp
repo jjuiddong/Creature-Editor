@@ -69,6 +69,11 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
 
+		static bool isKinematic = true;
+		ImGui::TextUnformatted("Kinematic  ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##kinematic", &isKinematic);
+
 		ImGui::Spacing();
 		int id = -1;
 		if (ImGui::Button("Box"))
@@ -92,10 +97,9 @@ void cEditorView::RenderSpawnTransform()
 		if (id >= 0)// creation?
 		{
 			phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id);
-			if (info)
+			if (info && info->actor->m_dynamic)
 			{
-				if (info->actor->m_dynamic)
-					info->actor->m_dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, true);
+				info->actor->m_dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isKinematic);
 			}
 		}
 
@@ -123,28 +127,47 @@ void cEditorView::RenderSelectionInfo()
 
 		ImGui::TextUnformatted("Pos   ");
 		ImGui::SameLine();
-		ImGui::DragFloat3("##position2", (float*)&tfm.pos, 0.001f);
+		const bool edit0 = ImGui::DragFloat3("##position2", (float*)&tfm.pos, 0.001f);
 
 		ImGui::TextUnformatted("Scale");
 		ImGui::SameLine();
-		ImGui::DragFloat3("##scale2", (float*)&tfm.scale, 0.001f, 0.01f, 1000.f);
+		const bool edit1 = ImGui::DragFloat3("##scale2", (float*)&tfm.scale, 0.001f, 0.01f, 1000.f);
 
 		ImGui::TextUnformatted("Rot   ");
 		ImGui::SameLine();
-		static Vector3 rot;
-		ImGui::DragFloat3("##rotation2", (float*)&rot, 0.001f);
+		static Vector3 ryp;//roll yaw pitch
+		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
 
-		//ImGui::TextUnformatted("Radius       ");
-		//ImGui::SameLine();
-		//ImGui::DragFloat("##radius", &m_radius, 0.001f);
+		using namespace physx;
 
-		//ImGui::TextUnformatted("HalfHeight");
-		//ImGui::SameLine();
-		//ImGui::DragFloat("##halfheight", &m_halfHeight, 0.001f);
+		if (info->actor->m_dynamic)
+		{
+			const PxRigidBodyFlags flags = info->actor->m_dynamic->getRigidBodyFlags();
+			bool isKinematic = flags.isSet(PxRigidBodyFlag::eKINEMATIC);
+			if (ImGui::Checkbox("Kinematic", &isKinematic))
+			{
+				info->actor->m_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, isKinematic);
+				info->actor->m_dynamic->wakeUp();
+			}
+		}
 
-		//ImGui::TextUnformatted("Density      ");
-		//ImGui::SameLine();
-		//ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
+		if (edit0)
+		{
+			info->node->m_transform.pos = tfm.pos;
+
+			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
+			info->actor->m_dynamic->setGlobalPose(tm);
+		}
+
+		if (edit1)
+		{
+			info->node->m_transform.scale = tfm.scale;
+		}
+
+		if (edit2)
+		{
+			//selectModel->m_transform.rot.Euler2(ryp);
+		}
 	}
 
 }
