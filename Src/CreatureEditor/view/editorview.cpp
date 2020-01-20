@@ -126,15 +126,41 @@ void cEditorView::RenderSelectionInfo()
 
 		Transform tfm = info->node->m_transform;
 
-		ImGui::TextUnformatted("Pos   ");
+		// edit position
+		ImGui::TextUnformatted("Pos            ");
 		ImGui::SameLine();
 		const bool edit0 = ImGui::DragFloat3("##position2", (float*)&tfm.pos, 0.001f);
 
-		ImGui::TextUnformatted("Scale");
-		ImGui::SameLine();
-		const bool edit1 = ImGui::DragFloat3("##scale2", (float*)&tfm.scale, 0.001f, 0.01f, 1000.f);
+		// edit scale
+		bool edit1 = false;
+		bool edit1_1 = false;
+		float radius = 0.f, halfHeight = 0.f; // capsule info
+		switch (info->actor->m_shape)
+		{
+		case phys::cRigidActor::eShape::Box:
+			ImGui::TextUnformatted("Dim           ");
+			ImGui::SameLine();
+			edit1 = ImGui::DragFloat3("##scale2", (float*)&tfm.scale, 0.001f, 0.01f, 1000.f);
+			break;
+		case phys::cRigidActor::eShape::Sphere:
+			ImGui::TextUnformatted("Radius       ");
+			ImGui::SameLine();
+			edit1 = ImGui::DragFloat("##scale2", &tfm.scale.x, 0.001f, 0.01f, 1000.f);
+			break;
+		case phys::cRigidActor::eShape::Capsule:
+			radius = ((cCapsule*)info->node)->m_radius;
+			halfHeight = ((cCapsule*)info->node)->m_halfHeight;
+			ImGui::TextUnformatted("Radius       ");
+			ImGui::SameLine();
+			edit1 = ImGui::DragFloat("##scale2", &radius, 0.001f, 0.01f, 1000.f);
+			ImGui::TextUnformatted("HalfHeight");
+			ImGui::SameLine();
+			edit1_1 = ImGui::DragFloat("##halfheight2", &halfHeight, 0.001f, 0.01f, 1000.f);
+			break;
+		}
 
-		ImGui::TextUnformatted("Rot   ");
+		// edit rotation
+		ImGui::TextUnformatted("Rot            ");
 		ImGui::SameLine();
 		static Vector3 ryp;//roll yaw pitch
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
@@ -143,17 +169,27 @@ void cEditorView::RenderSelectionInfo()
 
 		if (info->actor->m_dynamic)
 		{
-			const PxRigidBodyFlags flags = info->actor->m_dynamic->getRigidBodyFlags();
-			bool isKinematic = flags.isSet(PxRigidBodyFlag::eKINEMATIC);
+			bool isKinematic = info->actor->IsKinematic();
 			if (ImGui::Checkbox("Kinematic", &isKinematic))
 			{
-				info->actor->m_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, isKinematic);
+				info->actor->SetKinematic(isKinematic);
 				if (!isKinematic)
+				{
+					// is change dimension?
+					// apply modify dimension
+					Vector3 dim;
+					if (g_global->GetModifyRigidActorTransform(selId, dim))
+					{
+						// apply physics shape
+						info->actor->ChangeDimension(g_global->m_physics, dim);
+						g_global->RemoveModifyRigidActorTransform(selId);
+					}
 					info->actor->m_dynamic->wakeUp();
+				}
 			}
 		}
 
-		if (edit0)
+		if (edit0) // position edit
 		{
 			info->node->m_transform.pos = tfm.pos;
 
@@ -161,12 +197,38 @@ void cEditorView::RenderSelectionInfo()
 			info->actor->m_dynamic->setGlobalPose(tm);
 		}
 
-		if (edit1)
+		if (edit1 || edit1_1) // scale edit
 		{
-			info->node->m_transform.scale = tfm.scale;
+			info->actor->SetKinematic(true);
+
+			// RigidActor Scale change was delayed, change when wakeup time
+			// store change value
+			// change 3d model dimension
+			switch (info->actor->m_shape)
+			{
+			case phys::cRigidActor::eShape::Box:
+			{
+				Transform tm(info->node->m_transform.pos, tfm.scale, info->node->m_transform.rot);
+				((cCube*)info->node)->SetCube(tm);
+				g_global->ModifyRigidActorTransform(selId, tfm.scale);
+			}
+			break;
+			case phys::cRigidActor::eShape::Sphere:
+			{
+				((cSphere*)info->node)->SetRadius(tfm.scale.x);
+				g_global->ModifyRigidActorTransform(selId, tfm.scale);
+			}
+			break;
+			case phys::cRigidActor::eShape::Capsule:
+			{
+				((cCapsule*)info->node)->SetDimension(radius, halfHeight);
+				g_global->ModifyRigidActorTransform(selId, Vector3(halfHeight, radius, radius));
+			}
+			break;
+			}
 		}
 
-		if (edit2)
+		if (edit2) // rotation edit
 		{
 			//selectModel->m_transform.rot.Euler2(ryp);
 		}

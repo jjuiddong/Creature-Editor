@@ -15,10 +15,17 @@ public:
 	virtual ~cGlobal();
 
 	bool Init(graphic::cRenderer &renderer);
-	bool SelectRigidActor(const int id, const bool isToggle = false);
+	bool SelectRigidActor(const int actorId, const bool isToggle = false);
 	bool ClearSelection();
-	graphic::cRenderer& GetRenderer();
+
+	// transform edit function
+	bool ModifyRigidActorTransform(const int actorId, const Vector3 &dim);
+	bool GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out);
+	bool RemoveModifyRigidActorTransform(const int actorId);
+
 	void Clear();
+
+	graphic::cRenderer& GetRenderer();
 
 
 protected:
@@ -31,12 +38,9 @@ public:
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 
-	graphic::cGizmo m_gizmo;
-
 	set<int> m_selects; // selection actor id
-	
-	// joint setting
-	bool m_isShowJointOption;
-	int m_jointActorId0;
-	int m_jointActorId1;
+
+	// edit RigidActor information from selection
+	graphic::cGizmo m_gizmo;
+	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
 };

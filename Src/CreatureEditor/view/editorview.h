@@ -26,9 +26,11 @@ protected:
 	void RenderDistanceJoint();
 	void RenderD6Joint();
 
+
 public:
 	Transform m_transform;
 	float m_radius;
 	float m_halfHeight;
 	float m_density;
+	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
 };

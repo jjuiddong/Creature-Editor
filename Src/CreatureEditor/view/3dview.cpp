@@ -121,27 +121,9 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	}
 	m_renderTarget.End(renderer);
 
-	// update rigid actor transform by Gizmo Edit
-	// before g_global->m_physics.PostUpdate() process
-	if (isShowGizmo && isGizmoEdit && g_global->m_gizmo.m_controlNode && physSync)
-	{
-		const int selectId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
-
-		if (phys::cPhysicsSync::sActorInfo *info
-			= physSync->FindActorInfo(selectId))
-		{
-			if (info->actor->m_dynamic)
-			{
-				using namespace physx;
-				cNode *node = g_global->m_gizmo.m_controlNode;
-				const Transform tfm = node->m_transform;
-
-				PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-				info->actor->m_dynamic->setGlobalPose(tm);
-			}
-		}
-	}
-
+	// Modify rigid actor transform by Gizmo
+	// process before g_global->m_physics.PostUpdate()
+	UpdateSelectModelTransform(isGizmoEdit);
 	g_global->m_physics.PostUpdate(deltaSeconds);
 }
 
@@ -204,6 +186,85 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm
 }
 
 
+// Modify rigid actor transform by Gizmo
+// process before g_global->m_physics.PostUpdate()
+void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
+{
+	using namespace physx;
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	const bool isShowGizmo = (g_global->m_selects.size() == 1);
+	if (!isShowGizmo || !isGizmoEdit)
+		return;
+	if (!g_global->m_gizmo.m_controlNode)
+		return;
+	if (!physSync)
+		return;
+
+	const int selectId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+	phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(selectId);
+	if (!info)
+		return;
+	if (!info->actor->m_dynamic) // dynamic actor?
+		return;
+
+	cNode *node = g_global->m_gizmo.m_controlNode;
+	const Transform tfm = node->m_transform;
+
+	PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
+	info->actor->m_dynamic->setGlobalPose(tm);
+
+	// change dimension? apply wakeup
+	if (eGizmoEditType::SCALE == g_global->m_gizmo.m_type)
+	{
+		info->actor->SetKinematic(true); // stop simulation
+
+		// RigidActor Scale change was delayed, change when wakeup time
+		// store change value
+		// change 3d model dimension
+		switch (info->actor->m_shape)
+		{
+		case phys::cRigidActor::eShape::Box:
+		{
+			g_global->ModifyRigidActorTransform(selectId, tfm.scale);
+		}
+		break;
+		case phys::cRigidActor::eShape::Sphere:
+		{
+			float scale = 1.f;
+			switch (g_global->m_gizmo.m_axisType)
+			{
+			case eGizmoEditAxis::X: scale = info->node->m_transform.scale.x; break;
+			case eGizmoEditAxis::Y: scale = info->node->m_transform.scale.y; break;
+			case eGizmoEditAxis::Z: scale = info->node->m_transform.scale.z; break;
+			}
+
+			((cSphere*)info->node)->SetRadius(scale);
+			g_global->ModifyRigidActorTransform(selectId, Vector3(scale,1,1));
+		}
+		break;
+		case phys::cRigidActor::eShape::Capsule:
+		{
+			const Vector3 scale = info->node->m_transform.scale;
+			float radius = 1.f;
+			switch (g_global->m_gizmo.m_axisType)
+			{
+			case eGizmoEditAxis::X: radius = scale.y; break;
+			case eGizmoEditAxis::Y: radius = scale.y; break;
+			case eGizmoEditAxis::Z: radius = scale.z; break;
+			}
+
+			const float halfHeight = scale.x - radius;
+			
+			((cCapsule*)info->node)->SetDimension(radius, halfHeight);
+			g_global->ModifyRigidActorTransform(selectId, Vector3(halfHeight, radius, radius));
+		}
+		break;
+		}
+	}
+}
+
+
 void c3DView::OnRender(const float deltaSeconds)
 {
 	ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -247,9 +308,8 @@ void c3DView::RenderPopupMenu()
 	{
 		if (ImGui::MenuItem("Joint Connection"))
 		{
-			g_global->m_isShowJointOption = true;
-		}
 
+		}
 		ImGui::EndPopup();
 	}
 }

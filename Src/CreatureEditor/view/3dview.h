@@ -25,6 +25,7 @@ protected:
 		, const bool isBuildShadowMap);
 	void RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm);
 	void RenderPopupMenu();
+	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	int PickingRigidActor(const POINT &mousePos);
 
 	void UpdateLookAt();
