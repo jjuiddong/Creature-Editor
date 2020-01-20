@@ -8,6 +8,7 @@ cGlobal::cGlobal()
 	: m_3dView(nullptr)
 	, m_editorView(nullptr)
 	, m_physSync(nullptr)
+	, m_state(eEditState::Normal)
 {
 }
 
@@ -25,7 +26,7 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 	m_physSync = new phys::cPhysicsSync();
 	m_physSync->Create(&m_physics);
 	const int id = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
-	//if (phys::cPhysicsSync::sActorInfo *info = m_physSync->FindActorInfo(id))
+	//if (phys::sActorInfo *info = m_physSync->FindActorInfo(id))
 	//	((graphic::cGrid*)info->node)->m_mtrl.InitGray3();
 
 	m_gizmo.Create(renderer);
@@ -41,22 +42,16 @@ bool cGlobal::SelectRigidActor(const int actorId
 {
 	if (isToggle)
 	{
-		if (m_selects.end() == m_selects.find(actorId))
-			m_selects.insert(actorId);
+		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), actorId))
+			m_selects.push_back(actorId);
 		else
-			m_selects.erase(actorId);
+			common::removevector(m_selects, actorId);
 	}
 	else
 	{
-		m_selects.insert(actorId);
+		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), actorId))
+			m_selects.push_back(actorId);
 	}
-
-	//using namespace graphic;
-	//if (m_selectActorId == id)
-	//	return true;
-	//SetRigidActorColor(m_selectActorId, cColor::WHITE);
-	//SetRigidActorColor(id, cColor::RED);
-	//m_selectActorId = id;
 	return true;
 }
 
@@ -106,7 +101,7 @@ bool cGlobal::SetRigidActorColor(const int id, const graphic::cColor &color)
 {
 	using namespace graphic;
 
-	phys::cPhysicsSync::sActorInfo *info = m_physSync->FindActorInfo(id);
+	phys::sActorInfo *info = m_physSync->FindActorInfo(id);
 	if (!info)
 		return false;
 
@@ -131,6 +126,44 @@ bool cGlobal::SetRigidActorColor(const int id, const graphic::cColor &color)
 }
 
 
+// add joint, joint renderer
+bool cGlobal::AddJoint(phys::cJoint *joint)
+{
+	m_physSync->AddJoint(joint);
+
+	cJointRenderer *jointRenderer = new cJointRenderer();
+	jointRenderer->Create(joint);
+	m_jointRenderers.push_back(jointRenderer);
+	return true;
+}
+
+
+// remove joint, joint renderer
+bool cGlobal::RemoveJoint(phys::cJoint *joint)
+{
+	auto it = std::find_if(m_jointRenderers.begin(), m_jointRenderers.end()
+		, [&](const auto &a) {return a->m_joint == joint; });
+	if (m_jointRenderers.end() == it)
+		return false;
+	delete *it;
+	m_jointRenderers.erase(it);
+
+	m_physSync->RemoveJoint(joint);
+
+	return true;
+}
+
+
+cJointRenderer* cGlobal::FindJointRenderer(phys::cJoint *joint)
+{
+	auto it = std::find_if(m_jointRenderers.begin(), m_jointRenderers.end()
+		, [&](const auto &a) {return a->m_joint == joint; });
+	if (m_jointRenderers.end() == it)
+		return nullptr;
+	return *it;
+}
+
+
 graphic::cRenderer& cGlobal::GetRenderer()
 {
 	return m_3dView->GetRenderer();
@@ -139,6 +172,10 @@ graphic::cRenderer& cGlobal::GetRenderer()
 
 void cGlobal::Clear()
 {
+	for (auto &p : m_jointRenderers)
+		delete p;
+	m_jointRenderers.clear();
+
 	m_chDimensions.clear();
 	m_physics.Clear();
 }

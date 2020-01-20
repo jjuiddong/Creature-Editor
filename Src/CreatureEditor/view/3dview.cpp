@@ -44,6 +44,7 @@ bool c3DView::Init(cRenderer &renderer)
 		, cColor(0.6f, 0.6f, 0.6f, 0.5f)
 		, cColor(0.f, 0.f, 0.f, 0.5f)
 	);
+	m_grid.m_offsetY = 0.01f;
 
 	m_skybox.Create(renderer, "./media/skybox/sky.dds");
 
@@ -87,7 +88,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		{
 			for (auto id : g_global->m_selects)
 			{
-				if (phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id))
+				if (phys::sActorInfo *info = physSync->FindActorInfo(id))
 				{
 					GetMainCamera().Bind(renderer);
 						const Matrix44 parentTm = info->node->GetParentWorldMatrix();
@@ -113,6 +114,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 
 		m_ccsm.Bind(renderer);
 		RenderScene(renderer, "ShadowMap", false);
+		RenderEtc(renderer);
 		
 		if (isShowGizmo)
 			isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
@@ -157,6 +159,32 @@ void c3DView::RenderScene(graphic::cRenderer &renderer
 }
 
 
+void c3DView::RenderEtc(graphic::cRenderer &renderer)
+{
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	RET(!physSync);
+
+	// render pivot position
+	if ((eEditState::Pivot0 == g_global->m_state)
+		|| (eEditState::Pivot1 == g_global->m_state))
+	{
+		Transform tfm(m_pivotPos, Vector3::Ones*0.05f);
+		renderer.m_dbgBox.SetColor(cColor::RED);
+		renderer.m_dbgBox.SetBox(tfm);
+		renderer.m_dbgBox.Render(renderer);
+	}
+
+	renderer.m_dbgLine.m_isSolid = true;
+	renderer.m_dbgLine.SetColor(cColor::GREEN);
+	renderer.m_dbgBox.SetColor(cColor::GREEN);
+	for (auto &jointRenderer : g_global->m_jointRenderers)
+		jointRenderer->Render(renderer);
+	renderer.m_dbgLine.m_isSolid = false;
+	renderer.m_dbgLine.SetColor(cColor::WHITE);
+	renderer.m_dbgBox.SetColor(cColor::WHITE);
+}
+
+
 // Render Outline Selected model
 void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm)
 {
@@ -167,7 +195,7 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm
 
 	for (auto id : g_global->m_selects)
 	{
-		phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id);
+		phys::sActorInfo *info = physSync->FindActorInfo(id);
 		if (!info)
 			return;
 
@@ -202,7 +230,7 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 		return;
 
 	const int selectId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
-	phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(selectId);
+	phys::sActorInfo *info = physSync->FindActorInfo(selectId);
 	if (!info)
 		return;
 	if (!info->actor->m_dynamic) // dynamic actor?
@@ -327,7 +355,10 @@ void c3DView::OnResizeEnd(const framework::eDockResize::Enum type, const sRectf 
 // picing rigidactor
 // return actor id
 // if not found actor, return -1
-int c3DView::PickingRigidActor(const POINT &mousePos)
+// return distance
+int c3DView::PickingRigidActor(const POINT &mousePos
+	, OUT float *outDistance //= nullptr
+)
 {
 	const Ray ray = GetMainCamera().GetRay(mousePos.x, mousePos.y);
 
@@ -347,6 +378,8 @@ int c3DView::PickingRigidActor(const POINT &mousePos)
 			{
 				minId = p->id;
 				minDist = distance;
+				if (outDistance)
+					*outDistance = distance;
 			}
 		}
 	}
@@ -407,6 +440,22 @@ void c3DView::OnMouseMove(const POINT mousePt)
 	if (g_global->m_gizmo.IsKeepEditMode())
 		return;
 
+	// joint pivot setting mode
+	if ((eEditState::Pivot0 == g_global->m_state)
+		|| (eEditState::Pivot1 == g_global->m_state))
+	{
+		// picking all rigidbody
+		float distance = 0.f;
+		const int actorId = PickingRigidActor(mousePt, &distance);
+		phys::cPhysicsSync *sync = g_global->m_physSync;
+		phys::sActorInfo *info = sync->FindActorInfo(actorId);
+		if (info)
+		{
+			const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+			m_pivotPos = ray.dir * distance + ray.orig;
+		}
+	}
+
 	if (m_mouseDown[0])
 	{
 		Vector3 dir = GetMainCamera().GetDirection();
@@ -446,24 +495,56 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 	const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
 	m_rotateLen = (target - ray.orig).Length();
 
+
+	// joint pivot setting mode
+	if (((eEditState::Pivot0 == g_global->m_state)
+		|| (eEditState::Pivot1 == g_global->m_state))
+		&& !g_global->m_selects.empty()
+		&& g_global->m_selJoint)
+	{
+		const int selId = *g_global->m_selects.begin();
+		phys::cJoint *selJoint = g_global->m_selJoint;
+
+		// picking all rigidbody
+		float distance = 0.f;
+		const int actorId = PickingRigidActor(mousePt, &distance);
+		phys::cPhysicsSync *sync = g_global->m_physSync;
+		phys::sActorInfo *info = sync->FindActorInfo(actorId);
+		if (info && (selId == actorId))
+		{
+			const Vector3 pivotPos = ray.dir * distance + ray.orig;
+			m_pivotPos = pivotPos;
+
+			// update pivot position
+			cJointRenderer *jointRenderer = g_global->FindJointRenderer(selJoint);
+			if (jointRenderer)
+			{
+				// find actor0 or actor1 picking
+				if (info == jointRenderer->m_info0) // actor0?
+				{
+					jointRenderer->SetPivotPos(0, pivotPos);
+				}
+				else if (info == jointRenderer->m_info1)// actor1?
+				{
+					jointRenderer->SetPivotPos(1, pivotPos);
+				}
+				else
+				{
+					assert(0);
+				}
+			}
+		}
+	}
+
+
 	switch (button)
 	{
 	case sf::Mouse::Left:
-	{
 		m_mouseDown[0] = true;
-	}
-	break;
-
+		break;
 	case sf::Mouse::Right:
-	{
 		m_mouseDown[1] = true;
-
-		const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
-		Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
-		const float len = (GetMainCamera().GetEyePos() - target).Length();
-	}
-	break;
-
+		break;
 	case sf::Mouse::Middle:
 		m_mouseDown[2] = true;
 		break;
@@ -483,9 +564,14 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	{
 		m_mouseDown[0] = false;
 
+		// if pivot mode? ignore rigid actor selection
+		if ((eEditState::Pivot0 == g_global->m_state)
+			|| (eEditState::Pivot0 == g_global->m_state))
+			break;
+
 		const int actorId = PickingRigidActor(mousePt);
 		phys::cPhysicsSync *sync = g_global->m_physSync;
-		phys::cPhysicsSync::sActorInfo *info = sync->FindActorInfo(actorId);
+		phys::sActorInfo *info = sync->FindActorInfo(actorId);
 		if (info)
 		{
 			if (::GetAsyncKeyState(VK_SHIFT))
@@ -552,14 +638,15 @@ void c3DView::OnEventProc(const sf::Event &evt)
 			break;
 		case sf::Keyboard::Space:
 			break;
-		case sf::Keyboard::R: 
-			g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE;
-			break;
-		case sf::Keyboard::T:
-			g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE;
-			break;
-		case sf::Keyboard::S:
-			g_global->m_gizmo.m_type = graphic::eGizmoEditType::SCALE;
+		case sf::Keyboard::R: g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
+		case sf::Keyboard::T: g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
+		case sf::Keyboard::S: g_global->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
+		case sf::Keyboard::H: g_global->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
+
+		case sf::Keyboard::Escape:
+			g_global->m_state = eEditState::Normal;
+			g_global->m_selJoint = nullptr;
+			g_global->ClearSelection();
 			break;
 		}
 		break;

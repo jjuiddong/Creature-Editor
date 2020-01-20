@@ -7,5 +7,6 @@ using namespace common;
 #include "../../../Common/Physics/physics.h"
 
 
+#include "lib/jointrenderer.h"
 #include "global.h"
 extern cGlobal *g_global;

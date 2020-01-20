@@ -23,10 +23,11 @@ public:
 protected:
 	void RenderScene(graphic::cRenderer &renderer, const StrId &techiniqName
 		, const bool isBuildShadowMap);
+	void RenderEtc(graphic::cRenderer &renderer);
 	void RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm);
 	void RenderPopupMenu();
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
-	int PickingRigidActor(const POINT &mousePos);
+	int PickingRigidActor(const POINT &mousePos, OUT float *outDistance = nullptr);
 
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
@@ -44,6 +45,8 @@ public:
 
 	bool m_showGrid;
 	bool m_showMenu;
+
+	Vector3 m_pivotPos;
 
 	// MouseMove Variable
 	POINT m_viewPos;

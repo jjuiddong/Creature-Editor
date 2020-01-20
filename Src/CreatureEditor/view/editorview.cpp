@@ -43,7 +43,7 @@ void cEditorView::RenderSpawnTransform()
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Spawn Transform"))
+	if (ImGui::CollapsingHeader("Spawn RigidBody"))
 	{
 		ImGui::TextUnformatted("Pos  ");
 		ImGui::SameLine();
@@ -97,7 +97,7 @@ void cEditorView::RenderSpawnTransform()
 
 		if (id >= 0)// creation?
 		{
-			phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(id);
+			phys::sActorInfo *info = physSync->FindActorInfo(id);
 			if (info && info->actor->m_dynamic)
 			{
 				info->actor->m_dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isKinematic);
@@ -118,13 +118,15 @@ void cEditorView::RenderSelectionInfo()
 	int selId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Selection"))
+	if (ImGui::CollapsingHeader("Selection RigidBody"))
 	{
-		phys::cPhysicsSync::sActorInfo *info = physSync->FindActorInfo(selId);
+		phys::sActorInfo *info = physSync->FindActorInfo(selId);
 		if (!info)
 			return;
 
-		Transform tfm = info->node->m_transform;
+		phys::cRigidActor *actor = info->actor;
+		graphic::cNode *node = info->node;
+		Transform tfm = node->m_transform;
 
 		// edit position
 		ImGui::TextUnformatted("Pos            ");
@@ -135,7 +137,7 @@ void cEditorView::RenderSelectionInfo()
 		bool edit1 = false;
 		bool edit1_1 = false;
 		float radius = 0.f, halfHeight = 0.f; // capsule info
-		switch (info->actor->m_shape)
+		switch (actor->m_shape)
 		{
 		case phys::cRigidActor::eShape::Box:
 			ImGui::TextUnformatted("Dim           ");
@@ -148,8 +150,8 @@ void cEditorView::RenderSelectionInfo()
 			edit1 = ImGui::DragFloat("##scale2", &tfm.scale.x, 0.001f, 0.01f, 1000.f);
 			break;
 		case phys::cRigidActor::eShape::Capsule:
-			radius = ((cCapsule*)info->node)->m_radius;
-			halfHeight = ((cCapsule*)info->node)->m_halfHeight;
+			radius = ((cCapsule*)node)->m_radius;
+			halfHeight = ((cCapsule*)node)->m_halfHeight;
 			ImGui::TextUnformatted("Radius       ");
 			ImGui::SameLine();
 			edit1 = ImGui::DragFloat("##scale2", &radius, 0.001f, 0.01f, 1000.f);
@@ -167,12 +169,12 @@ void cEditorView::RenderSelectionInfo()
 
 		using namespace physx;
 
-		if (info->actor->m_dynamic)
+		if (actor->m_dynamic)
 		{
-			bool isKinematic = info->actor->IsKinematic();
+			bool isKinematic = actor->IsKinematic();
 			if (ImGui::Checkbox("Kinematic", &isKinematic))
 			{
-				info->actor->SetKinematic(isKinematic);
+				actor->SetKinematic(isKinematic);
 				if (!isKinematic)
 				{
 					// is change dimension?
@@ -181,47 +183,47 @@ void cEditorView::RenderSelectionInfo()
 					if (g_global->GetModifyRigidActorTransform(selId, dim))
 					{
 						// apply physics shape
-						info->actor->ChangeDimension(g_global->m_physics, dim);
+						actor->ChangeDimension(g_global->m_physics, dim);
 						g_global->RemoveModifyRigidActorTransform(selId);
 					}
-					info->actor->m_dynamic->wakeUp();
+					actor->m_dynamic->wakeUp();
 				}
 			}
 		}
 
 		if (edit0) // position edit
 		{
-			info->node->m_transform.pos = tfm.pos;
+			node->m_transform.pos = tfm.pos;
 
 			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-			info->actor->m_dynamic->setGlobalPose(tm);
+			actor->m_dynamic->setGlobalPose(tm);
 		}
 
 		if (edit1 || edit1_1) // scale edit
 		{
-			info->actor->SetKinematic(true);
+			actor->SetKinematic(true);
 
 			// RigidActor Scale change was delayed, change when wakeup time
 			// store change value
 			// change 3d model dimension
-			switch (info->actor->m_shape)
+			switch (actor->m_shape)
 			{
 			case phys::cRigidActor::eShape::Box:
 			{
-				Transform tm(info->node->m_transform.pos, tfm.scale, info->node->m_transform.rot);
-				((cCube*)info->node)->SetCube(tm);
+				Transform tm(node->m_transform.pos, tfm.scale, node->m_transform.rot);
+				((cCube*)node)->SetCube(tm);
 				g_global->ModifyRigidActorTransform(selId, tfm.scale);
 			}
 			break;
 			case phys::cRigidActor::eShape::Sphere:
 			{
-				((cSphere*)info->node)->SetRadius(tfm.scale.x);
+				((cSphere*)node)->SetRadius(tfm.scale.x);
 				g_global->ModifyRigidActorTransform(selId, tfm.scale);
 			}
 			break;
 			case phys::cRigidActor::eShape::Capsule:
 			{
-				((cCapsule*)info->node)->SetDimension(radius, halfHeight);
+				((cCapsule*)node)->SetDimension(radius, halfHeight);
 				g_global->ModifyRigidActorTransform(selId, Vector3(halfHeight, radius, radius));
 			}
 			break;
@@ -232,17 +234,109 @@ void cEditorView::RenderSelectionInfo()
 		{
 			//selectModel->m_transform.rot.Euler2(ryp);
 		}
+
+		ImGui::Separator();
+		RenderSelectActorJointInfo(selId);
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+	}//~CollapsingHeader
+}
+
+
+// show select actor joint information
+void cEditorView::RenderSelectActorJointInfo(const int actorId)
+{
+	using namespace graphic;
+	cRenderer &renderer = g_global->GetRenderer();
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::sActorInfo *info = physSync->FindActorInfo(actorId);
+	if (!info)
+		return;
+
+	phys::cRigidActor *actor = info->actor;
+	graphic::cNode *node = info->node;
+
+	ImGui::TextUnformatted("Actor RigidBody Joint Information");
+
+	set<phys::cJoint*> rmJoints;
+	for (uint i=0; i < actor->m_joints.size(); ++i)
+	{
+		phys::cJoint *joint = actor->m_joints[i];
+
+		const ImGuiTreeNodeFlags node_flags = 0;
+
+		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+		if (ImGui::TreeNodeEx((void*)((int)actor + i), node_flags, "Joint-%d", i + 1))
+		{
+			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6" };
+			ImGui::Text("%s JointType", jointStr[(int)joint->m_type]);
+
+			if (ImGui::Button("Pivot Setting"))
+			{
+				g_global->m_state = eEditState::Pivot0;
+				g_global->m_selJoint = joint;
+				g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Apply"))
+			{
+
+
+			}
+
+			ImGui::Spacing();
+			ImGui::Spacing();
+
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0, 1));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0, 1));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0, 1));
+			if (ImGui::Button("Remove"))
+			{
+				rmJoints.insert(joint);
+			}
+			ImGui::PopStyleColor(3);
+
+			ImGui::TreePop();
+		}
 	}
+
+	for (auto &joint : rmJoints)
+		physSync->RemoveJoint(joint);
+
 }
 
 
 void cEditorView::RenderJointInfo()
 {
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Joint"))
+	if (ImGui::CollapsingHeader("Joint Creation"))
 	{
 		if (g_global->m_selects.size() == 2)
 		{
+			// check already connection
+			{
+				auto it = g_global->m_selects.begin();
+				const int actorId0 = *it++;
+				const int actorId1 = *it++;
+
+				phys::cPhysicsSync *physSync = g_global->m_physSync;
+				phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+				phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+				if (!info0 || !info1)
+					return;
+
+				for (auto &joint : physSync->m_joints)
+				{
+					if (((joint->m_actor0 == info0->actor) && (joint->m_actor1 == info1->actor))
+						|| ((joint->m_actor1 == info0->actor) && (joint->m_actor0 == info1->actor))
+						)
+						return; // already connection joint
+				}
+			}
+
 			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
 			static int idx = 0;
 			ImGui::TextUnformatted("Joint");
@@ -271,8 +365,8 @@ void cEditorView::RenderFixedJoint()
 	const int actorId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
 	if (!info0 || !info1)
 		return;
 
@@ -285,7 +379,7 @@ void cEditorView::RenderFixedJoint()
 		joint->CreateFixed(g_global->m_physics
 			, info0->actor, info0->node->m_transform
 			, info1->actor, info1->node->m_transform);
-		physSync->AddJoint(joint);
+		g_global->AddJoint(joint);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -300,8 +394,8 @@ void cEditorView::RenderSphericalJoint()
 	const int actorId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
 	if (!info0 || !info1)
 		return;
 
@@ -331,7 +425,7 @@ void cEditorView::RenderSphericalJoint()
 			joint->m_sphericalJoint->setSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
 		}
 
-		physSync->AddJoint(joint);
+		g_global->AddJoint(joint);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -346,8 +440,8 @@ void cEditorView::RenderRevoluteJoint()
 	const int actorId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::cPhysicsSync::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::cPhysicsSync::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
+	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
+	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
 	if (!info0 || !info1)
 		return;
 
@@ -369,11 +463,6 @@ void cEditorView::RenderRevoluteJoint()
 	ImGui::TextUnformatted("Limit");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
-
-	//static bool isDrive = false;
-	//ImGui::TextUnformatted("Drive");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Drive", &isDrive);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -398,7 +487,7 @@ void cEditorView::RenderRevoluteJoint()
 			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
 		}
 
-		physSync->AddJoint(joint);
+		g_global->AddJoint(joint);
 	}
 	ImGui::PopStyleColor(3);
 }

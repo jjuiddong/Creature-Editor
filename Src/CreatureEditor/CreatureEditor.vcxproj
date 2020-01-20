@@ -155,6 +155,7 @@
   <ItemGroup>
     <ClCompile Include="creatureeditor.cpp" />
     <ClCompile Include="global.cpp" />
+    <ClCompile Include="lib\jointrenderer.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -164,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h" />
+    <ClInclude Include="lib\jointrenderer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h" />
     <ClInclude Include="view\editorview.h" />

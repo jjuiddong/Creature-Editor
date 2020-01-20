@@ -5,6 +5,11 @@
 #pragma once
 
 
+enum class eEditState {
+	Normal, Pivot0, Pivot1
+};
+
+
 class c3DView;
 class cEditorView;
 
@@ -23,6 +28,11 @@ public:
 	bool GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out);
 	bool RemoveModifyRigidActorTransform(const int actorId);
 
+	// joint manage function
+	bool AddJoint(phys::cJoint *joint);
+	bool RemoveJoint(phys::cJoint *joint);
+	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
+
 	void Clear();
 
 	graphic::cRenderer& GetRenderer();
@@ -33,14 +43,20 @@ protected:
 
 
 public:
+	eEditState m_state;
+
 	c3DView *m_3dView;
 	cEditorView *m_editorView;
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 
-	set<int> m_selects; // selection actor id
+	vector<int> m_selects; // selection actor id
 
-	// edit RigidActor information from selection
+	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;
 	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
+
+	// joint
+	phys::cJoint *m_selJoint; // reference
+	vector<cJointRenderer*> m_jointRenderers;
 };

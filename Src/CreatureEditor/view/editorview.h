@@ -25,6 +25,7 @@ protected:
 	void RenderPrismaticJoint();
 	void RenderDistanceJoint();
 	void RenderD6Joint();
+	void RenderSelectActorJointInfo(const int actorId);
 
 
 public:
