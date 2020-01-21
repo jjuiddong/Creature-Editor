@@ -26,6 +26,7 @@ protected:
 	void RenderDistanceJoint();
 	void RenderD6Joint();
 	void RenderSelectActorJointInfo(const int actorId);
+	void RenderRevoluteJointSetting(phys::cJoint *joint);
 
 
 public:

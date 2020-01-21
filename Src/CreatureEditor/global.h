@@ -5,10 +5,7 @@
 #pragma once
 
 
-enum class eEditState {
-	Normal, Pivot0, Pivot1
-};
-
+enum class eEditState {Normal, Pivot0, Pivot1};
 
 class c3DView;
 class cEditorView;
@@ -33,9 +30,8 @@ public:
 	bool RemoveJoint(phys::cJoint *joint);
 	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
 
-	void Clear();
-
 	graphic::cRenderer& GetRenderer();
+	void Clear();
 
 
 protected:
@@ -44,7 +40,6 @@ protected:
 
 public:
 	eEditState m_state;
-
 	c3DView *m_3dView;
 	cEditorView *m_editorView;
 	phys::cPhysicsEngine m_physics;
@@ -59,4 +54,7 @@ public:
 	// joint
 	phys::cJoint *m_selJoint; // reference
 	vector<cJointRenderer*> m_jointRenderers;
+	bool m_showUIJoint;
+	phys::cJoint m_uiJoint;
+	cJointRenderer m_uiJointRenderer;
 };

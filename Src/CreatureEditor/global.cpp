@@ -9,6 +9,7 @@ cGlobal::cGlobal()
 	, m_editorView(nullptr)
 	, m_physSync(nullptr)
 	, m_state(eEditState::Normal)
+	, m_showUIJoint(false)
 {
 }
 
@@ -25,11 +26,13 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 	m_physSync = new phys::cPhysicsSync();
 	m_physSync->Create(&m_physics);
-	const int id = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
-	//if (phys::sActorInfo *info = m_physSync->FindActorInfo(id))
-	//	((graphic::cGrid*)info->node)->m_mtrl.InitGray3();
-
+	m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
+	
 	m_gizmo.Create(renderer);
+
+	// initialize ui joint
+	m_uiJoint.CreateReferenceMode();
+	m_uiJointRenderer.Create(&m_uiJoint);
 
 	return true;
 }
@@ -156,6 +159,9 @@ bool cGlobal::RemoveJoint(phys::cJoint *joint)
 
 cJointRenderer* cGlobal::FindJointRenderer(phys::cJoint *joint)
 {
+	if (joint == &m_uiJoint)
+		return &m_uiJointRenderer;
+
 	auto it = std::find_if(m_jointRenderers.begin(), m_jointRenderers.end()
 		, [&](const auto &a) {return a->m_joint == joint; });
 	if (m_jointRenderers.end() == it)

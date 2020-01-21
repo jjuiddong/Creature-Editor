@@ -174,6 +174,7 @@ void c3DView::RenderEtc(graphic::cRenderer &renderer)
 		renderer.m_dbgBox.Render(renderer);
 	}
 
+	// render joint
 	renderer.m_dbgLine.m_isSolid = true;
 	renderer.m_dbgLine.SetColor(cColor::GREEN);
 	renderer.m_dbgBox.SetColor(cColor::GREEN);
@@ -182,6 +183,10 @@ void c3DView::RenderEtc(graphic::cRenderer &renderer)
 	renderer.m_dbgLine.m_isSolid = false;
 	renderer.m_dbgLine.SetColor(cColor::WHITE);
 	renderer.m_dbgBox.SetColor(cColor::WHITE);
+
+	// render ui joint
+	if (g_global->m_showUIJoint)
+		g_global->m_uiJointRenderer.Render(renderer);
 }
 
 
@@ -442,17 +447,22 @@ void c3DView::OnMouseMove(const POINT mousePt)
 
 	// joint pivot setting mode
 	if ((eEditState::Pivot0 == g_global->m_state)
-		|| (eEditState::Pivot1 == g_global->m_state))
+		|| (eEditState::Pivot1 == g_global->m_state)
+		&& !g_global->m_selects.empty()
+		&& g_global->m_selJoint)
 	{
-		// picking all rigidbody
-		float distance = 0.f;
-		const int actorId = PickingRigidActor(mousePt, &distance);
-		phys::cPhysicsSync *sync = g_global->m_physSync;
-		phys::sActorInfo *info = sync->FindActorInfo(actorId);
-		if (info)
+		for (int selId : g_global->m_selects)
 		{
-			const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
-			m_pivotPos = ray.dir * distance + ray.orig;
+			// picking all rigidbody
+			float distance = 0.f;
+			const int actorId = PickingRigidActor(mousePt, &distance);
+			phys::cPhysicsSync *sync = g_global->m_physSync;
+			phys::sActorInfo *info = sync->FindActorInfo(actorId);
+			if (info && (actorId == selId))
+			{
+				const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+				m_pivotPos = ray.dir * distance + ray.orig;
+			}
 		}
 	}
 
@@ -502,39 +512,40 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 		&& !g_global->m_selects.empty()
 		&& g_global->m_selJoint)
 	{
-		const int selId = *g_global->m_selects.begin();
 		phys::cJoint *selJoint = g_global->m_selJoint;
-
-		// picking all rigidbody
-		float distance = 0.f;
-		const int actorId = PickingRigidActor(mousePt, &distance);
-		phys::cPhysicsSync *sync = g_global->m_physSync;
-		phys::sActorInfo *info = sync->FindActorInfo(actorId);
-		if (info && (selId == actorId))
+		for (int selId : g_global->m_selects)
 		{
-			const Vector3 pivotPos = ray.dir * distance + ray.orig;
-			m_pivotPos = pivotPos;
-
-			// update pivot position
-			cJointRenderer *jointRenderer = g_global->FindJointRenderer(selJoint);
-			if (jointRenderer)
+			// picking all rigidbody
+			float distance = 0.f;
+			const int actorId = PickingRigidActor(mousePt, &distance);
+			phys::cPhysicsSync *sync = g_global->m_physSync;
+			phys::sActorInfo *info = sync->FindActorInfo(actorId);
+			if (info && (selId == actorId))
 			{
-				// find actor0 or actor1 picking
-				if (info == jointRenderer->m_info0) // actor0?
+				const Vector3 pivotPos = ray.dir * distance + ray.orig;
+				m_pivotPos = pivotPos;
+
+				// update pivot position
+				cJointRenderer *jointRenderer = g_global->FindJointRenderer(selJoint);
+				if (jointRenderer)
 				{
-					jointRenderer->SetPivotPos(0, pivotPos);
-				}
-				else if (info == jointRenderer->m_info1)// actor1?
-				{
-					jointRenderer->SetPivotPos(1, pivotPos);
-				}
-				else
-				{
-					assert(0);
+					// find actor0 or actor1 picking
+					if (info == jointRenderer->m_info0) // actor0?
+					{
+						jointRenderer->SetPivotPos(0, pivotPos);
+					}
+					else if (info == jointRenderer->m_info1)// actor1?
+					{
+						jointRenderer->SetPivotPos(1, pivotPos);
+					}
+					else
+					{
+						assert(0);
+					}
 				}
 			}
-		}
-	}
+		}//~selects
+	} //~// joint pivot setting mode
 
 
 	switch (button)
@@ -645,6 +656,7 @@ void c3DView::OnEventProc(const sf::Event &evt)
 
 		case sf::Keyboard::Escape:
 			g_global->m_state = eEditState::Normal;
+			g_global->m_gizmo.SetControlNode(nullptr);
 			g_global->m_selJoint = nullptr;
 			g_global->ClearSelection();
 			break;

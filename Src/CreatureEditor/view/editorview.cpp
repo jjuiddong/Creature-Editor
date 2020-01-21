@@ -31,6 +31,10 @@ void cEditorView::OnRender(const float deltaSeconds)
 	ImGui::Checkbox("Debug", &renderer.m_isDbgRender);
 	ImGui::InputInt("DebugType", &renderer.m_dbgRenderStyle);
 
+	//initialize ui
+	g_global->m_showUIJoint = false;
+	//~
+
 	RenderSpawnTransform();
 	RenderSelectionInfo();
 	RenderJointInfo();
@@ -45,6 +49,11 @@ void cEditorView::RenderSpawnTransform()
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("Spawn RigidBody"))
 	{
+		static bool isKinematic = true;
+		ImGui::TextUnformatted("Lock ( Kinematic )  ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##kinematic", &isKinematic);
+
 		ImGui::TextUnformatted("Pos  ");
 		ImGui::SameLine();
 		ImGui::DragFloat3("##position", (float*)&m_transform.pos, 0.001f);
@@ -69,11 +78,6 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::TextUnformatted("Density      ");
 		ImGui::SameLine();
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
-
-		static bool isKinematic = true;
-		ImGui::TextUnformatted("Kinematic  ");
-		ImGui::SameLine();
-		ImGui::Checkbox("##kinematic", &isKinematic);
 
 		ImGui::Spacing();
 		int id = -1;
@@ -128,6 +132,32 @@ void cEditorView::RenderSelectionInfo()
 		graphic::cNode *node = info->node;
 		Transform tfm = node->m_transform;
 
+		using namespace physx;
+
+		if (actor->m_dynamic)
+		{
+			bool isKinematic = actor->IsKinematic();
+			ImGui::TextUnformatted("Lock ( Kinematic ) ");
+			ImGui::SameLine();
+			if (ImGui::Checkbox("##Lock ( Kinematic )", &isKinematic))
+			{
+				actor->SetKinematic(isKinematic);
+				if (!isKinematic)
+				{
+					// is change dimension?
+					// apply modify dimension
+					Vector3 dim;
+					if (g_global->GetModifyRigidActorTransform(selId, dim))
+					{
+						// apply physics shape
+						actor->ChangeDimension(g_global->m_physics, dim);
+						g_global->RemoveModifyRigidActorTransform(selId);
+					}
+					actor->m_dynamic->wakeUp();
+				}
+			}
+		}
+
 		// edit position
 		ImGui::TextUnformatted("Pos            ");
 		ImGui::SameLine();
@@ -166,30 +196,6 @@ void cEditorView::RenderSelectionInfo()
 		ImGui::SameLine();
 		static Vector3 ryp;//roll yaw pitch
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
-
-		using namespace physx;
-
-		if (actor->m_dynamic)
-		{
-			bool isKinematic = actor->IsKinematic();
-			if (ImGui::Checkbox("Kinematic", &isKinematic))
-			{
-				actor->SetKinematic(isKinematic);
-				if (!isKinematic)
-				{
-					// is change dimension?
-					// apply modify dimension
-					Vector3 dim;
-					if (g_global->GetModifyRigidActorTransform(selId, dim))
-					{
-						// apply physics shape
-						actor->ChangeDimension(g_global->m_physics, dim);
-						g_global->RemoveModifyRigidActorTransform(selId);
-					}
-					actor->m_dynamic->wakeUp();
-				}
-			}
-		}
 
 		if (edit0) // position edit
 		{
@@ -258,15 +264,15 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 	phys::cRigidActor *actor = info->actor;
 	graphic::cNode *node = info->node;
 
-	ImGui::TextUnformatted("Actor RigidBody Joint Information");
+	set<phys::cJoint*> rmJoints; // remove joints
 
-	set<phys::cJoint*> rmJoints;
+	// show all joint information contained rigid actor
+	ImGui::TextUnformatted("Actor RigidBody Joint Information");
 	for (uint i=0; i < actor->m_joints.size(); ++i)
 	{
 		phys::cJoint *joint = actor->m_joints[i];
 
 		const ImGuiTreeNodeFlags node_flags = 0;
-
 		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 		if (ImGui::TreeNodeEx((void*)((int)actor + i), node_flags, "Joint-%d", i + 1))
 		{
@@ -280,12 +286,16 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 				g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 			}
 
-			ImGui::SameLine();
-			if (ImGui::Button("Apply"))
+			ImGui::SameLine(150);
+			if (ImGui::Button("Apply Pivot"))
 			{
-
-
+				if (cJointRenderer *jointRenderer = g_global->FindJointRenderer(joint))
+					jointRenderer->ApplyPivot();
+				g_global->m_state = eEditState::Normal;
 			}
+
+			ImGui::Separator();
+			RenderRevoluteJointSetting(joint);
 
 			ImGui::Spacing();
 			ImGui::Spacing();
@@ -293,7 +303,9 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0, 1));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0, 1));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0, 1));
-			if (ImGui::Button("Remove"))
+			StrId text;
+			text.Format("Remove Joint-%d", i + 1);
+			if (ImGui::Button(text.c_str()))
 			{
 				rmJoints.insert(joint);
 			}
@@ -303,9 +315,17 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 		}
 	}
 
+	// remove joint?
+	if (!rmJoints.empty())
+	{
+		// clear selection
+		g_global->m_state = eEditState::Normal;
+		g_global->m_gizmo.SetControlNode(nullptr);
+		g_global->m_selJoint = nullptr;
+		g_global->ClearSelection();
+	}
 	for (auto &joint : rmJoints)
-		physSync->RemoveJoint(joint);
-
+		g_global->RemoveJoint(joint);
 }
 
 
@@ -464,15 +484,39 @@ void cEditorView::RenderRevoluteJoint()
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
 
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	// update ui joint
+	g_global->m_showUIJoint = true;
+	g_global->m_uiJoint.m_type = phys::cJoint::eType::Revolute;
+	g_global->m_uiJoint.m_actor0 = info0->actor;
+	g_global->m_uiJoint.m_actor1 = info1->actor;
+	g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
+	g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+	g_global->m_uiJointRenderer.m_info0 = info0;
+	g_global->m_uiJointRenderer.m_info1 = info1;
+	//~
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Create Spherical Joint"))
 	{
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateRevolute(g_global->m_physics
-			, info0->actor, info0->node->m_transform
-			, info1->actor, info1->node->m_transform
+			, info0->actor, info0->node->m_transform, pivot0.pos
+			, info1->actor, info1->node->m_transform, pivot1.pos
 			, axis[axisIdx]);
 
 		if (isLimit)
@@ -495,17 +539,58 @@ void cEditorView::RenderRevoluteJoint()
 
 void cEditorView::RenderPrismaticJoint()
 {
-
 }
 
 
 void cEditorView::RenderDistanceJoint()
 {
-
 }
 
 
 void cEditorView::RenderD6Joint()
 {
+}
 
+
+void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
+{
+	using namespace physx;
+
+	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
+	static bool isDrive = false;
+	static float velocity = 1.f;
+	ImGui::Text("Angular Limit (Radian)");
+	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
+	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
+	ImGui::Checkbox("Drive", &isDrive);
+	ImGui::DragFloat("Velocity", &velocity, 0.001f);
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+
+	static bool isLimit = false;
+	ImGui::TextUnformatted("Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Apply Option"))
+	{
+		if (isLimit)
+		{
+			joint->m_revoluteJoint->setLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
+		}
+
+		if (isDrive)
+		{
+			joint->m_revoluteJoint->setDriveVelocity(velocity);
+			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
+		}
+	}
+	ImGui::PopStyleColor(3);
 }

@@ -19,7 +19,13 @@ public:
 	bool Update(const float deltaSeconds);
 	bool Render(graphic::cRenderer &renderer, const XMMATRIX &tm = graphic::XMIdentity);
 	void SetPivotPos(const int actorIndex, const Vector3 &pos);
+	Transform GetPivotWorldTransform(const int actorIndex);
+	bool ApplyPivot();
 	void Clear();
+
+
+protected:
+	Transform GetJointTransform();
 
 
 public:
@@ -32,9 +38,4 @@ public:
 		float len; // pivot length from center
 	};
 	sPivot m_pivots[2]; // actor0,1
-
-	Vector3 m_pivot0; // actor0 pivot position
-	Vector3 m_pivot1; // actor1 pivot position
-	Vector3 m_pivotDir0; // actor0 pivot direction from center
-	Vector3 m_pivotDir1; // actor0 pivot direction from center
 };
