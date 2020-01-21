@@ -9,3 +9,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/gizmo2.jpg?raw=true)
 - Joint Connection
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/joint.jpg?raw=true)
+- Joint Pivot
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/pivot.jpg?raw=true)
