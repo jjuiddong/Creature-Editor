@@ -5,7 +5,7 @@
 #pragma once
 
 
-enum class eEditState {Normal, Pivot0, Pivot1};
+enum class eEditState {Normal, Pivot0, Pivot1, Revolute};
 
 class c3DView;
 class cEditorView;
@@ -17,7 +17,7 @@ public:
 	virtual ~cGlobal();
 
 	bool Init(graphic::cRenderer &renderer);
-	bool SelectRigidActor(const int actorId, const bool isToggle = false);
+	bool SelectObject(const int syncId, const bool isToggle = false);
 	bool ClearSelection();
 
 	// transform edit function
@@ -25,17 +25,16 @@ public:
 	bool GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out);
 	bool RemoveModifyRigidActorTransform(const int actorId);
 
-	// joint manage function
-	bool AddJoint(phys::cJoint *joint);
-	bool RemoveJoint(phys::cJoint *joint);
+	// utility function
 	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
+	phys::sSyncInfo* FindSyncInfo(const int syncId);
 
 	graphic::cRenderer& GetRenderer();
 	void Clear();
 
 
 protected:
-	bool SetRigidActorColor(const int id, const graphic::cColor &color);
+	bool SetRigidActorColor(const int syncId, const graphic::cColor &color);
 
 
 public:
@@ -45,7 +44,9 @@ public:
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 
-	vector<int> m_selects; // selection actor id
+	int m_groundGridPlaneId; // ground plane sync id
+	vector<int> m_selects; // select syncId array
+	vector<int> m_highLight; // highlight syncId array
 
 	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;
@@ -53,7 +54,6 @@ public:
 
 	// joint
 	phys::cJoint *m_selJoint; // reference
-	vector<cJointRenderer*> m_jointRenderers;
 	bool m_showUIJoint;
 	phys::cJoint m_uiJoint;
 	cJointRenderer m_uiJointRenderer;

@@ -22,12 +22,19 @@ public:
 
 protected:
 	void RenderScene(graphic::cRenderer &renderer, const StrId &techiniqName
-		, const bool isBuildShadowMap);
+		, const bool isBuildShadowMap, const XMMATRIX &parentTm = graphic::XMIdentity);
 	void RenderEtc(graphic::cRenderer &renderer);
-	void RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm);
+	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
+		, const XMMATRIX &tm);
 	void RenderPopupMenu();
+	void RenderReflectionMap(graphic::cRenderer &renderer);
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
-	int PickingRigidActor(const POINT &mousePos, OUT float *outDistance = nullptr);
+	void UpdateSelectModelTransform_RigidActor();
+	void UpdateSelectModelTransform_Joint();
+
+	bool PickingProcess(const POINT &mousePos);
+	int PickingRigidActor(const int pickType, const POINT &mousePos
+		, OUT float *outDistance = nullptr);
 
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
@@ -38,12 +45,16 @@ protected:
 
 public:
 	graphic::cRenderTarget m_renderTarget;
+	graphic::cRenderTarget m_reflectMap;
 	graphic::cCascadedShadowMap m_ccsm;
 	graphic::cDepthBuffer m_depthBuff;
-	graphic::cGridLine m_grid;
+	graphic::cGridLine m_gridLine;
+	graphic::cGrid *m_groundPlane; // reference
 	graphic::cSkyBoxCube m_skybox;
+	graphic::cShader11 m_reflectShader;
 
 	bool m_showGrid;
+	bool m_showReflection;
 	bool m_showMenu;
 
 	Vector3 m_pivotPos;

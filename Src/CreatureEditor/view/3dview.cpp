@@ -9,6 +9,8 @@ using namespace framework;
 c3DView::c3DView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
+	, m_showReflection(true)
+	, m_groundPlane(nullptr)
 {
 }
 
@@ -35,18 +37,40 @@ bool c3DView::Init(cRenderer &renderer)
 	m_renderTarget.Create(renderer, vp, DXGI_FORMAT_R8G8B8A8_UNORM, true, true
 		, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
+	{
+		cViewport rflvp;
+		rflvp.Create(0, 0, 1024, 1024, 0.f, 1.f);
+		m_reflectMap.Create(renderer, rflvp, DXGI_FORMAT_R8G8B8A8_UNORM, false);
+	}
+
 	m_ccsm.Create(renderer);
 	cViewport dvp;
 	dvp.Create(0, 0, 1024, 1024, 0, 1);
 	m_depthBuff.Create(renderer, dvp, false);
-	m_grid.Create(renderer, 200, 200, 1.f, 1.f
+	m_gridLine.Create(renderer, 200, 200, 1.f, 1.f
 		, (eVertexType::POSITION | eVertexType::COLOR)
 		, cColor(0.6f, 0.6f, 0.6f, 0.5f)
 		, cColor(0.f, 0.f, 0.f, 0.5f)
 	);
-	m_grid.m_offsetY = 0.01f;
+	m_gridLine.m_offsetY = 0.01f;
 
 	m_skybox.Create(renderer, "./media/skybox/sky.dds");
+
+	m_reflectShader.Create(renderer, "media/shader11/pos-norm-tex-reflect.fxo", "Unlit"
+		, eVertexType::POSITION | eVertexType::NORMAL | eVertexType::TEXTURE0);
+	renderer.m_cbClipPlane.m_v->reflectAlpha[0] = 0.2f;
+
+	// setting reflection map
+	phys::sSyncInfo *sync = g_global->m_physSync->FindSyncInfo(g_global->m_groundGridPlaneId);
+	if (sync)
+	{
+		m_groundPlane = dynamic_cast<graphic::cGrid*>(sync->node);
+		if (m_groundPlane)
+		{
+			m_groundPlane->SetShader(&m_reflectShader);
+			m_groundPlane->m_reflectionMap = &m_reflectMap;
+		}
+	}
 
 	return true;
 }
@@ -81,22 +105,19 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		}
 	}
 
+	// build reflectionmap
+	if (m_showReflection)
+	{
+		GetMainCamera().Bind(renderer);
+		RenderReflectionMap(renderer);
+	}
+
 	// Render Outline select object
 	if (!g_global->m_selects.empty())
 	{
-		if (m_depthBuff.Begin(renderer))
-		{
-			for (auto id : g_global->m_selects)
-			{
-				if (phys::sActorInfo *info = physSync->FindActorInfo(id))
-				{
-					GetMainCamera().Bind(renderer);
-						const Matrix44 parentTm = info->node->GetParentWorldMatrix();
-						info->node->SetTechnique("DepthTech");
-						info->node->Render(renderer, parentTm.GetMatrixXM());
-				}
-			}
-		}
+		m_depthBuff.Begin(renderer);
+		RenderSelectModel(renderer, true, XMIdentity);
+		m_depthBuff.End(renderer);
 	}
 
 	const bool isShowGizmo = (g_global->m_selects.size() == 1);
@@ -112,10 +133,14 @@ void c3DView::OnPreRender(const float deltaSeconds)
 
 		m_skybox.Render(renderer);
 
+		CommonStates states(renderer.GetDevice());
+		renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
+
 		m_ccsm.Bind(renderer);
+		m_reflectMap.Bind(renderer, 8);
 		RenderScene(renderer, "ShadowMap", false);
 		RenderEtc(renderer);
-		
+
 		if (isShowGizmo)
 			isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
 
@@ -126,6 +151,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	// Modify rigid actor transform by Gizmo
 	// process before g_global->m_physics.PostUpdate()
 	UpdateSelectModelTransform(isGizmoEdit);
+
 	g_global->m_physics.PostUpdate(deltaSeconds);
 }
 
@@ -133,28 +159,27 @@ void c3DView::OnPreRender(const float deltaSeconds)
 // scene render, shadowmap, scene
 void c3DView::RenderScene(graphic::cRenderer &renderer
 	, const StrId &techiniqName
-	, const bool isBuildShadowMap)
+	, const bool isBuildShadowMap
+	, const XMMATRIX &parentTm //= graphic::XMIdentity
+)
 {
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	RET(!physSync);
 
-	for (auto &p : physSync->m_actors)
+	for (auto &p : physSync->m_syncs)
 		p->node->SetTechnique(techiniqName.c_str());
 
-	CommonStates states(renderer.GetDevice());
-	renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
-
-	for (auto &p : physSync->m_actors)
+	for (auto &p : physSync->m_syncs)
 	{
 		if (isBuildShadowMap && (p->name == "plane"))
 			continue;
-		p->node->Render(renderer);
+		p->node->Render(renderer, parentTm);
 	}
 
 	if (!isBuildShadowMap)
 	{
-		m_grid.Render(renderer);
-		RenderSelectModel(renderer, XMIdentity);
+		m_gridLine.Render(renderer);
+		RenderSelectModel(renderer, false, parentTm);
 	}
 }
 
@@ -175,47 +200,66 @@ void c3DView::RenderEtc(graphic::cRenderer &renderer)
 	}
 
 	// render joint
-	renderer.m_dbgLine.m_isSolid = true;
-	renderer.m_dbgLine.SetColor(cColor::GREEN);
-	renderer.m_dbgBox.SetColor(cColor::GREEN);
-	for (auto &jointRenderer : g_global->m_jointRenderers)
-		jointRenderer->Render(renderer);
+	//renderer.m_dbgLine.m_isSolid = true;
+	//renderer.m_dbgLine.SetColor(cColor::GREEN);
+	//renderer.m_dbgBox.SetColor(cColor::GREEN);
+	//for (auto &jointRenderer : g_global->m_jointRenderers)
+	//	jointRenderer->Render(renderer);
 	renderer.m_dbgLine.m_isSolid = false;
-	renderer.m_dbgLine.SetColor(cColor::WHITE);
-	renderer.m_dbgBox.SetColor(cColor::WHITE);
+	renderer.m_dbgLine.SetColor(cColor::BLACK);
+	renderer.m_dbgBox.SetColor(cColor::BLACK);
 
 	// render ui joint
-	if (g_global->m_showUIJoint)
-		g_global->m_uiJointRenderer.Render(renderer);
+	//if (g_global->m_showUIJoint)
+	//	g_global->m_uiJointRenderer.Render(renderer);
 }
 
 
 // Render Outline Selected model
-void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm)
+// buildOutline : true, render depth buffer
+//				  false, general render
+void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
+	, const XMMATRIX &tm)
 {
-	if (g_global->m_selects.empty())
+	if (g_global->m_selects.empty() && g_global->m_highLight.empty())
 		return;
+
+	// render function object
+	auto render = [&](phys::sSyncInfo *sync) {
+		if (buildOutline)
+		{
+			sync->node->SetTechnique("DepthTech");
+			Matrix44 parentTm = sync->node->GetParentWorldMatrix();
+			sync->node->Render(renderer, parentTm.GetMatrixXM());
+		}
+		else
+		{
+			renderer.BindTexture(m_depthBuff, 7);
+			sync->node->SetTechnique("Outline");
+			Matrix44 parentTm = sync->node->GetParentWorldMatrix();
+			sync->node->Render(renderer, parentTm.GetMatrixXM());
+		}
+	};
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
-	for (auto id : g_global->m_selects)
-	{
-		phys::sActorInfo *info = physSync->FindActorInfo(id);
-		if (!info)
-			return;
-
-		CommonStates state(renderer.GetDevice());
+	CommonStates state(renderer.GetDevice());
+	if (!buildOutline)
 		renderer.GetDevContext()->OMSetDepthStencilState(state.DepthNone(), 0);
-		renderer.GetDevContext()->OMSetBlendState(state.NonPremultiplied(), NULL, 0xffffffff);
-
-		renderer.BindTexture(m_depthBuff, 7);
-		info->node->SetTechnique("Outline");
-		Matrix44 parentTm = info->node->GetParentWorldMatrix();
-		info->node->Render(renderer, parentTm.GetMatrixXM());
-
-		renderer.GetDevContext()->OMSetDepthStencilState(state.DepthDefault(), 0);
-		renderer.GetDevContext()->OMSetBlendState(state.Opaque(), NULL, 0xffffffff);
+	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(0.8f, 0, 0, 1).GetVectorXM();
+	for (auto syncId : g_global->m_selects)
+	{
+		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
+			render(sync);
 	}
+	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(0.2f, 0.2f, 1.f, 1).GetVectorXM();
+	for (auto syncId : g_global->m_highLight)
+	{
+		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
+			render(sync);
+	}
+	if (!buildOutline)
+		renderer.GetDevContext()->OMSetDepthStencilState(state.DepthDefault(), 0);
 }
 
 
@@ -223,7 +267,6 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const XMMATRIX &tm
 // process before g_global->m_physics.PostUpdate()
 void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 {
-	using namespace physx;
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
 	const bool isShowGizmo = (g_global->m_selects.size() == 1);
@@ -231,35 +274,51 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 		return;
 	if (!g_global->m_gizmo.m_controlNode)
 		return;
-	if (!physSync)
+
+	const int selectSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
+	if (!sync)
 		return;
 
-	const int selectId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
-	phys::sActorInfo *info = physSync->FindActorInfo(selectId);
-	if (!info)
-		return;
-	if (!info->actor->m_dynamic) // dynamic actor?
+	if (sync->actor)
+		UpdateSelectModelTransform_RigidActor();
+	else if (sync->joint)
+		UpdateSelectModelTransform_Joint();
+}
+
+
+// Modify rigid actor transform by Gizmo, rigid actor
+void c3DView::UpdateSelectModelTransform_RigidActor()
+{
+	using namespace physx;
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	const int selectSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
+	if (sync->actor->m_type != phys::cRigidActor::eType::Dynamic) // dynamic actor?
 		return;
 
-	cNode *node = g_global->m_gizmo.m_controlNode;
-	const Transform tfm = node->m_transform;
+	const Transform tfm = g_global->m_gizmo.m_targetTransform;
 
 	PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-	info->actor->m_dynamic->setGlobalPose(tm);
+	sync->actor->SetGlobalPose(tm);
 
 	// change dimension? apply wakeup
 	if (eGizmoEditType::SCALE == g_global->m_gizmo.m_type)
 	{
-		info->actor->SetKinematic(true); // stop simulation
+		sync->actor->SetKinematic(true); // stop simulation
+
+		// rigidactor dimension change
+		g_global->m_gizmo.m_controlNode->m_transform.scale = tfm.scale;
 
 		// RigidActor Scale change was delayed, change when wakeup time
 		// store change value
 		// change 3d model dimension
-		switch (info->actor->m_shape)
+		switch (sync->actor->m_shape)
 		{
 		case phys::cRigidActor::eShape::Box:
 		{
-			g_global->ModifyRigidActorTransform(selectId, tfm.scale);
+			g_global->ModifyRigidActorTransform(selectSyncId, tfm.scale);
 		}
 		break;
 		case phys::cRigidActor::eShape::Sphere:
@@ -267,18 +326,18 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 			float scale = 1.f;
 			switch (g_global->m_gizmo.m_axisType)
 			{
-			case eGizmoEditAxis::X: scale = info->node->m_transform.scale.x; break;
-			case eGizmoEditAxis::Y: scale = info->node->m_transform.scale.y; break;
-			case eGizmoEditAxis::Z: scale = info->node->m_transform.scale.z; break;
+			case eGizmoEditAxis::X: scale = sync->node->m_transform.scale.x; break;
+			case eGizmoEditAxis::Y: scale = sync->node->m_transform.scale.y; break;
+			case eGizmoEditAxis::Z: scale = sync->node->m_transform.scale.z; break;
 			}
 
-			((cSphere*)info->node)->SetRadius(scale);
-			g_global->ModifyRigidActorTransform(selectId, Vector3(scale,1,1));
+			((cSphere*)sync->node)->SetRadius(scale);
+			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(scale, 1, 1));
 		}
 		break;
 		case phys::cRigidActor::eShape::Capsule:
 		{
-			const Vector3 scale = info->node->m_transform.scale;
+			const Vector3 scale = sync->node->m_transform.scale;
 			float radius = 1.f;
 			switch (g_global->m_gizmo.m_axisType)
 			{
@@ -288,12 +347,39 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 			}
 
 			const float halfHeight = scale.x - radius;
-			
-			((cCapsule*)info->node)->SetDimension(radius, halfHeight);
-			g_global->ModifyRigidActorTransform(selectId, Vector3(halfHeight, radius, radius));
+
+			((cCapsule*)sync->node)->SetDimension(radius, halfHeight);
+			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(halfHeight, radius, radius));
 		}
 		break;
 		}
+	}
+}
+
+
+// Modify rigid actor transform by Gizmo, joint
+void c3DView::UpdateSelectModelTransform_Joint()
+{
+	using namespace physx;
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	const int selectSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
+
+	cJointRenderer *jointRenderer = dynamic_cast<cJointRenderer*>(sync->node);
+	if (!jointRenderer)
+		return; // error occurred
+
+	//g_global->m_gizmo;
+	switch (g_global->m_gizmo.m_type)
+	{
+	case eGizmoEditType::TRANSLATE:
+		jointRenderer->SetRevoluteAxisPos(jointRenderer->m_transform.pos);
+		break;
+	case eGizmoEditType::SCALE:
+		break;
+	case eGizmoEditType::ROTATE:
+		break;
 	}
 }
 
@@ -321,6 +407,8 @@ void c3DView::OnRender(const float deltaSeconds)
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Checkbox("grid", &m_showGrid);
+		ImGui::SameLine();
+		ImGui::Checkbox("reflection", &m_showReflection);
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -348,6 +436,45 @@ void c3DView::RenderPopupMenu()
 }
 
 
+void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
+{
+	m_reflectMap.SetRenderTarget(renderer);
+	// clear gray.dds color
+	renderer.ClearScene(false, Vector4(128.f / 255.f, 128.f / 255.f, 128.f / 255.f, 1));
+	renderer.BeginScene();
+
+	// Reflection plane in local space.
+	Plane groundPlaneL(0, 1, 0, 0);
+
+	// Reflection plane in world space.
+	Matrix44 groundWorld;
+	groundWorld.SetTranslate(Vector3(0, 0.0f, 0)); // ground height
+	Matrix44 WInvTrans;
+	WInvTrans = groundWorld.Inverse();
+	WInvTrans.Transpose();
+	Plane groundPlaneW = groundPlaneL * WInvTrans;
+	float f[4] = { groundPlaneW.N.x, groundPlaneW.N.y, groundPlaneW.N.z, groundPlaneW.D };
+
+	CommonStates states(renderer.GetDevice());
+	memcpy(renderer.m_cbClipPlane.m_v->clipPlane, f, sizeof(f));
+	renderer.GetDevContext()->RSSetState(states.CullClockwise());
+	renderer.GetDevContext()->OMSetDepthStencilState(states.DepthDefault(), 0);
+
+	m_groundPlane->SetRenderFlag(eRenderFlag::VISIBLE, false);
+	RenderScene(renderer, "ShadowMap", false, groundPlaneW.GetReflectMatrix().GetMatrixXM());
+	m_groundPlane->SetRenderFlag(eRenderFlag::VISIBLE, true);
+
+	renderer.EndScene();
+	m_reflectMap.RecoveryRenderTarget(renderer);
+
+	renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
+	renderer.GetDevContext()->OMSetDepthStencilState(states.DepthDefault(), 0);
+
+	float f2[4] = { 1,1,1,100000 }; // default clipplane always positive return
+	memcpy(renderer.m_cbClipPlane.m_v->clipPlane, f2, sizeof(f2));
+}
+
+
 void c3DView::OnResizeEnd(const framework::eDockResize::Enum type, const sRectf &rect)
 {
 	if (type == eDockResize::DOCK_WINDOW)
@@ -357,11 +484,82 @@ void c3DView::OnResizeEnd(const framework::eDockResize::Enum type, const sRectf 
 }
 
 
-// picing rigidactor
-// return actor id
-// if not found actor, return -1
+// mouse picking process
+bool c3DView::PickingProcess(const POINT &mousePos)
+{
+	// if pivot mode? ignore rigid actor selection
+	if ((eEditState::Pivot0 == g_global->m_state)
+		|| (eEditState::Pivot1 == g_global->m_state)
+		|| (eEditState::Revolute == g_global->m_state))
+		return false;
+
+	// rigid actor picking
+	const int syncId = PickingRigidActor(2, mousePos);
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId);
+	if (sync && sync->actor) // rigidactor picking?
+	{
+		if (::GetAsyncKeyState(VK_SHIFT)) // add picking
+		{
+			g_global->SelectObject(syncId);
+		}
+		else if (::GetAsyncKeyState(VK_CONTROL)) // toggle picking
+		{
+			g_global->SelectObject(syncId, true);
+		}
+		else
+		{
+			g_global->ClearSelection();
+			g_global->SelectObject(syncId);
+		}
+
+		if ((g_global->m_selects.size() == 1)
+			&& (g_global->m_gizmo.m_controlNode != sync->node))
+		{
+			g_global->m_gizmo.SetControlNode(sync->node);
+		}
+	}
+
+	// joint picking
+	if (sync && sync->joint)
+	{
+		g_global->ClearSelection();
+		g_global->SelectObject(syncId);
+		
+		g_global->m_highLight.clear();
+		if (phys::sSyncInfo *p = physSync->FindSyncInfo(sync->joint->m_actor0))
+			g_global->m_highLight.push_back(p->id);
+		if (phys::sSyncInfo *p = physSync->FindSyncInfo(sync->joint->m_actor1))
+			g_global->m_highLight.push_back(p->id);
+
+		g_global->m_state = eEditState::Revolute;
+		g_global->m_gizmo.SetControlNode(sync->node);
+		g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
+	}
+
+	if (!sync)
+	{
+		if (!g_global->m_gizmo.IsKeepEditMode())
+		{
+			g_global->m_gizmo.SetControlNode(nullptr);
+			g_global->ClearSelection();
+		}
+		return false;
+	}
+
+	return true;
+}
+
+
+// picking rigidactor, joint
+// return syncId
+// if not found, return -1
 // return distance
-int c3DView::PickingRigidActor(const POINT &mousePos
+// pickType = 0: only actor
+//			  1: only joint
+//            2: actor + joint
+int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 	, OUT float *outDistance //= nullptr
 )
 {
@@ -370,7 +568,7 @@ int c3DView::PickingRigidActor(const POINT &mousePos
 	int minId = -1;
 	float minDist = FLT_MAX;
 	phys::cPhysicsSync *sync = g_global->m_physSync;
-	for (auto &p : sync->m_actors)
+	for (auto &p : sync->m_syncs)
 	{
 		if (p->name == "plane")
 			continue;
@@ -388,6 +586,41 @@ int c3DView::PickingRigidActor(const POINT &mousePos
 			}
 		}
 	}
+
+	// picking joint
+	//if ((pickType == 1) || (pickType == 2))
+	//{
+	//	for (auto &p : g_global->m_jointRenderers)
+	//	{
+	//		graphic::cNode *node = p;
+	//		float distance = FLT_MAX;
+	//		if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+	//		{
+	//			if (distance < minDist)
+	//			{
+	//				minId = p->m_id;
+	//				minDist = distance;
+	//				if (outDistance)
+	//					*outDistance = distance;
+	//			}
+	//		}
+	//	}
+
+	//	// check ui joint renderer
+	//	float distance = FLT_MAX;
+	//	if (g_global->m_showUIJoint
+	//		&& g_global->m_uiJointRenderer.Picking(ray, eNodeType::MODEL, false, &distance))
+	//	{
+	//		if (distance < minDist)
+	//		{
+	//			minId = g_global->m_uiJointRenderer.m_id;
+	//			minDist = distance;
+	//			if (outDistance)
+	//				*outDistance = distance;
+	//		}
+	//	}
+	//}
+
 	return minId;
 }
 
@@ -455,10 +688,10 @@ void c3DView::OnMouseMove(const POINT mousePt)
 		{
 			// picking all rigidbody
 			float distance = 0.f;
-			const int actorId = PickingRigidActor(mousePt, &distance);
-			phys::cPhysicsSync *sync = g_global->m_physSync;
-			phys::sActorInfo *info = sync->FindActorInfo(actorId);
-			if (info && (actorId == selId))
+			const int syncId = PickingRigidActor(0, mousePt, &distance);
+			phys::cPhysicsSync *phySync = g_global->m_physSync;
+			phys::sSyncInfo *sync = phySync->FindSyncInfo(syncId);
+			if (sync && (syncId == selId))
 			{
 				const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
 				m_pivotPos = ray.dir * distance + ray.orig;
@@ -505,54 +738,55 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 	const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
 	m_rotateLen = (target - ray.orig).Length();
 
-
-	// joint pivot setting mode
-	if (((eEditState::Pivot0 == g_global->m_state)
-		|| (eEditState::Pivot1 == g_global->m_state))
-		&& !g_global->m_selects.empty()
-		&& g_global->m_selJoint)
-	{
-		phys::cJoint *selJoint = g_global->m_selJoint;
-		for (int selId : g_global->m_selects)
-		{
-			// picking all rigidbody
-			float distance = 0.f;
-			const int actorId = PickingRigidActor(mousePt, &distance);
-			phys::cPhysicsSync *sync = g_global->m_physSync;
-			phys::sActorInfo *info = sync->FindActorInfo(actorId);
-			if (info && (selId == actorId))
-			{
-				const Vector3 pivotPos = ray.dir * distance + ray.orig;
-				m_pivotPos = pivotPos;
-
-				// update pivot position
-				cJointRenderer *jointRenderer = g_global->FindJointRenderer(selJoint);
-				if (jointRenderer)
-				{
-					// find actor0 or actor1 picking
-					if (info == jointRenderer->m_info0) // actor0?
-					{
-						jointRenderer->SetPivotPos(0, pivotPos);
-					}
-					else if (info == jointRenderer->m_info1)// actor1?
-					{
-						jointRenderer->SetPivotPos(1, pivotPos);
-					}
-					else
-					{
-						assert(0);
-					}
-				}
-			}
-		}//~selects
-	} //~// joint pivot setting mode
-
-
 	switch (button)
 	{
 	case sf::Mouse::Left:
+	{
 		m_mouseDown[0] = true;
-		break;
+
+		// joint pivot setting mode
+		if (((eEditState::Pivot0 == g_global->m_state)
+			|| (eEditState::Pivot1 == g_global->m_state))
+			&& !g_global->m_selects.empty()
+			&& g_global->m_selJoint)
+		{
+			phys::cJoint *selJoint = g_global->m_selJoint;
+			for (int selId : g_global->m_selects)
+			{
+				// picking all rigidbody
+				float distance = 0.f;
+				const int syncId = PickingRigidActor(0, mousePt, &distance);
+				phys::cPhysicsSync *phySync = g_global->m_physSync;
+				phys::sSyncInfo *sync = phySync->FindSyncInfo(syncId);
+				if (sync && (selId == syncId))
+				{
+					const Vector3 pivotPos = ray.dir * distance + ray.orig;
+					m_pivotPos = pivotPos;
+
+					// update pivot position
+					cJointRenderer *jointRenderer = g_global->FindJointRenderer(selJoint);
+					if (jointRenderer)
+					{
+						// find sync0 or sync1 picking
+						if (sync == jointRenderer->m_sync0) // sync0?
+						{
+							jointRenderer->SetPivotPos(0, pivotPos);
+						}
+						else if (sync == jointRenderer->m_sync1)// sync1?
+						{
+							jointRenderer->SetPivotPos(1, pivotPos);
+						}
+						else
+						{
+							assert(0);
+						}
+					}
+				}//~sync
+			}//~selects
+		} //~joint pivot setting mode
+	}//~case
+	break;
+
 	case sf::Mouse::Right:
 		m_mouseDown[1] = true;
 		break;
@@ -575,44 +809,7 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	{
 		m_mouseDown[0] = false;
 
-		// if pivot mode? ignore rigid actor selection
-		if ((eEditState::Pivot0 == g_global->m_state)
-			|| (eEditState::Pivot0 == g_global->m_state))
-			break;
-
-		const int actorId = PickingRigidActor(mousePt);
-		phys::cPhysicsSync *sync = g_global->m_physSync;
-		phys::sActorInfo *info = sync->FindActorInfo(actorId);
-		if (info)
-		{
-			if (::GetAsyncKeyState(VK_SHIFT))
-			{
-				g_global->SelectRigidActor(actorId);
-			}
-			else if (::GetAsyncKeyState(VK_CONTROL))
-			{
-				g_global->SelectRigidActor(actorId, true);
-			}
-			else
-			{
-				g_global->ClearSelection();
-				g_global->SelectRigidActor(actorId);
-			}
-
-			if ((g_global->m_selects.size() == 1)
-				&& (g_global->m_gizmo.m_controlNode != info->node))
-			{
-				g_global->m_gizmo.SetControlNode(info->node);
-			}
-		}
-		else
-		{
-			if (!g_global->m_gizmo.IsKeepEditMode())
-			{
-				g_global->m_gizmo.SetControlNode(nullptr);
-				g_global->m_selects.clear();
-			}
-		}
+		PickingProcess(mousePt);
 	}
 	break;
 
@@ -622,7 +819,7 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 		m_mouseDown[1] = false;
 
 		// check show menu to joint connection
-		const int actorId = PickingRigidActor(mousePt);
+		const int actorId = PickingRigidActor(0, mousePt);
 		if (actorId >= 0)
 		{
 			m_showMenu = true;
@@ -657,6 +854,7 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::Escape:
 			g_global->m_state = eEditState::Normal;
 			g_global->m_gizmo.SetControlNode(nullptr);
+			g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
 			g_global->m_selJoint = nullptr;
 			g_global->ClearSelection();
 			break;

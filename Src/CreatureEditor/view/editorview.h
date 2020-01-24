@@ -25,12 +25,13 @@ protected:
 	void RenderPrismaticJoint();
 	void RenderDistanceJoint();
 	void RenderD6Joint();
-	void RenderSelectActorJointInfo(const int actorId);
+	void RenderSelectActorJointInfo(const int syncId);
 	void RenderRevoluteJointSetting(phys::cJoint *joint);
+	void CheckCancelUIJoint();
 
 
 public:
-	Transform m_transform;
+	Transform m_transform; // spawn actor transform
 	float m_radius;
 	float m_halfHeight;
 	float m_density;

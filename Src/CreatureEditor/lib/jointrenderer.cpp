@@ -26,92 +26,65 @@ bool cJointRenderer::Create(phys::cJoint *joint)
 	if (!actor0 || !actor1)
 		return false;
 
-	phys::sActorInfo *info0 = g_global->m_physSync->FindActorInfo(actor0);
-	phys::sActorInfo *info1 = g_global->m_physSync->FindActorInfo(actor1);
-	if (!info0 || !info1)
+	phys::sSyncInfo *sync0 = g_global->m_physSync->FindSyncInfo(actor0);
+	phys::sSyncInfo *sync1 = g_global->m_physSync->FindSyncInfo(actor1);
+	if (!sync0 || !sync1)
 		return false;
 
-	m_info0 = info0;
-	m_info1 = info1;
+	m_sync0 = sync0;
+	m_sync1 = sync1;
+
+	m_transform.pos = GetJointTransform().pos;
+	//m_axisLen = sync0->node->m_transform.pos.Distance(sync1->node->m_transform.pos);
+
 	return true;
 }
 
 
-bool cJointRenderer::Update(const float deltaSeconds)
+bool cJointRenderer::Update(graphic::cRenderer &renderer, const float deltaSeconds)
 {
-
 	return true;
 }
 
 
 bool cJointRenderer::Render(graphic::cRenderer &renderer
-	, const XMMATRIX &tm //= graphic::XMIdentity
+	, const XMMATRIX &parentTm //= XMIdentity
+	, const int flags //= 1
 )
 {
 	RETV(!m_joint, false);
 
-	cNode *node0 = m_info0->node;
-	cNode *node1 = m_info1->node;
+	cNode *node0 = m_sync0->node;
+	cNode *node1 = m_sync1->node;
 	if (!node0 || !node1)
 		return false;
 
-	// render actor0 pivot
 	renderer.m_dbgCube.SetColor(cColor::GREEN);
 
-	Vector3 pivotPos0;
-	if (m_pivots[0].len != 0.f)
+	// render actor0 pivot
+	Vector3 pivotPos0 = GetPivotPos(0);
 	{
-		const Vector3 localPos = m_pivots[0].dir * node0->m_transform.rot
-			* m_pivots[0].len;
-
 		Transform tfm;
-		tfm.pos = node0->m_transform.pos + localPos;
+		tfm.pos = pivotPos0;
 		tfm.scale = Vector3::Ones * 0.05f;
 		renderer.m_dbgCube.SetCube(tfm);
 		renderer.m_dbgCube.Render(renderer);
-
-		pivotPos0 = tfm.pos;
-	}
-	else
-	{
-		pivotPos0 = node0->m_transform.pos;
 	}
 
 	// render actor1 pivot
-	Vector3 pivotPos1;
-	if (m_pivots[1].len != 0.f)
+	Vector3 pivotPos1 = GetPivotPos(1);
 	{
-		const Vector3 localPos = m_pivots[1].dir * node1->m_transform.rot
-			* m_pivots[1].len;
-
 		Transform tfm;
-		tfm.pos = node1->m_transform.pos + localPos;
+		tfm.pos = pivotPos1;
 		tfm.scale = Vector3::Ones * 0.05f;
 		renderer.m_dbgCube.SetCube(tfm);
 		renderer.m_dbgCube.Render(renderer);
-
-		pivotPos1 = tfm.pos;
 	}
-	else
-	{
-		pivotPos1 = node1->m_transform.pos;
-	}
-
-	// render joint direct line (pivot - pivot)
-	//renderer.m_dbgLine.SetColor(cColor::GREEN);
-	//renderer.m_dbgLine.SetLine(pivotPos0, pivotPos1, 0.01f);
-	//renderer.m_dbgLine.Render(renderer);
 
 	// render joint position
-	// tricky code, to find joint pivot position
 	Vector3 jointPos;
 	if (m_joint->m_joint)
 	{
-		//const PxTransform localFrame
-		//	= m_joint->m_joint->getLocalPose(physx::PxJointActorIndex::eACTOR0);
-		//const Transform local = Transform(*(Vector3*)&localFrame.p)
-		//	* Transform(*(Quaternion*)&localFrame.q);
-		//Transform tm = local * Transform(node0->m_transform.pos, node0->m_transform.rot);
 		const Transform tm = GetJointTransform();
 		jointPos = tm.pos;
 	}
@@ -144,16 +117,12 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	// render revolution axis
 	if (phys::cJoint::eType::Revolute == m_joint->m_type)
 	{
+		m_transform.pos = GetJointTransform().pos;
+		const float axisLen = node0->m_transform.pos.Distance(node1->m_transform.pos);
+
 		Vector3 dir;
-		
 		if (m_joint->m_joint)
 		{
-			//const PxTransform localFrame
-			//	= m_joint->m_joint->getLocalPose(physx::PxJointActorIndex::eACTOR0);
-			//const Transform local = Transform(*(Vector3*)&localFrame.p)
-			//	 * Transform(*(Quaternion*)&localFrame.q);
-			//Transform tm = Transform(local.pos)
-			//	* Transform(node0->m_transform.pos, node0->m_transform.rot);
 			const Transform tm = GetJointTransform();
 			dir = m_joint->m_revoluteAxis * tm.rot;
 		}
@@ -162,8 +131,8 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 			dir = m_joint->m_revoluteAxis;
 		}
 
-		const Vector3 p0 = dir * 2.f + jointPos;
-		const Vector3 p1 = dir * -2.f + jointPos;
+		const Vector3 p0 = dir * axisLen * 0.5f + jointPos;
+		const Vector3 p1 = dir * -axisLen * 0.5f + jointPos;
 
 		renderer.m_dbgLine.SetColor(cColor::BLUE);
 		renderer.m_dbgLine.m_isSolid = true;
@@ -178,11 +147,6 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 
 		if (m_joint->m_joint)
 		{
-			//const PxTransform localFrame
-			//	= m_joint->m_joint->getLocalPose(physx::PxJointActorIndex::eACTOR0);
-			//const Transform local = Transform(*(Vector3*)&localFrame.p)
-			//	* Transform(*(Quaternion*)&localFrame.q);
-			//Transform tm = local * Transform(node0->m_transform.pos, node0->m_transform.rot);
 			const Transform tm = GetJointTransform();
 			dir = m_joint->m_revoluteAxis * tm.rot;
 		}
@@ -213,44 +177,37 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 // return : localFrame * actor0 transform
 Transform cJointRenderer::GetJointTransform()
 {
-	cNode *node0 = m_info0->node;
-	const Transform tm = Transform(-m_joint->m_toActor0)
+	cNode *node0 = m_sync0->node;
+	const Vector3 pos = m_joint->m_origPos - m_joint->m_actorLocal0.pos;
+	const Transform tm = Transform(pos)
 		* Transform(node0->m_transform.pos, node0->m_transform.rot);
 	return tm;
+}
 
 
-	//PxTransform gpose = m_joint->m_actor0->m_actor->getGlobalPose();
-	//const PxTransform localFrame = m_joint->m_joint->getLocalPose(
-	//	PxJointActorIndex::eACTOR0);
-	//PxTransform tt = gpose * localFrame.getInverse();
-	//PxTransform a = PxTransform(tt.q) * PxTransform(tt.p); // correct
+Vector3 cJointRenderer::GetPivotPos(const int actorIndex)
+{
+	if ((actorIndex != 0) && (actorIndex != 1))
+		return Vector3::Zeroes;
 
-	//const Transform local = Transform(*(Vector3*)&localFrame.p)
-	//	//* Transform(*(Quaternion*)&localFrame.q);
-	//	;
-	//Transform orgTm;
-	//if (phys::cJoint::eType::Revolute == m_joint->m_type)
-	//{
-	//	// recovery to original direction
-	//	Transform rotate;
-	//	rotate.rot.SetRotationArc(Vector3(1, 0, 0)
-	//		, m_joint->m_revoluteAxis);
-
-	//	orgTm = local * rotate;
-	//}
-	//else
-	//{
-	//	orgTm = local;
-	//}
-
-	//cNode *node0 = m_info0->node;
-	//const Transform tm = orgTm
-	//	* Transform(node0->m_transform.pos, node0->m_transform.rot); // ignore scale
-	//return tm;
+	Vector3 pivotPos;
+	cNode *node = (actorIndex == 0) ? m_sync0->node : m_sync1->node;
+	if (m_pivots[actorIndex].len != 0.f)
+	{
+		const Vector3 localPos = m_pivots[actorIndex].dir * node->m_transform.rot
+			* m_pivots[actorIndex].len;
+		pivotPos = node->m_transform.pos + localPos;
+	}
+	else
+	{
+		pivotPos = node->m_transform.pos;
+	}
+	return pivotPos;
 }
 
 
 // actorIndex: 0=actor0, 1=actor1
+// pos : pivot global pos
 void cJointRenderer::SetPivotPos(const int actorIndex, const Vector3 &pos)
 {
 	if ((actorIndex != 0) && (actorIndex != 1))
@@ -259,9 +216,10 @@ void cJointRenderer::SetPivotPos(const int actorIndex, const Vector3 &pos)
 		return;
 	}
 
-	phys::sActorInfo *info = (actorIndex == 0)? m_info0 : m_info1;
-	const Vector3 dir = (pos - info->node->m_transform.pos);
-	m_pivots[actorIndex].dir = dir.Normal() * info->node->m_transform.rot.Inverse();
+	// change local coordinate system
+	phys::sSyncInfo *sync = (actorIndex == 0)? m_sync0 : m_sync1;
+	const Vector3 dir = (pos - sync->node->m_transform.pos);
+	m_pivots[actorIndex].dir = dir.Normal() * sync->node->m_transform.rot.Inverse();
 	m_pivots[actorIndex].len = dir.Length();
 }
 
@@ -276,20 +234,82 @@ Transform cJointRenderer::GetPivotWorldTransform(const int actorIndex)
 		return Transform();
 	}
 
-	phys::sActorInfo *infos[2] = { m_info0, m_info1 };
-	graphic::cNode *node = infos[actorIndex]->node;
-
-	if (m_pivots[actorIndex].len == 0) // update pivot?
-		return node->m_transform;
-
-	const Vector3 localPos = m_pivots[actorIndex].dir * node->m_transform.rot
-		* m_pivots[actorIndex].len;
+	cNode *node = (actorIndex == 0) ? m_sync0->node : m_sync1->node;
 
 	Transform tfm;
-	tfm.pos = node->m_transform.pos + localPos;
+	tfm.pos = GetPivotPos(actorIndex);
 	tfm.scale = node->m_transform.scale;
 	tfm.rot = node->m_transform.rot;
 	return tfm;
+}
+
+
+// pos : revolute axis world pos
+// revolute axis pos store relative center pos
+void cJointRenderer::SetRevoluteAxisPos(const Vector3 &pos)
+{
+	//m_revoluteRelativePos
+	RET(!m_joint);
+
+	cNode *node0 = m_sync0->node;
+	cNode *node1 = m_sync1->node;
+	if (!node0 || !node1)
+		return;
+
+	//Vector3 center = (node0->m_transform.pos + node1->m_transform.pos) / 2.f;
+	//Vector3 p = pos - center;
+	//const Vector3 pivot0 = GetPivotPos(0);
+	//const Vector3 pivot1 = GetPivotPos(1);
+	//Vector3 p0 = m_joint->m_origPos + m_joint->m_toActor0;
+	//Vector3 p1 = m_joint->m_origPos + m_joint->m_toActor1;
+
+	Vector3 p0 = m_joint->m_actorLocal0.pos;
+	Vector3 p1 = m_joint->m_actorLocal1.pos;
+	const Vector3 origDir = (p1 - p0).Normal();
+	const Vector3 revoluteAxisDir = origDir * m_joint->m_rotRevolute;
+
+	// update actor0 pivot pos
+	const Vector3 pivot0 = GetPivotPos(0);
+	const float len0 = pivot0.Distance(m_joint->m_origPos);
+	const Vector3 newPivotPos0 = revoluteAxisDir * len0 * 0.5f + pos;
+
+	// update actor1 pivot pos
+	const Vector3 pivot1 = GetPivotPos(1);
+	const float len1 = pivot1.Distance(m_joint->m_origPos);
+	const Vector3 newPivotPos1 = revoluteAxisDir * len1 * 0.5f + pos;
+
+	SetPivotPos(0, newPivotPos0);
+	SetPivotPos(1, newPivotPos1);
+	m_joint->m_origPos = pos;
+}
+
+
+// override picking function
+// picking revolute joint
+cNode* cJointRenderer::Picking(const Ray &ray, const eNodeType::Enum type
+	, const bool isSpherePicking //= true
+	, OUT float *dist //= NULL
+)
+{
+	if (phys::cJoint::eType::Revolute != m_joint->m_type)
+		return nullptr;
+	RETV(!m_joint, nullptr);
+
+	const Transform tm = GetJointTransform();
+	const Vector3 dir = m_joint->m_revoluteAxis * tm.rot;
+	const Vector3 p0 = dir * 2.f + tm.pos;
+	const Vector3 p1 = dir * -2.f + tm.pos;
+
+	cBoundingBox bbox;
+	bbox.SetLineBoundingBox(p0, p1, 0.02f);
+	if (bbox.Pick(ray))
+	{
+		if (dist)
+			*dist = tm.pos.Distance(ray.orig);
+		return this;
+	}
+
+	return nullptr;
 }
 
 
@@ -298,8 +318,8 @@ bool cJointRenderer::ApplyPivot()
 {
 	RETV(!m_joint, false);
 
-	cNode *node0 = m_info0->node;
-	cNode *node1 = m_info1->node;
+	cNode *node0 = m_sync0->node;
+	cNode *node1 = m_sync1->node;
 	if (!node0 || !node1)
 		return false;
 
@@ -343,6 +363,6 @@ bool cJointRenderer::ApplyPivot()
 void cJointRenderer::Clear()
 {
 	m_joint = nullptr;
-	m_info0 = nullptr;
-	m_info1 = nullptr;
+	m_sync0 = nullptr;
+	m_sync1 = nullptr;
 }

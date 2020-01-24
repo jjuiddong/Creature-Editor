@@ -6,7 +6,7 @@ using namespace graphic;
 
 cEditorView::cEditorView(const StrId &name)
 	: framework::cDockWindow(name)
-	, m_transform(Vector3(0, 2, 0), Vector3(0.5f,0.5f,0.5f))
+	, m_transform(Vector3(0, 3, 0), Vector3(0.5f,0.5f,0.5f))
 	, m_radius(0.5f)
 	, m_halfHeight(1.f)
 	, m_density(1.f)
@@ -29,10 +29,27 @@ void cEditorView::OnRender(const float deltaSeconds)
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
 	ImGui::Checkbox("Debug", &renderer.m_isDbgRender);
+	ImGui::SameLine();
 	ImGui::InputInt("DebugType", &renderer.m_dbgRenderStyle);
 
+	//pause/play
+	const bool isPause = g_application->m_slowFactor == 0.f;
+	if (isPause)
+	{
+		if (ImGui::Button("Play Simulation"))
+			g_application->m_slowFactor = 1.f;
+	}
+	else
+	{
+		if (ImGui::Button("Pause Simulation"))
+			g_application->m_slowFactor = 0.f;
+	}
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
 	//initialize ui
-	g_global->m_showUIJoint = false;
+	//g_global->m_showUIJoint = false;
 	//~
 
 	RenderSpawnTransform();
@@ -47,7 +64,7 @@ void cEditorView::RenderSpawnTransform()
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Spawn RigidBody"))
+	if (ImGui::CollapsingHeader("Create RigidBody"))
 	{
 		static bool isKinematic = true;
 		ImGui::TextUnformatted("Lock ( Kinematic )  ");
@@ -80,31 +97,37 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
 
 		ImGui::Spacing();
-		int id = -1;
+		int syncId = -1;
 		if (ImGui::Button("Box"))
 		{
-			id = physSync->SpawnBox(renderer, m_transform, m_density);
+			syncId = physSync->SpawnBox(renderer, m_transform, m_density);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Sphere"))
 		{
-			id = physSync->SpawnSphere(renderer, m_transform.pos, m_radius, m_density);
+			syncId = physSync->SpawnSphere(renderer, m_transform.pos, m_radius, m_density);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Capsule"))
 		{
 			Transform tfm(m_transform.pos);
-			id = physSync->SpawnCapsule(renderer, tfm, m_radius, m_halfHeight, m_density);
+			syncId = physSync->SpawnCapsule(renderer, tfm, m_radius, m_halfHeight, m_density);
 		}
 
-		if (id >= 0)// creation?
+		if (syncId >= 0)// creation?
 		{
-			phys::sActorInfo *info = physSync->FindActorInfo(id);
-			if (info && info->actor->m_dynamic)
+			phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId);
+			if (sync && sync->actor)
 			{
-				info->actor->m_dynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isKinematic);
+				sync->actor->SetKinematic(isKinematic);
+
+				// select spawn rigidactor
+				g_global->m_state = eEditState::Normal;
+				g_global->ClearSelection();
+				g_global->SelectObject(syncId);
+				g_global->m_gizmo.SetControlNode(sync->node);
 			}
 		}
 
@@ -119,22 +142,28 @@ void cEditorView::RenderSelectionInfo()
 	using namespace graphic;
 	cRenderer &renderer = g_global->GetRenderer();
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	int selId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
+	int selSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Selection RigidBody"))
+	if (ImGui::CollapsingHeader("Select RigidBody"))
 	{
-		phys::sActorInfo *info = physSync->FindActorInfo(selId);
-		if (!info)
+		phys::sSyncInfo *sync = physSync->FindSyncInfo(selSyncId);
+		if (!sync)
+			return;
+		if (!sync->actor)
 			return;
 
-		phys::cRigidActor *actor = info->actor;
-		graphic::cNode *node = info->node;
+		phys::cRigidActor *actor = sync->actor;
+		graphic::cNode *node = sync->node;
 		Transform tfm = node->m_transform;
+		float density = actor->GetMass();
+		float linearDamping = actor->GetLinearDamping();
+		float angularDamping = actor->GetAngularDamping();
+		float maxAngularVelocity = actor->GetMaxAngularVelocity();
 
 		using namespace physx;
 
-		if (actor->m_dynamic)
+		if (actor->m_type == phys::cRigidActor::eType::Dynamic)
 		{
 			bool isKinematic = actor->IsKinematic();
 			ImGui::TextUnformatted("Lock ( Kinematic ) ");
@@ -147,13 +176,13 @@ void cEditorView::RenderSelectionInfo()
 					// is change dimension?
 					// apply modify dimension
 					Vector3 dim;
-					if (g_global->GetModifyRigidActorTransform(selId, dim))
+					if (g_global->GetModifyRigidActorTransform(selSyncId, dim))
 					{
 						// apply physics shape
 						actor->ChangeDimension(g_global->m_physics, dim);
-						g_global->RemoveModifyRigidActorTransform(selId);
+						g_global->RemoveModifyRigidActorTransform(selSyncId);
 					}
-					actor->m_dynamic->wakeUp();
+					actor->WakeUp();
 				}
 			}
 		}
@@ -197,12 +226,30 @@ void cEditorView::RenderSelectionInfo()
 		static Vector3 ryp;//roll yaw pitch
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
 
+		ImGui::TextUnformatted("Density      ");
+		ImGui::SameLine();
+		const bool edit4 = ImGui::DragFloat("##Density", &density, 0.001f, 0.f, 1000.f);
+
+		ImGui::PushItemWidth(140);
+		ImGui::TextUnformatted("Linear Damping          ");
+		ImGui::SameLine();
+		const bool edit5 = ImGui::DragFloat("##Linear Damping", &linearDamping, 0.001f, 0.f, 1000.f);
+
+		ImGui::TextUnformatted("Angular Damping       ");
+		ImGui::SameLine();
+		const bool edit6 = ImGui::DragFloat("##Angular Damping", &angularDamping, 0.001f, 0.f, 1000.f);
+
+		ImGui::TextUnformatted("Max Angular Velocity  ");
+		ImGui::SameLine();
+		const bool edit7 = ImGui::DragFloat("##Max Angular Velocity", &maxAngularVelocity, 0.001f, 0.f, 1000.f);
+		ImGui::PopItemWidth();
+
 		if (edit0) // position edit
 		{
 			node->m_transform.pos = tfm.pos;
 
 			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-			actor->m_dynamic->setGlobalPose(tm);
+			actor->SetGlobalPose(tm);
 		}
 
 		if (edit1 || edit1_1) // scale edit
@@ -218,19 +265,19 @@ void cEditorView::RenderSelectionInfo()
 			{
 				Transform tm(node->m_transform.pos, tfm.scale, node->m_transform.rot);
 				((cCube*)node)->SetCube(tm);
-				g_global->ModifyRigidActorTransform(selId, tfm.scale);
+				g_global->ModifyRigidActorTransform(selSyncId, tfm.scale);
 			}
 			break;
 			case phys::cRigidActor::eShape::Sphere:
 			{
 				((cSphere*)node)->SetRadius(tfm.scale.x);
-				g_global->ModifyRigidActorTransform(selId, tfm.scale);
+				g_global->ModifyRigidActorTransform(selSyncId, tfm.scale);
 			}
 			break;
 			case phys::cRigidActor::eShape::Capsule:
 			{
 				((cCapsule*)node)->SetDimension(radius, halfHeight);
-				g_global->ModifyRigidActorTransform(selId, Vector3(halfHeight, radius, radius));
+				g_global->ModifyRigidActorTransform(selSyncId, Vector3(halfHeight, radius, radius));
 			}
 			break;
 			}
@@ -241,8 +288,17 @@ void cEditorView::RenderSelectionInfo()
 			//selectModel->m_transform.rot.Euler2(ryp);
 		}
 
+		if (edit4) // density edit
+			actor->SetMass(density);
+		if (edit5) // linear damping edit
+			actor->SetLinearDamping(linearDamping);
+		if (edit6) // angular damping edit
+			actor->SetAngularDamping(angularDamping);
+		if (edit7) // max  angular velocity edit
+			actor->SetMaxAngularVelocity(maxAngularVelocity);
+
 		ImGui::Separator();
-		RenderSelectActorJointInfo(selId);
+		RenderSelectActorJointInfo(selSyncId);
 
 		ImGui::Spacing();
 		ImGui::Spacing();
@@ -251,23 +307,25 @@ void cEditorView::RenderSelectionInfo()
 
 
 // show select actor joint information
-void cEditorView::RenderSelectActorJointInfo(const int actorId)
+void cEditorView::RenderSelectActorJointInfo(const int syncId)
 {
 	using namespace graphic;
 	cRenderer &renderer = g_global->GetRenderer();
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::sActorInfo *info = physSync->FindActorInfo(actorId);
-	if (!info)
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId);
+	if (!sync)
+		return;
+	if (!sync->actor)
 		return;
 
-	phys::cRigidActor *actor = info->actor;
-	graphic::cNode *node = info->node;
+	phys::cRigidActor *actor = sync->actor;
+	graphic::cNode *node = sync->node;
 
 	set<phys::cJoint*> rmJoints; // remove joints
 
 	// show all joint information contained rigid actor
-	ImGui::TextUnformatted("Actor RigidBody Joint Information");
+	ImGui::TextUnformatted("Actor Joint Information");
 	for (uint i=0; i < actor->m_joints.size(); ++i)
 	{
 		phys::cJoint *joint = actor->m_joints[i];
@@ -289,8 +347,10 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 			ImGui::SameLine(150);
 			if (ImGui::Button("Apply Pivot"))
 			{
-				if (cJointRenderer *jointRenderer = g_global->FindJointRenderer(joint))
+				cJointRenderer *jointRenderer = g_global->FindJointRenderer(joint);
+				if (jointRenderer)
 					jointRenderer->ApplyPivot();
+
 				g_global->m_state = eEditState::Normal;
 			}
 
@@ -325,36 +385,36 @@ void cEditorView::RenderSelectActorJointInfo(const int actorId)
 		g_global->ClearSelection();
 	}
 	for (auto &joint : rmJoints)
-		g_global->RemoveJoint(joint);
+		physSync->RemoveSyncInfo(joint);
 }
 
 
 void cEditorView::RenderJointInfo()
 {
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-	if (ImGui::CollapsingHeader("Joint Creation"))
+	if (ImGui::CollapsingHeader("Create Joint"))
 	{
+		CheckCancelUIJoint();
+
 		if (g_global->m_selects.size() == 2)
 		{
 			// check already connection
 			{
 				auto it = g_global->m_selects.begin();
-				const int actorId0 = *it++;
-				const int actorId1 = *it++;
+				const int syncId0 = *it++;
+				const int syncId1 = *it++;
 
 				phys::cPhysicsSync *physSync = g_global->m_physSync;
-				phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-				phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
-				if (!info0 || !info1)
+				phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+				phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+				if (!sync0 || !sync1)
 					return;
-
-				for (auto &joint : physSync->m_joints)
-				{
-					if (((joint->m_actor0 == info0->actor) && (joint->m_actor1 == info1->actor))
-						|| ((joint->m_actor1 == info0->actor) && (joint->m_actor0 == info1->actor))
-						)
-						return; // already connection joint
-				}
+				if (!sync0->actor || !sync1->actor)
+					return;
+				for (auto &j1 : sync0->actor->m_joints)
+					for (auto &j2 : sync1->actor->m_joints)
+						if (j1 == j2)
+							return; // already connection joint
 			}
 
 			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
@@ -381,13 +441,13 @@ void cEditorView::RenderJointInfo()
 void cEditorView::RenderFixedJoint()
 {
 	auto it = g_global->m_selects.begin();
-	const int actorId0 = *it++;
-	const int actorId1 = *it++;
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
-	if (!info0 || !info1)
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
 		return;
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
@@ -397,9 +457,12 @@ void cEditorView::RenderFixedJoint()
 	{
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateFixed(g_global->m_physics
-			, info0->actor, info0->node->m_transform
-			, info1->actor, info1->node->m_transform);
-		g_global->AddJoint(joint);
+			, sync0->actor, sync0->node->m_transform
+			, sync1->actor, sync1->node->m_transform);
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -410,24 +473,23 @@ void cEditorView::RenderSphericalJoint()
 	using namespace physx;
 
 	auto it = g_global->m_selects.begin();
-	const int actorId0 = *it++;
-	const int actorId1 = *it++;
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
-	if (!info0 || !info1)
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
 		return;
 
 	static Vector2 limit(PxPi / 2.f, PxPi / 6.f);
-	ImGui::Text("Limit Cone (Radian)");
-	ImGui::DragFloat("Y Limit Angle", &limit.x, 0.001f);
-	ImGui::DragFloat("Z Limit Angle", &limit.y, 0.001f);
-	
 	static bool isLimit;
-	ImGui::TextUnformatted("Limit");
+	ImGui::Text("Limit Cone (Radian)");
+	//ImGui::TextUnformatted("Limit");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::DragFloat("Y Limit Angle", &limit.x, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &limit.y, 0.001f);	
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -436,16 +498,18 @@ void cEditorView::RenderSphericalJoint()
 	{
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateSpherical(g_global->m_physics
-			, info0->actor, info0->node->m_transform
-			, info1->actor, info1->node->m_transform);
+			, sync0->actor, sync0->node->m_transform
+			, sync1->actor, sync1->node->m_transform);
 
 		if (isLimit)
 		{
-			joint->m_sphericalJoint->setLimitCone(PxJointLimitCone(limit.x, limit.y, 0.01f));
-			joint->m_sphericalJoint->setSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
+			joint->SetLimitCone(PxJointLimitCone(limit.x, limit.y, 0.01f));
+			joint->SetSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
 		}
 
-		g_global->AddJoint(joint);
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -456,33 +520,36 @@ void cEditorView::RenderRevoluteJoint()
 	using namespace physx;
 
 	auto it = g_global->m_selects.begin();
-	const int actorId0 = *it++;
-	const int actorId1 = *it++;
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
-	phys::sActorInfo *info0 = physSync->FindActorInfo(actorId0);
-	phys::sActorInfo *info1 = physSync->FindActorInfo(actorId1);
-	if (!info0 || !info1)
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
 		return;
 
 	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
 	static bool isDrive = false;
 	static float velocity = 1.f;
+	static bool isLimit = false;
+
 	ImGui::Text("Angular Limit (Radian)");
+	//ImGui::TextUnformatted("Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
 	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
 	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
-	ImGui::Checkbox("Drive", &isDrive);
+
+	ImGui::TextUnformatted("Drive");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Drive", &isDrive);
 	ImGui::DragFloat("Velocity", &velocity, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
-
-	static bool isLimit = false;
-	ImGui::TextUnformatted("Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -492,14 +559,25 @@ void cEditorView::RenderRevoluteJoint()
 	}
 
 	// update ui joint
-	g_global->m_showUIJoint = true;
-	g_global->m_uiJoint.m_type = phys::cJoint::eType::Revolute;
-	g_global->m_uiJoint.m_actor0 = info0->actor;
-	g_global->m_uiJoint.m_actor1 = info1->actor;
-	g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
-	g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
-	g_global->m_uiJointRenderer.m_info0 = info0;
-	g_global->m_uiJointRenderer.m_info1 = info1;
+	{
+		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
+			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
+
+		g_global->m_showUIJoint = true;
+		g_global->m_uiJoint.m_type = phys::cJoint::eType::Revolute;
+		g_global->m_uiJoint.m_actor0 = sync0->actor;
+		g_global->m_uiJoint.m_actor1 = sync1->actor;
+		g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
+		g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
+		g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
+
+		g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+		g_global->m_uiJointRenderer.m_sync0 = sync0;
+		g_global->m_uiJointRenderer.m_sync1 = sync1;
+		const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
+			g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
+		g_global->m_uiJoint.m_origPos = jointPos;
+	}
 	//~
 
 	ImGui::Spacing();
@@ -515,23 +593,27 @@ void cEditorView::RenderRevoluteJoint()
 
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateRevolute(g_global->m_physics
-			, info0->actor, info0->node->m_transform, pivot0.pos
-			, info1->actor, info1->node->m_transform, pivot1.pos
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos
 			, axis[axisIdx]);
 
 		if (isLimit)
 		{
-			joint->m_revoluteJoint->setLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
-			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
+			joint->SetLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
 		}
 
 		if (isDrive)
 		{
-			joint->m_revoluteJoint->setDriveVelocity(velocity);
-			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
+			joint->SetDriveVelocity(velocity);
+			joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
 		}
 
-		g_global->AddJoint(joint);
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->m_state = eEditState::Normal;
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -559,10 +641,16 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
 	static bool isDrive = false;
 	static float velocity = 1.f;
+	static bool isLimit = false;
+
 	ImGui::Text("Angular Limit (Radian)");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
 	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
 	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
-	ImGui::Checkbox("Drive", &isDrive);
+	ImGui::TextUnformatted("Drive");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Drive", &isDrive);
 	ImGui::DragFloat("Velocity", &velocity, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
@@ -570,27 +658,93 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	static int axisIdx = 0;
 	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 
-	static bool isLimit = false;
-	ImGui::TextUnformatted("Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
+		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
 		if (isLimit)
-		{
-			joint->m_revoluteJoint->setLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
-			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
-		}
+			joint->SetLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 
+		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
 		if (isDrive)
-		{
-			joint->m_revoluteJoint->setDriveVelocity(velocity);
-			joint->m_revoluteJoint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
-		}
+			joint->SetDriveVelocity(velocity);
 	}
 	ImGui::PopStyleColor(3);
+}
+
+
+// check cancel show ui joint
+void cEditorView::CheckCancelUIJoint()
+{
+	if (!g_global->m_showUIJoint)
+		return;
+
+	bool isCancelUIJoint = false;
+
+	if ((g_global->m_selects.size() != 1)
+		&& (g_global->m_selects.size() != 2)
+		&& (g_global->m_selects.size() != 3))
+	{
+		goto $cancel;
+	}
+	else if (g_global->m_selects.size() == 1)
+	{
+		phys::sSyncInfo *sync0 = g_global->FindSyncInfo(g_global->m_selects[0]);
+		if (!sync0->joint)
+			goto $cancel;
+	}
+	else
+	{
+		// check rigidactor x 2
+		if (g_global->m_selects.size() == 2)
+		{
+			phys::sSyncInfo *sync0 = g_global->FindSyncInfo(g_global->m_selects[0]);
+			phys::sSyncInfo *sync1 = g_global->FindSyncInfo(g_global->m_selects[1]);
+			if (!sync0 || !sync1)
+				goto $cancel;
+			if (sync0->joint || sync1->joint)
+				goto $cancel;
+		}
+		else if (g_global->m_selects.size() == 3)
+		{
+			// check joint link rigid actor x 2
+			phys::sSyncInfo *syncs[3] = { nullptr, nullptr, nullptr };
+			syncs[0] = g_global->FindSyncInfo(g_global->m_selects[0]);
+			syncs[1] = g_global->FindSyncInfo(g_global->m_selects[1]);
+			syncs[2] = g_global->FindSyncInfo(g_global->m_selects[2]);
+			if (!syncs[0] || !syncs[1] || !syncs[2])
+				goto $cancel;
+
+			int jointIdx = -1;
+			for (int i = 0; i < 3; ++i)
+				if (syncs[i]->joint)
+					jointIdx = i;
+				
+			if (jointIdx < 0)
+				goto $cancel;
+
+			int i0 = (jointIdx + 1) % 3;
+			int i1 = (jointIdx + 2) % 3;
+			if (((syncs[jointIdx]->joint->m_actor0 == syncs[i0]->actor)
+				&& (syncs[jointIdx]->joint->m_actor1 == syncs[i1]->actor))
+				|| ((syncs[jointIdx]->joint->m_actor1 == syncs[i0]->actor)
+					&& (syncs[jointIdx]->joint->m_actor0 == syncs[i1]->actor)))
+			{
+				// ok
+			}
+			else
+			{
+				goto $cancel;
+			}
+		}
+	}
+
+	return;
+
+$cancel:
+	g_global->m_showUIJoint = false;
+	g_global->m_physSync->RemoveSyncInfo(&g_global->m_uiJoint);
+	return;
 }

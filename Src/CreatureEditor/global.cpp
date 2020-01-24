@@ -26,9 +26,10 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 	m_physSync = new phys::cPhysicsSync();
 	m_physSync->Create(&m_physics);
-	m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
+	m_groundGridPlaneId = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
 	
 	m_gizmo.Create(renderer);
+	//m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 
 	// initialize ui joint
 	m_uiJoint.CreateReferenceMode();
@@ -39,21 +40,21 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 
 // pick rigidactor, selection actor
-bool cGlobal::SelectRigidActor(const int actorId
+bool cGlobal::SelectObject(const int syncId
 	, const bool isToggle //= false
 )
 {
 	if (isToggle)
 	{
-		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), actorId))
-			m_selects.push_back(actorId);
+		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), syncId))
+			m_selects.push_back(syncId);
 		else
-			common::removevector(m_selects, actorId);
+			common::removevector(m_selects, syncId);
 	}
 	else
 	{
-		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), actorId))
-			m_selects.push_back(actorId);
+		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), syncId))
+			m_selects.push_back(syncId);
 	}
 	return true;
 }
@@ -62,6 +63,7 @@ bool cGlobal::SelectRigidActor(const int actorId
 bool cGlobal::ClearSelection()
 {
 	m_selects.clear();
+	m_highLight.clear();
 	return true;
 }
 
@@ -100,11 +102,29 @@ bool cGlobal::RemoveModifyRigidActorTransform(const int actorId)
 }
 
 
-bool cGlobal::SetRigidActorColor(const int id, const graphic::cColor &color)
+// find joint renderer helper function
+cJointRenderer* cGlobal::FindJointRenderer(phys::cJoint *joint)
+{
+	phys::sSyncInfo *syncJoint = m_physSync->FindSyncInfo(joint);
+	if (!syncJoint)
+		return nullptr;
+	cJointRenderer *jointRenderer = dynamic_cast<cJointRenderer*>(syncJoint->node);
+	return jointRenderer;
+}
+
+
+// find syncinfo wrapper cPhysSync
+phys::sSyncInfo* cGlobal::FindSyncInfo(const int syncId)
+{
+	return m_physSync->FindSyncInfo(syncId);
+}
+
+
+bool cGlobal::SetRigidActorColor(const int syncId, const graphic::cColor &color)
 {
 	using namespace graphic;
 
-	phys::sActorInfo *info = m_physSync->FindActorInfo(id);
+	phys::sSyncInfo *info = m_physSync->FindSyncInfo(syncId);
 	if (!info)
 		return false;
 
@@ -129,47 +149,6 @@ bool cGlobal::SetRigidActorColor(const int id, const graphic::cColor &color)
 }
 
 
-// add joint, joint renderer
-bool cGlobal::AddJoint(phys::cJoint *joint)
-{
-	m_physSync->AddJoint(joint);
-
-	cJointRenderer *jointRenderer = new cJointRenderer();
-	jointRenderer->Create(joint);
-	m_jointRenderers.push_back(jointRenderer);
-	return true;
-}
-
-
-// remove joint, joint renderer
-bool cGlobal::RemoveJoint(phys::cJoint *joint)
-{
-	auto it = std::find_if(m_jointRenderers.begin(), m_jointRenderers.end()
-		, [&](const auto &a) {return a->m_joint == joint; });
-	if (m_jointRenderers.end() == it)
-		return false;
-	delete *it;
-	m_jointRenderers.erase(it);
-
-	m_physSync->RemoveJoint(joint);
-
-	return true;
-}
-
-
-cJointRenderer* cGlobal::FindJointRenderer(phys::cJoint *joint)
-{
-	if (joint == &m_uiJoint)
-		return &m_uiJointRenderer;
-
-	auto it = std::find_if(m_jointRenderers.begin(), m_jointRenderers.end()
-		, [&](const auto &a) {return a->m_joint == joint; });
-	if (m_jointRenderers.end() == it)
-		return nullptr;
-	return *it;
-}
-
-
 graphic::cRenderer& cGlobal::GetRenderer()
 {
 	return m_3dView->GetRenderer();
@@ -178,10 +157,6 @@ graphic::cRenderer& cGlobal::GetRenderer()
 
 void cGlobal::Clear()
 {
-	for (auto &p : m_jointRenderers)
-		delete p;
-	m_jointRenderers.clear();
-
 	m_chDimensions.clear();
 	m_physics.Clear();
 }
