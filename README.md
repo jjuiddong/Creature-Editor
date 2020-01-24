@@ -11,3 +11,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/joint.jpg?raw=true)
 - Joint Pivot
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/pivot.jpg?raw=true)
+- Joint Revolute Axis Edit
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/joint%20revolute2.jpg?raw=true)
