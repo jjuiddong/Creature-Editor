@@ -155,6 +155,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="creatureeditor.cpp" />
+    <ClCompile Include="creature\creature.cpp" />
+    <ClCompile Include="creature\evc.cpp" />
+    <ClCompile Include="creature\generator.cpp" />
+    <ClCompile Include="creature\pnode.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -163,13 +167,19 @@
     </ClCompile>
     <ClCompile Include="view\3dview.cpp" />
     <ClCompile Include="view\editorview.cpp" />
+    <ClCompile Include="view\resourceview.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="creature\creature.h" />
+    <ClInclude Include="creature\evc.h" />
+    <ClInclude Include="creature\generator.h" />
+    <ClInclude Include="creature\pnode.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="lib\jointrenderer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h" />
     <ClInclude Include="view\editorview.h" />
+    <ClInclude Include="view\resourceview.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common\Common\Common.vcxproj">

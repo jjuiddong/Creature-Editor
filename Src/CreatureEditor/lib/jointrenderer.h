@@ -28,13 +28,16 @@ public:
 
 	void SetPivotPos(const int actorIndex, const Vector3 &pos);
 	Transform GetPivotWorldTransform(const int actorIndex);
+	void SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
 	void SetRevoluteAxisPos(const Vector3 &pos);
+	bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
+		, const Vector3 &axisPos=Vector3::Zeroes);
 	bool ApplyPivot();
 	void Clear();
 
 
 protected:
-	Transform GetJointTransform();
+	//Transform GetJointTransform();
 	Vector3 GetPivotPos(const int actorIndex);
 
 
@@ -42,12 +45,4 @@ public:
 	phys::cJoint *m_joint; // reference
 	phys::sSyncInfo *m_sync0; // reference
 	phys::sSyncInfo *m_sync1; // reference
-
-	struct sPivot {
-		Vector3 dir; // pivot direction(local), actor -> pivot
-		float len; // pivot length
-	};
-	sPivot m_pivots[2]; // actor0,1
-	//float m_axisLen;
-	Vector3 m_revoluteRelativePos;
 };

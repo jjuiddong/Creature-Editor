@@ -295,7 +295,7 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 
 	const int selectSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
 	phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
-	if (sync->actor->m_type != phys::cRigidActor::eType::Dynamic) // dynamic actor?
+	if (sync->actor->m_type != phys::eRigidType::Dynamic) // dynamic actor?
 		return;
 
 	const Transform tfm = g_global->m_gizmo.m_targetTransform;
@@ -316,12 +316,12 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 		// change 3d model dimension
 		switch (sync->actor->m_shape)
 		{
-		case phys::cRigidActor::eShape::Box:
+		case phys::eShapeType::Box:
 		{
 			g_global->ModifyRigidActorTransform(selectSyncId, tfm.scale);
 		}
 		break;
-		case phys::cRigidActor::eShape::Sphere:
+		case phys::eShapeType::Sphere:
 		{
 			float scale = 1.f;
 			switch (g_global->m_gizmo.m_axisType)
@@ -335,7 +335,7 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(scale, 1, 1));
 		}
 		break;
-		case phys::cRigidActor::eShape::Capsule:
+		case phys::eShapeType::Capsule:
 		{
 			const Vector3 scale = sync->node->m_transform.scale;
 			float radius = 1.f;
@@ -443,6 +443,11 @@ void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
 	renderer.ClearScene(false, Vector4(128.f / 255.f, 128.f / 255.f, 128.f / 255.f, 1));
 	renderer.BeginScene();
 
+	// lighting direction mirror
+	GetMainLight().m_direction.y *= -1.f;
+	GetMainLight().m_pos.y *= -1.f;
+	GetMainLight().Bind(renderer);
+
 	// Reflection plane in local space.
 	Plane groundPlaneL(0, 1, 0, 0);
 
@@ -472,6 +477,11 @@ void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
 
 	float f2[4] = { 1,1,1,100000 }; // default clipplane always positive return
 	memcpy(renderer.m_cbClipPlane.m_v->clipPlane, f2, sizeof(f2));
+
+	// lighting direction mirror recovery
+	GetMainLight().m_direction.y *= -1.f;
+	GetMainLight().m_pos.y *= -1.f;
+	GetMainLight().Bind(renderer);
 }
 
 
@@ -843,9 +853,25 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		switch (evt.key.cmd)
 		{
 		case sf::Keyboard::Return:
-			break;
+		{
+			if (!g_global->m_selects.empty())
+			{
+				phys::sSyncInfo *sync = g_global->FindSyncInfo(g_global->m_selects[0]);
+				if (sync)
+				{
+					evc::WritePhenoTypeFileFrom_RigidActor("test.pnt", sync->actor);
+				}
+			}
+		}
+		break;
+
 		case sf::Keyboard::Space:
-			break;
+		{
+			evc::ReadPhenoTypeFile(GetRenderer(), "test.pnt");
+		}
+		break;
+
+
 		case sf::Keyboard::R: g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
 		case sf::Keyboard::T: g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
 		case sf::Keyboard::S: g_global->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;

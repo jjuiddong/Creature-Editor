@@ -34,6 +34,9 @@ void cEditorView::OnRender(const float deltaSeconds)
 
 	//pause/play
 	const bool isPause = g_application->m_slowFactor == 0.f;
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
 	if (isPause)
 	{
 		if (ImGui::Button("Play Simulation"))
@@ -44,6 +47,7 @@ void cEditorView::OnRender(const float deltaSeconds)
 		if (ImGui::Button("Pause Simulation"))
 			g_application->m_slowFactor = 0.f;
 	}
+	ImGui::PopStyleColor(3);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -163,14 +167,13 @@ void cEditorView::RenderSelectionInfo()
 
 		using namespace physx;
 
-		if (actor->m_type == phys::cRigidActor::eType::Dynamic)
+		if (actor->m_type == phys::eRigidType::Dynamic)
 		{
 			bool isKinematic = actor->IsKinematic();
 			ImGui::TextUnformatted("Lock ( Kinematic ) ");
 			ImGui::SameLine();
 			if (ImGui::Checkbox("##Lock ( Kinematic )", &isKinematic))
 			{
-				actor->SetKinematic(isKinematic);
 				if (!isKinematic)
 				{
 					// is change dimension?
@@ -182,8 +185,11 @@ void cEditorView::RenderSelectionInfo()
 						actor->ChangeDimension(g_global->m_physics, dim);
 						g_global->RemoveModifyRigidActorTransform(selSyncId);
 					}
-					actor->WakeUp();
 				}
+				
+				actor->SetKinematic(isKinematic);
+				if (!isKinematic)
+					actor->WakeUp();
 			}
 		}
 
@@ -198,17 +204,17 @@ void cEditorView::RenderSelectionInfo()
 		float radius = 0.f, halfHeight = 0.f; // capsule info
 		switch (actor->m_shape)
 		{
-		case phys::cRigidActor::eShape::Box:
+		case phys::eShapeType::Box:
 			ImGui::TextUnformatted("Dim           ");
 			ImGui::SameLine();
 			edit1 = ImGui::DragFloat3("##scale2", (float*)&tfm.scale, 0.001f, 0.01f, 1000.f);
 			break;
-		case phys::cRigidActor::eShape::Sphere:
+		case phys::eShapeType::Sphere:
 			ImGui::TextUnformatted("Radius       ");
 			ImGui::SameLine();
 			edit1 = ImGui::DragFloat("##scale2", &tfm.scale.x, 0.001f, 0.01f, 1000.f);
 			break;
-		case phys::cRigidActor::eShape::Capsule:
+		case phys::eShapeType::Capsule:
 			radius = ((cCapsule*)node)->m_radius;
 			halfHeight = ((cCapsule*)node)->m_halfHeight;
 			ImGui::TextUnformatted("Radius       ");
@@ -261,20 +267,20 @@ void cEditorView::RenderSelectionInfo()
 			// change 3d model dimension
 			switch (actor->m_shape)
 			{
-			case phys::cRigidActor::eShape::Box:
+			case phys::eShapeType::Box:
 			{
 				Transform tm(node->m_transform.pos, tfm.scale, node->m_transform.rot);
 				((cCube*)node)->SetCube(tm);
 				g_global->ModifyRigidActorTransform(selSyncId, tfm.scale);
 			}
 			break;
-			case phys::cRigidActor::eShape::Sphere:
+			case phys::eShapeType::Sphere:
 			{
 				((cSphere*)node)->SetRadius(tfm.scale.x);
 				g_global->ModifyRigidActorTransform(selSyncId, tfm.scale);
 			}
 			break;
-			case phys::cRigidActor::eShape::Capsule:
+			case phys::eShapeType::Capsule:
 			{
 				((cCapsule*)node)->SetDimension(radius, halfHeight);
 				g_global->ModifyRigidActorTransform(selSyncId, Vector3(halfHeight, radius, radius));
@@ -424,14 +430,14 @@ void cEditorView::RenderJointInfo()
 			ImGui::Combo("##joint type", &idx, jointType);
 			ImGui::Separator();
 
-			switch ((phys::cJoint::eType)idx)
+			switch ((phys::eJointType::Enum)idx)
 			{
-			case phys::cJoint::eType::Fixed: RenderFixedJoint(); break;
-			case phys::cJoint::eType::Spherical: RenderSphericalJoint(); break;
-			case phys::cJoint::eType::Revolute: RenderRevoluteJoint(); break;
-			case phys::cJoint::eType::Prismatic: RenderPrismaticJoint(); break;
-			case phys::cJoint::eType::Distance: RenderDistanceJoint(); break;
-			case phys::cJoint::eType::D6: RenderD6Joint(); break;
+			case phys::eJointType::Fixed: RenderFixedJoint(); break;
+			case phys::eJointType::Spherical: RenderSphericalJoint(); break;
+			case phys::eJointType::Revolute: RenderRevoluteJoint(); break;
+			case phys::eJointType::Prismatic: RenderPrismaticJoint(); break;
+			case phys::eJointType::Distance: RenderDistanceJoint(); break;
+			case phys::eJointType::D6: RenderD6Joint(); break;
 			}
 		}
 	}
@@ -549,7 +555,7 @@ void cEditorView::RenderRevoluteJoint()
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -558,25 +564,41 @@ void cEditorView::RenderRevoluteJoint()
 		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
-	// update ui joint
+	// update ui joint (once process)
+	if (!g_global->m_showUIJoint || editAxis)
 	{
 		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
 			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
 
-		g_global->m_showUIJoint = true;
-		g_global->m_uiJoint.m_type = phys::cJoint::eType::Revolute;
-		g_global->m_uiJoint.m_actor0 = sync0->actor;
-		g_global->m_uiJoint.m_actor1 = sync1->actor;
-		g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
-		g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
-		g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
+		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
+				&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
+			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
+				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
 
-		g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
-		g_global->m_uiJointRenderer.m_sync0 = sync0;
-		g_global->m_uiJointRenderer.m_sync1 = sync1;
-		const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
-			g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-		g_global->m_uiJoint.m_origPos = jointPos;
+		g_global->m_showUIJoint = true;
+
+		if (!isPrevSelection || editAxis) // new selection?
+		{
+			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
+			g_global->m_uiJoint.m_actor0 = sync0->actor;
+			g_global->m_uiJoint.m_actor1 = sync1->actor;
+			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
+			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
+			g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
+			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[0].len = 0;
+			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[1].len = 0;
+
+			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+			g_global->m_uiJointRenderer.m_sync0 = sync0;
+			g_global->m_uiJointRenderer.m_sync1 = sync1;
+			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
+				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
+			//g_global->m_uiJoint.m_origPos = jointPos;
+			//g_global->m_uiJointRenderer.SetRevoluteAxisPos(jointPos);
+			g_global->m_uiJointRenderer.SetRevoluteAxis(axis[axisIdx], jointPos);
+		}
 	}
 	//~
 
@@ -599,7 +621,7 @@ void cEditorView::RenderRevoluteJoint()
 
 		if (isLimit)
 		{
-			joint->SetLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->SetLimitAngular(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 			joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
 		}
 
@@ -665,7 +687,7 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	{
 		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
 		if (isLimit)
-			joint->SetLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->SetLimitAngular(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 
 		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
 		if (isDrive)

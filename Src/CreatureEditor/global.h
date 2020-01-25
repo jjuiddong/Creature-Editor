@@ -9,6 +9,7 @@ enum class eEditState {Normal, Pivot0, Pivot1, Revolute};
 
 class c3DView;
 class cEditorView;
+class cResourceView;
 
 class cGlobal
 {
@@ -41,6 +42,7 @@ public:
 	eEditState m_state;
 	c3DView *m_3dView;
 	cEditorView *m_editorView;
+	cResourceView *m_resourceView;
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 

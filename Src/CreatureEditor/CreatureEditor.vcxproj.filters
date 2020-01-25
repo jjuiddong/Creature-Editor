@@ -13,6 +13,21 @@
     <ClCompile Include="lib\jointrenderer.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="creature\creature.cpp">
+      <Filter>creature</Filter>
+    </ClCompile>
+    <ClCompile Include="view\resourceview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\pnode.cpp">
+      <Filter>creature</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\generator.cpp">
+      <Filter>creature</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\evc.cpp">
+      <Filter>creature</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -26,6 +41,21 @@
     <ClInclude Include="lib\jointrenderer.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="creature\creature.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="view\resourceview.h">
+      <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\pnode.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\generator.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\evc.h">
+      <Filter>creature</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="view">
@@ -33,6 +63,9 @@
     </Filter>
     <Filter Include="lib">
       <UniqueIdentifier>{18e9b801-76f2-4ac6-9bb7-1316890e1a25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="creature">
+      <UniqueIdentifier>{151fd2b2-b7d5-477b-a0af-ea30ed31a495}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

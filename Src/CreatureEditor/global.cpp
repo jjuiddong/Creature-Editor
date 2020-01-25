@@ -26,10 +26,21 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 	m_physSync = new phys::cPhysicsSync();
 	m_physSync->Create(&m_physics);
+
+	evc::InitializeEvc(&m_physics, m_physSync);
+
 	m_groundGridPlaneId = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
-	
+
+	// wall
+	const float wall = 100.f;
+	const float h = 2.5f;
+	m_physSync->SpawnBox(renderer, Transform(Vector3(wall,h,0), Vector3(0.5f,h, wall)), 1.f, true);
+	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, wall), Vector3(wall, h, 0.5f)), 1.f, true);
+	m_physSync->SpawnBox(renderer, Transform(Vector3(-wall, h, 0), Vector3(0.5f, h, wall)), 1.f, true);
+	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, -wall), Vector3(wall, h, 0.5f)), 1.f, true);
+	//~wall
+
 	m_gizmo.Create(renderer);
-	//m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 
 	// initialize ui joint
 	m_uiJoint.CreateReferenceMode();
@@ -130,15 +141,15 @@ bool cGlobal::SetRigidActorColor(const int syncId, const graphic::cColor &color)
 
 	switch (info->actor->m_shape)
 	{
-	case phys::cRigidActor::eShape::Box:
+	case phys::eShapeType::Box:
 		if (cCube *cube = dynamic_cast<cCube*>(info->node))
 			cube->SetColor(color);
 		break;
-	case phys::cRigidActor::eShape::Sphere:
+	case phys::eShapeType::Sphere:
 		if (cSphere *sphere = dynamic_cast<cSphere*>(info->node))
 			sphere->SetColor(color);
 		break;
-	case phys::cRigidActor::eShape::Capsule:
+	case phys::eShapeType::Capsule:
 		if (cCapsule *capsule = dynamic_cast<cCapsule*>(info->node))
 			capsule->SetColor(color);
 		break;
@@ -157,6 +168,7 @@ graphic::cRenderer& cGlobal::GetRenderer()
 
 void cGlobal::Clear()
 {
+	evc::ReleaseEvc();
 	m_chDimensions.clear();
 	m_physics.Clear();
 }

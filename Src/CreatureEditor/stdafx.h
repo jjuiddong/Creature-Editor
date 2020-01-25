@@ -8,6 +8,9 @@ using namespace common;
 
 
 #include "lib/jointrenderer.h"
+#include "creature/evc.h"
+#include "creature/generator.h"
 #include "global.h"
+
 extern cGlobal *g_global;
 extern framework::cGameMain2 *g_application;
