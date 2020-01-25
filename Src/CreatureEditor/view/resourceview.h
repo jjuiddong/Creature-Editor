@@ -15,5 +15,10 @@ public:
 	virtual void OnRender(const float deltaSeconds) override;
 
 
+protected:
+	void UpdateResourceFiles();
+
+
 public:
+	list<string> m_fileList;
 };

@@ -27,6 +27,7 @@ protected:
 	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 		, const XMMATRIX &tm);
 	void RenderPopupMenu();
+	void RenderSaveDialog();
 	void RenderReflectionMap(graphic::cRenderer &renderer);
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	void UpdateSelectModelTransform_RigidActor();
@@ -55,7 +56,9 @@ public:
 
 	bool m_showGrid;
 	bool m_showReflection;
-	bool m_showMenu;
+	bool m_showPopupMenu;
+	bool m_showSaveDialog;
+	int m_saveFileSyncId;
 
 	Vector3 m_pivotPos;
 

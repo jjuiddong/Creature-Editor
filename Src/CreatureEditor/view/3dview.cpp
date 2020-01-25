@@ -11,6 +11,7 @@ c3DView::c3DView(const string &name)
 	, m_showGrid(true)
 	, m_showReflection(true)
 	, m_groundPlane(nullptr)
+	, m_showSaveDialog(false)
 {
 }
 
@@ -414,25 +415,78 @@ void c3DView::OnRender(const float deltaSeconds)
 	ImGui::PopStyleColor();
 
 	RenderPopupMenu();
+	RenderSaveDialog();
 }
 
 
 void c3DView::RenderPopupMenu()
 {
-	if (m_showMenu)
+	if (m_showPopupMenu)
 	{
-		//ImGui::OpenPopup("PopupMenu");
-		m_showMenu = false;
+		ImGui::OpenPopup("PopupMenu");
+		m_showPopupMenu = false;
 	}
 
 	if (ImGui::BeginPopup("PopupMenu"))
 	{
-		if (ImGui::MenuItem("Joint Connection"))
+		if (ImGui::MenuItem("Save Creature"))
 		{
-
+			m_showSaveDialog = true;
 		}
 		ImGui::EndPopup();
 	}
+}
+
+
+void c3DView::RenderSaveDialog()
+{
+	if (!m_showSaveDialog)
+		return;
+
+	bool isOpen = true;
+	const ImGuiWindowFlags flags = 0;
+
+	//ImGui::SetNextWi
+	const sf::Vector2u psize = m_owner->getSize();
+	const ImVec2 size(300, 110);
+	const ImVec2 pos(psize.x / 2.f - size.x / 2.f
+		, psize.y / 2.f - size.y / 2.f - 100);
+	ImGui::SetNextWindowPos(pos);
+	ImGui::SetNextWindowSize(size);
+	ImGui::SetNextWindowBgAlpha(0.9f);
+
+	if (ImGui::Begin("Save Creature", &isOpen, flags))
+	{
+		ImGui::Spacing();
+		ImGui::Text("FileName : ");
+		ImGui::SameLine();
+
+		static StrPath fileName;
+		ImGui::InputText("##fileName", fileName.m_str, fileName.SIZE);
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		if (ImGui::Button("Save"))
+		{
+			const StrPath filePath = StrPath("./media/creature/") + fileName;
+			phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId);
+			if (sync)
+				evc::WritePhenoTypeFileFrom_RigidActor(filePath, sync->actor);
+			m_showSaveDialog = false;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+		{
+			m_showSaveDialog = false;
+		}
+	}
+	ImGui::End();
+
+	if (!isOpen)
+		m_showSaveDialog = false;
 }
 
 
@@ -832,7 +886,8 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 		const int actorId = PickingRigidActor(0, mousePt);
 		if (actorId >= 0)
 		{
-			m_showMenu = true;
+			m_showPopupMenu = true;
+			m_saveFileSyncId = actorId;
 		}
 	}
 	break;
@@ -853,24 +908,10 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		switch (evt.key.cmd)
 		{
 		case sf::Keyboard::Return:
-		{
-			if (!g_global->m_selects.empty())
-			{
-				phys::sSyncInfo *sync = g_global->FindSyncInfo(g_global->m_selects[0]);
-				if (sync)
-				{
-					evc::WritePhenoTypeFileFrom_RigidActor("test.pnt", sync->actor);
-				}
-			}
-		}
-		break;
+			break;
 
 		case sf::Keyboard::Space:
-		{
-			evc::ReadPhenoTypeFile(GetRenderer(), "test.pnt");
-		}
-		break;
-
+			break;
 
 		case sf::Keyboard::R: g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
 		case sf::Keyboard::T: g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;

@@ -1,0 +1,75 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10059",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.502778 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "density": "5.05571413",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10062",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "-0.134460 6.992648 0.000000",
+                "dim": "1.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "density": "0.5",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10065",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "-0.003477 5.270836 0.000000",
+                "dim": "0.489000 0.489000 0.489000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "density": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "false"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10059",
+                "shape id1": "10065",
+                "jointpos": "-0.001738 4.135418 0.000000",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "-1.000000 0.000000 0.000000",
+                "pivot len0": "0.00173839927",
+                "pivot dir1": "1.000000 0.000000 0.000000",
+                "pivot len1": "0.00173839927",
+                "drive": "true",
+                "drive velocity": "3"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10065",
+                "shape id1": "10062",
+                "jointpos": "-0.068968 6.131742 -0.000000",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "-0.999919 0.000000 0.012703",
+                "pivot len0": "0.0665723607",
+                "pivot dir1": "0.999919 0.000000 -0.012703",
+                "pivot len1": "0.0665723681",
+                "drive": "true",
+                "drive velocity": "3"
+            }
+        }
+    }
+}
