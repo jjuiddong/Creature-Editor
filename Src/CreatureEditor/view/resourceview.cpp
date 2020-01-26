@@ -22,12 +22,19 @@ void cResourceView::OnUpdate(const float deltaSeconds)
 
 void cResourceView::OnRender(const float deltaSeconds)
 {
-	if (ImGui::Button("Refresh"))
-		UpdateResourceFiles();
-
 	static ImGuiTextFilter filter;
+	ImGui::Text("Search");
 	ImGui::SameLine();
-	filter.Draw("Search");
+	filter.Draw("##Search");
+
+	ImGui::SameLine();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
+	if (ImGui::Button("Refresh (F5)"))
+		UpdateResourceFiles();
+	ImGui::PopStyleColor(3);
 
 	static int selectIdx = -1;
 	int i = 0;
@@ -53,8 +60,18 @@ void cResourceView::OnRender(const float deltaSeconds)
 					if (ImGui::IsMouseDoubleClicked(0))
 					{
 						const StrPath fileName = StrPath("./media/creature/") + str;
+						vector<int> syncIds;
 						evc::ReadPhenoTypeFile(g_global->GetRenderer()
-							, fileName.c_str());
+							, fileName.c_str()
+							, &syncIds);
+
+						// unlock actor
+						if (!g_global->m_isSpawnLock && !syncIds.empty())
+						{
+							phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]);
+							if (sync)
+								g_global->SetAllConnectionActorKinematic(sync->actor, false);
+						}
 					}
 				}
 				ImGui::NextColumn();

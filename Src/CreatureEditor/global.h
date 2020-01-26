@@ -29,6 +29,10 @@ public:
 	// utility function
 	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
 	phys::sSyncInfo* FindSyncInfo(const int syncId);
+	bool UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic);
+	bool SetAllConnectionActorKinematic(phys::cRigidActor *actor, const bool isKinematic);
+	bool UpdateAllConnectionActorDimension(phys::cRigidActor *actor, const bool isKinematic);
+	bool RefreshResourceView();
 
 	graphic::cRenderer& GetRenderer();
 	void Clear();
@@ -46,9 +50,16 @@ public:
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 
+	// spawn control
+	bool m_isSpawnLock; // default: true
+
+	// gizmo
 	int m_groundGridPlaneId; // ground plane sync id
 	vector<int> m_selects; // select syncId array
 	vector<int> m_highLight; // highlight syncId array
+	graphic::cNode m_multiSel; // multi selection moving transform
+	Quaternion m_multiSelRot; // multi selection rotation offset (prev rotation)
+	Vector3 m_multiSelPos; // multi selection position offset (prev position)
 
 	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;

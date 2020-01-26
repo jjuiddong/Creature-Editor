@@ -53,6 +53,10 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 {
 	RETV(!m_joint, false);
 
+	renderer.m_dbgCube.SetTechnique(m_techniqueName.c_str());
+	renderer.m_dbgBox.SetTechnique(m_techniqueName.c_str());
+	renderer.m_dbgLine.SetTechnique(m_techniqueName.c_str());
+
 	cNode *node0 = m_sync0->node;
 	cNode *node1 = m_sync1->node;
 	if (!node0 || !node1)
@@ -130,6 +134,11 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.SetLine(node1->m_transform.pos, p3, 0.02f);
 		renderer.m_dbgLine.Render(renderer);
 	}
+
+	// recovery
+	renderer.m_dbgCube.SetTechnique("Unlit");
+	renderer.m_dbgBox.SetTechnique("Unlit");
+	renderer.m_dbgLine.SetTechnique("Unlit");
 
 	return true;
 }

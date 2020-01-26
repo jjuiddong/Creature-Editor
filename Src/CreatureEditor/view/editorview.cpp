@@ -33,28 +33,24 @@ void cEditorView::OnRender(const float deltaSeconds)
 	ImGui::InputInt("DebugType", &renderer.m_dbgRenderStyle);
 
 	//pause/play
-	const bool isPause = g_application->m_slowFactor == 0.f;
+	const bool isPause = g_global->m_physics.m_timerScale == 0.f;
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
 	if (isPause)
 	{
 		if (ImGui::Button("Play Simulation"))
-			g_application->m_slowFactor = 1.f;
+			g_global->m_physics.Play();
 	}
 	else
 	{
 		if (ImGui::Button("Pause Simulation"))
-			g_application->m_slowFactor = 0.f;
+			g_global->m_physics.Pause();
 	}
 	ImGui::PopStyleColor(3);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
-
-	//initialize ui
-	//g_global->m_showUIJoint = false;
-	//~
 
 	RenderSpawnTransform();
 	RenderSelectionInfo();
@@ -70,10 +66,10 @@ void cEditorView::RenderSpawnTransform()
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("Create RigidBody"))
 	{
-		static bool isKinematic = true;
+		//static bool isKinematic = true;
 		ImGui::TextUnformatted("Lock ( Kinematic )  ");
 		ImGui::SameLine();
-		ImGui::Checkbox("##kinematic", &isKinematic);
+		ImGui::Checkbox("##kinematic", &g_global->m_isSpawnLock);
 
 		ImGui::TextUnformatted("Pos  ");
 		ImGui::SameLine();
@@ -100,6 +96,10 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
 
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.9f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0, 1));
+
 		ImGui::Spacing();
 		int syncId = -1;
 		if (ImGui::Button("Box"))
@@ -110,22 +110,24 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		if (ImGui::Button("Sphere"))
 		{
-			syncId = physSync->SpawnSphere(renderer, m_transform.pos, m_radius, m_density);
+			syncId = physSync->SpawnSphere(renderer, m_transform, m_radius, m_density);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Capsule"))
 		{
-			Transform tfm(m_transform.pos);
+			Transform tfm(m_transform.pos, m_transform.rot);
 			syncId = physSync->SpawnCapsule(renderer, tfm, m_radius, m_halfHeight, m_density);
 		}
+
+		ImGui::PopStyleColor(3);
 
 		if (syncId >= 0)// creation?
 		{
 			phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId);
 			if (sync && sync->actor)
 			{
-				sync->actor->SetKinematic(isKinematic);
+				sync->actor->SetKinematic(g_global->m_isSpawnLock);
 
 				// select spawn rigidactor
 				g_global->m_state = eEditState::Normal;
@@ -160,7 +162,7 @@ void cEditorView::RenderSelectionInfo()
 		phys::cRigidActor *actor = sync->actor;
 		graphic::cNode *node = sync->node;
 		Transform tfm = node->m_transform;
-		float density = actor->GetMass();
+		float mass = actor->GetMass();
 		float linearDamping = actor->GetLinearDamping();
 		float angularDamping = actor->GetAngularDamping();
 		float maxAngularVelocity = actor->GetMaxAngularVelocity();
@@ -174,22 +176,15 @@ void cEditorView::RenderSelectionInfo()
 			ImGui::SameLine();
 			if (ImGui::Checkbox("##Lock ( Kinematic )", &isKinematic))
 			{
-				if (!isKinematic)
+				if (isKinematic)
 				{
-					// is change dimension?
-					// apply modify dimension
-					Vector3 dim;
-					if (g_global->GetModifyRigidActorTransform(selSyncId, dim))
-					{
-						// apply physics shape
-						actor->ChangeDimension(g_global->m_physics, dim);
-						g_global->RemoveModifyRigidActorTransform(selSyncId);
-					}
+					actor->SetKinematic(true);
 				}
-				
-				actor->SetKinematic(isKinematic);
-				if (!isKinematic)
-					actor->WakeUp();
+				else
+				{
+					// update actor dimension?
+					g_global->UpdateActorDimension(actor, isKinematic);
+				}
 			}
 		}
 
@@ -232,9 +227,9 @@ void cEditorView::RenderSelectionInfo()
 		static Vector3 ryp;//roll yaw pitch
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
 
-		ImGui::TextUnformatted("Density      ");
+		ImGui::TextUnformatted("Mass         ");
 		ImGui::SameLine();
-		const bool edit4 = ImGui::DragFloat("##Density", &density, 0.001f, 0.f, 1000.f);
+		const bool edit4 = ImGui::DragFloat("##Mass", &mass, 0.001f, 0.f, 1000.f);
 
 		ImGui::PushItemWidth(140);
 		ImGui::TextUnformatted("Linear Damping          ");
@@ -294,8 +289,8 @@ void cEditorView::RenderSelectionInfo()
 			//selectModel->m_transform.rot.Euler2(ryp);
 		}
 
-		if (edit4) // density edit
-			actor->SetMass(density);
+		if (edit4) // mass edit
+			actor->SetMass(mass);
 		if (edit5) // linear damping edit
 			actor->SetLinearDamping(linearDamping);
 		if (edit6) // angular damping edit
@@ -386,9 +381,9 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 	{
 		// clear selection
 		g_global->m_state = eEditState::Normal;
-		g_global->m_gizmo.SetControlNode(nullptr);
+		//g_global->m_gizmo.SetControlNode(nullptr);
 		g_global->m_selJoint = nullptr;
-		g_global->ClearSelection();
+		//g_global->ClearSelection();
 	}
 	for (auto &joint : rmJoints)
 		physSync->RemoveSyncInfo(joint);
@@ -461,6 +456,9 @@ void cEditorView::RenderFixedJoint()
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Create Fixed Joint"))
 	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateFixed(g_global->m_physics
 			, sync0->actor, sync0->node->m_transform
@@ -502,6 +500,9 @@ void cEditorView::RenderSphericalJoint()
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Create Spherical Joint"))
 	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateSpherical(g_global->m_physics
 			, sync0->actor, sync0->node->m_transform
@@ -541,7 +542,6 @@ void cEditorView::RenderRevoluteJoint()
 	static bool isLimit = false;
 
 	ImGui::Text("Angular Limit (Radian)");
-	//ImGui::TextUnformatted("Limit");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
 	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
@@ -595,8 +595,6 @@ void cEditorView::RenderRevoluteJoint()
 			g_global->m_uiJointRenderer.m_sync1 = sync1;
 			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
 				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-			//g_global->m_uiJoint.m_origPos = jointPos;
-			//g_global->m_uiJointRenderer.SetRevoluteAxisPos(jointPos);
 			g_global->m_uiJointRenderer.SetRevoluteAxis(axis[axisIdx], jointPos);
 		}
 	}
@@ -608,8 +606,11 @@ void cEditorView::RenderRevoluteJoint()
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Create Spherical Joint"))
+	if (ImGui::Button("Create Revolute Joint"))
 	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
 		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
 		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
 
@@ -685,13 +686,16 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
+		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, isLimit);
 		if (isLimit)
 			joint->SetLimitAngular(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 
 		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
 		if (isDrive)
 			joint->SetDriveVelocity(velocity);
+
+		joint->m_actor0->WakeUp();
+		joint->m_actor1->WakeUp();
 	}
 	ImGui::PopStyleColor(3);
 }

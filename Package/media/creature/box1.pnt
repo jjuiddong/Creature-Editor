@@ -1,0 +1,49 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10074",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-2.948078 3.000000 0.000000",
+                "dim": "1.000000 1.000000 1.000000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10077",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "1.000000 1.000000 1.000000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "false"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10074",
+                "shape id1": "10077",
+                "jointpos": "-1.474039 3.000000 0.000000",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "false",
+                "drive velocity": "0"
+            }
+        }
+    }
+}

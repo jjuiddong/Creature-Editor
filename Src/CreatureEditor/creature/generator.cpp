@@ -41,7 +41,7 @@ cCreature* evc::GenerateCreatureFrom_RigidActor( graphic::cRenderer &renderer
 //					"pos" : "10 10 10",
 //					"dim" : "2 0.4 1",
 //					"rot" : "0 0 0 1",
-//					"density" : "1.0",
+//					"mass" : "1.0",
 //					"angular damping" : "1.0",
 //					"linear damping" : "1.0",
 //					"kinematic" : "0"
@@ -141,7 +141,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 			text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
 			shape.put("rot", text.c_str());
 
-			shape.put<float>("density", a->GetMass());
+			shape.put<float>("mass", a->GetMass());
 			shape.put<float>("angular damping", a->GetAngularDamping());
 			shape.put<float>("linear damping", a->GetLinearDamping());
 			shape.put<bool>("kinematic", a->IsKinematic());
@@ -203,7 +203,9 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 
 // read phenotype node file and create cCreature
 cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
-	, const StrPath &fileName)
+	, const StrPath &fileName
+	, OUT vector<int> *outSyncIds //= nullptr
+)
 {
 	using boost::property_tree::ptree;
 
@@ -236,13 +238,12 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					const string rotStr = vt0.second.get<string>("rot", "0 0 0 1");
 					const Vector4 rot = ParseVector4(rotStr);
 					const Quaternion q(rot.x, rot.y, rot.z, rot.w);
-					const float density = vt0.second.get<float>("density", 1.f);
+					const float mass = vt0.second.get<float>("mass", 1.f);
 					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
 					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
 					const bool kinematic = vt0.second.get<bool >("kinematic", true);
 
 					int newId = -1;
-					phys::cRigidActor *actor = nullptr;
 					switch (shape)
 					{
 					case phys::eShapeType::Plane:
@@ -252,7 +253,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					{
 						const Transform tfm(pos, dim, q);
 						newId = g_evc->m_sync->SpawnBox(renderer
-							, tfm, density, true);
+							, tfm, 1.f, true);
 					}
 					break;
 
@@ -260,15 +261,23 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					{
 						const Transform tfm(pos, dim, q);
 						newId = g_evc->m_sync->SpawnSphere(renderer
-							, pos, dim.x, density, true);
+							, tfm, dim.x, 1.f, true);
+						if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
+						{
+
+						}
 					}
 					break;
 
 					case phys::eShapeType::Capsule:
 					{
-						const Transform tfm(pos);
+						const Transform tfm(pos, q);
 						newId = g_evc->m_sync->SpawnCapsule(renderer
-							, tfm, dim.y, dim.x-dim.y, density, true);
+							, tfm, dim.y, dim.x-dim.y, 1.f, true);
+						if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
+						{
+							
+						}
 					}
 					break;
 
@@ -278,7 +287,10 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					}
 
 					if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
+					{
+						sync->actor->SetMass(mass);
 						syncs[id] = sync;
+					}
 				}//~for shapes
 			}//~shapes
 
@@ -393,6 +405,11 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
 		return false;
 	}
+
+	// return generation sync id
+	if (outSyncIds)
+		for (auto &kv : syncs)
+			outSyncIds->push_back(kv.second->id);
 
 	return nullptr;
 }

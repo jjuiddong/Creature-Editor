@@ -13,10 +13,10 @@ public:
 
 	virtual void OnUpdate(const float deltaSeconds) override;
 	virtual void OnRender(const float deltaSeconds) override;
+	void UpdateResourceFiles();
 
 
 protected:
-	void UpdateResourceFiles();
 
 
 public:

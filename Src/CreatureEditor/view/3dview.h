@@ -31,6 +31,7 @@ protected:
 	void RenderReflectionMap(graphic::cRenderer &renderer);
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	void UpdateSelectModelTransform_RigidActor();
+	void UpdateSelectModelTransform_MultiObject();
 	void UpdateSelectModelTransform_Joint();
 
 	bool PickingProcess(const POINT &mousePos);
@@ -56,8 +57,8 @@ public:
 
 	bool m_showGrid;
 	bool m_showReflection;
-	bool m_showPopupMenu;
 	bool m_showSaveDialog;
+	int m_popupMenuState; // 0:no show, 1:open, 2:show
 	int m_saveFileSyncId;
 
 	Vector3 m_pivotPos;
@@ -66,6 +67,7 @@ public:
 	POINT m_viewPos;
 	sRectf m_viewRect; // detect mouse event area
 	POINT m_mousePos; // window 2d mouse pos
+	POINT m_mouseClickPos; // window 2d mouse pos
 	Vector3 m_mousePickPos; // mouse cursor pos in ground picking
 	bool m_mouseDown[3]; // Left, Right, Middle
 	float m_rotateLen;

@@ -5,20 +5,20 @@
         "shapes": {
             "shape": {
                 "name": "blank",
-                "id": "10059",
+                "id": "10095",
                 "type": "Dynamic",
                 "shape": "Box",
                 "pos": "0.000000 3.000000 0.000000",
                 "dim": "0.502778 0.500000 0.500000",
                 "rot": "0.000000 0.000000 0.000000 1.000000",
-                "mass": "5.05571413",
+                "mass": "5",
                 "angular damping": "1",
                 "linear damping": "1",
-                "kinematic": "true"
+                "kinematic": "false"
             },
             "shape": {
                 "name": "blank",
-                "id": "10062",
+                "id": "10101",
                 "type": "Dynamic",
                 "shape": "Capsule",
                 "pos": "-0.134460 6.992648 0.000000",
@@ -31,7 +31,7 @@
             },
             "shape": {
                 "name": "blank",
-                "id": "10065",
+                "id": "10098",
                 "type": "Dynamic",
                 "shape": "Sphere",
                 "pos": "-0.003477 5.270836 0.000000",
@@ -46,8 +46,8 @@
         "joints": {
             "joint": {
                 "type": "Revolute",
-                "shape id0": "10059",
-                "shape id1": "10065",
+                "shape id0": "10095",
+                "shape id1": "10098",
                 "jointpos": "-0.001738 4.135418 0.000000",
                 "revolute rot": "0.000000 0.000000 0.707107 0.707107",
                 "pivot dir0": "-1.000000 0.000000 0.000000",
@@ -59,8 +59,8 @@
             },
             "joint": {
                 "type": "Revolute",
-                "shape id0": "10065",
-                "shape id1": "10062",
+                "shape id0": "10098",
+                "shape id1": "10101",
                 "jointpos": "-0.068968 6.131742 -0.000000",
                 "revolute rot": "0.000000 0.000000 0.707107 0.707107",
                 "pivot dir0": "-0.999919 0.000000 0.012703",

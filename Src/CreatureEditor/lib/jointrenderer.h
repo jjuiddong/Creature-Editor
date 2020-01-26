@@ -37,7 +37,6 @@ public:
 
 
 protected:
-	//Transform GetJointTransform();
 	Vector3 GetPivotPos(const int actorIndex);
 
 

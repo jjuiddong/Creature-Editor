@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "global.h"
 #include "view/3dview.h"
+#include "view/resourceview.h"
 
 
 cGlobal::cGlobal()
@@ -10,6 +11,7 @@ cGlobal::cGlobal()
 	, m_physSync(nullptr)
 	, m_state(eEditState::Normal)
 	, m_showUIJoint(false)
+	, m_isSpawnLock(true)
 {
 }
 
@@ -128,6 +130,120 @@ cJointRenderer* cGlobal::FindJointRenderer(phys::cJoint *joint)
 phys::sSyncInfo* cGlobal::FindSyncInfo(const int syncId)
 {
 	return m_physSync->FindSyncInfo(syncId);
+}
+
+
+// traverse all connection actor
+template<typename Fn>
+bool TraverseAllConnectionActor(phys::cRigidActor *actor, Fn fn)
+{
+	set<phys::cRigidActor*> actors;
+	queue<phys::cRigidActor*> q;
+	q.push(actor);
+	while (!q.empty())
+	{
+		phys::cRigidActor *a = q.front();
+		q.pop();
+
+		if (actors.end() != std::find(actors.begin(), actors.end(), a))
+			continue; // already visit
+
+		if (!fn(a))
+			continue;
+
+		actors.insert(a);
+
+		for (auto &p : a->m_joints)
+		{
+			q.push(p->m_actor0);
+			q.push(p->m_actor1);
+		}
+	}
+	return true;
+}
+
+
+// update actor dimension if changed
+// actor dimension delay update, before operation to actor object
+// update dimension information to cRigidActor
+bool cGlobal::UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic)
+{
+	phys::sSyncInfo *sync = g_global->m_physSync->FindSyncInfo(actor);
+	if (sync)
+	{
+		// is change dimension?
+		// apply modify dimension
+		Vector3 dim;
+		if (g_global->GetModifyRigidActorTransform(sync->id, dim))
+		{
+			// apply physics shape
+			actor->ChangeDimension(g_global->m_physics, dim);
+			g_global->RemoveModifyRigidActorTransform(sync->id);
+		}
+	}
+
+	if (actor->IsKinematic() != isKinematic)
+		actor->SetKinematic(isKinematic);
+	if (!isKinematic)
+		actor->WakeUp();
+
+	return true;
+}
+
+
+// update kinematic all connection actor
+bool cGlobal::SetAllConnectionActorKinematic(phys::cRigidActor *actor
+	, const bool isKinematic)
+{
+	TraverseAllConnectionActor(actor, 
+		[&](phys::cRigidActor *a) {
+		if (a->IsKinematic() != isKinematic)
+			a->SetKinematic(isKinematic);
+		if (!isKinematic)
+			a->WakeUp();
+		return true;
+	});
+
+	return true;
+}
+
+
+// update all connection actor dimension value
+// update rigidactor dimension
+// actor dimension delay update, before operation to actor object
+// update dimension information to cRigidActor
+bool cGlobal::UpdateAllConnectionActorDimension(phys::cRigidActor *actor
+	, const bool isKinematic)
+{
+	TraverseAllConnectionActor(actor,
+		[&](phys::cRigidActor *a) {			
+			UpdateActorDimension(a, isKinematic);
+
+			phys::sSyncInfo *sync = g_global->m_physSync->FindSyncInfo(a);
+			if (!sync)
+				return true;
+
+			// update actor localFrame
+			for (auto &joint : a->m_joints)
+			{
+				if (joint->m_actor0 == a)
+					joint->m_actorLocal0 = sync->node->m_transform;
+				if (joint->m_actor1 == a)
+					joint->m_actorLocal1 = sync->node->m_transform;
+			}
+			return true;
+		}
+	);
+
+	return true;
+}
+
+
+// resource view wrapping function
+bool cGlobal::RefreshResourceView()
+{
+	m_resourceView->UpdateResourceFiles();
+	return true;
 }
 
 

@@ -19,6 +19,7 @@ namespace evc
 		, phys::cRigidActor *actor);
 
 	cCreature* ReadPhenoTypeFile(graphic::cRenderer &renderer
-		, const StrPath &fileName);
+		, const StrPath &fileName
+		, OUT vector<int> *outSyncIds = nullptr);
 
 }

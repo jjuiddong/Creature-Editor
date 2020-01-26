@@ -12,6 +12,7 @@ c3DView::c3DView(const string &name)
 	, m_showReflection(true)
 	, m_groundPlane(nullptr)
 	, m_showSaveDialog(false)
+	, m_popupMenuState(0)
 {
 }
 
@@ -121,7 +122,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		m_depthBuff.End(renderer);
 	}
 
-	const bool isShowGizmo = (g_global->m_selects.size() == 1);
+	const bool isShowGizmo = (g_global->m_selects.size() >= 1);
 
 	bool isGizmoEdit = false;
 	if (m_renderTarget.Begin(renderer))
@@ -168,12 +169,10 @@ void c3DView::RenderScene(graphic::cRenderer &renderer
 	RET(!physSync);
 
 	for (auto &p : physSync->m_syncs)
-		p->node->SetTechnique(techiniqName.c_str());
-
-	for (auto &p : physSync->m_syncs)
 	{
 		if (isBuildShadowMap && (p->name == "plane"))
 			continue;
+		p->node->SetTechnique(techiniqName.c_str());
 		p->node->Render(renderer, parentTm);
 	}
 
@@ -270,21 +269,28 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 {
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 
-	const bool isShowGizmo = (g_global->m_selects.size() == 1);
+	const bool isShowGizmo = (g_global->m_selects.size() != 0);
 	if (!isShowGizmo || !isGizmoEdit)
 		return;
 	if (!g_global->m_gizmo.m_controlNode)
 		return;
 
-	const int selectSyncId = (g_global->m_selects.size() == 1) ? *g_global->m_selects.begin() : -1;
-	phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
-	if (!sync)
-		return;
+	if (g_global->m_selects.size() == 1)
+	{
+		const int selectSyncId = *g_global->m_selects.begin();
+		phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
+		if (!sync)
+			return;
 
-	if (sync->actor)
-		UpdateSelectModelTransform_RigidActor();
-	else if (sync->joint)
-		UpdateSelectModelTransform_Joint();
+		if (sync->actor)
+			UpdateSelectModelTransform_RigidActor();
+		else if (sync->joint)
+			UpdateSelectModelTransform_Joint();
+	}
+	else if (g_global->m_selects.size() > 1)
+	{
+		UpdateSelectModelTransform_MultiObject();
+	}
 }
 
 
@@ -358,6 +364,41 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 }
 
 
+// update gizmo transform to multi selection object
+void c3DView::UpdateSelectModelTransform_MultiObject()
+{
+	using namespace physx;
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	const Vector3 realCenter = g_global->m_multiSelPos - Vector3(0, 0.5f, 0);
+	const Vector3 center = g_global->m_multiSelPos;
+	const Vector3 offset = g_global->m_multiSel.m_transform.pos - center;
+	g_global->m_multiSelPos = g_global->m_multiSel.m_transform.pos; // update current position
+
+	const Quaternion rot = g_global->m_multiSel.m_transform.rot * g_global->m_multiSelRot.Inverse();
+	g_global->m_multiSelRot = g_global->m_multiSel.m_transform.rot; // update current rotation
+
+	// update
+	for (auto id : g_global->m_selects)
+	{
+		phys::sSyncInfo *sync = physSync->FindSyncInfo(id);
+		if (!sync || !sync->actor)
+			continue;
+		if (sync->actor->m_type != phys::eRigidType::Dynamic) // dynamic actor?
+			continue;
+
+		const Vector3 pos = (sync->node->m_transform.pos + offset) - realCenter;
+		const Vector3 p = pos * rot;
+		sync->node->m_transform.rot *= rot;
+		sync->node->m_transform.pos = p + realCenter;
+
+		const Transform tfm = sync->node->m_transform;
+		PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
+		sync->actor->SetGlobalPose(tm); // update physics transform
+	}
+}
+
+
 // Modify rigid actor transform by Gizmo, joint
 void c3DView::UpdateSelectModelTransform_Joint()
 {
@@ -421,19 +462,60 @@ void c3DView::OnRender(const float deltaSeconds)
 
 void c3DView::RenderPopupMenu()
 {
-	if (m_showPopupMenu)
+	if (m_popupMenuState == 1)
 	{
 		ImGui::OpenPopup("PopupMenu");
-		m_showPopupMenu = false;
+		m_popupMenuState = 2;
 	}
 
 	if (ImGui::BeginPopup("PopupMenu"))
 	{
+		bool isLockMenu = false;
+		bool isUnlockMenu = false;
+		phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId);
+		if (sync && sync->actor)
+		{	
+			if (sync->actor->IsKinematic())
+			{
+				isLockMenu = false;
+				isUnlockMenu = true;
+			}
+			else
+			{
+				isLockMenu = true;
+				isUnlockMenu = false;
+			}
+		}
+
 		if (ImGui::MenuItem("Save Creature"))
 		{
 			m_showSaveDialog = true;
+			m_popupMenuState = 0;
+		}
+		if (ImGui::MenuItem("Lock", nullptr, false, isLockMenu))
+		{
+			sync->actor->SetKinematic(true);
+		}
+		if (ImGui::MenuItem("Lock All", nullptr, false, isLockMenu))
+		{
+			// all connect actor lock
+			g_global->SetAllConnectionActorKinematic(sync->actor, true);
+		}
+		if (ImGui::MenuItem("Unlock", nullptr, false, isUnlockMenu))
+		{
+			sync->actor->SetKinematic(false);
+			sync->actor->WakeUp();
+		}
+		if (ImGui::MenuItem("Unlock All", nullptr, false, isUnlockMenu))
+		{
+			// all connect actor unlock
+			g_global->SetAllConnectionActorKinematic(sync->actor, false);
 		}
 		ImGui::EndPopup();
+	}
+	else
+	{
+		m_popupMenuState = 0;
 	}
 }
 
@@ -444,24 +526,21 @@ void c3DView::RenderSaveDialog()
 		return;
 
 	bool isOpen = true;
-	const ImGuiWindowFlags flags = 0;
-
-	//ImGui::SetNextWi
-	const sf::Vector2u psize = m_owner->getSize();
+	const sf::Vector2u psize((uint)m_rect.Width(), (uint)m_rect.Height());
 	const ImVec2 size(300, 110);
 	const ImVec2 pos(psize.x / 2.f - size.x / 2.f
-		, psize.y / 2.f - size.y / 2.f - 100);
+		, psize.y / 2.f - size.y / 2.f);
 	ImGui::SetNextWindowPos(pos);
 	ImGui::SetNextWindowSize(size);
 	ImGui::SetNextWindowBgAlpha(0.9f);
 
-	if (ImGui::Begin("Save Creature", &isOpen, flags))
+	if (ImGui::Begin("Save Creature", &isOpen, 0))
 	{
 		ImGui::Spacing();
 		ImGui::Text("FileName : ");
 		ImGui::SameLine();
 
-		static StrPath fileName;
+		static StrPath fileName("filename.pnt");
 		ImGui::InputText("##fileName", fileName.m_str, fileName.SIZE);
 
 		ImGui::Spacing();
@@ -474,7 +553,11 @@ void c3DView::RenderSaveDialog()
 			const StrPath filePath = StrPath("./media/creature/") + fileName;
 			phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId);
 			if (sync)
+			{
+				g_global->UpdateAllConnectionActorDimension(sync->actor, true);
+
 				evc::WritePhenoTypeFileFrom_RigidActor(filePath, sync->actor);
+			}
 			m_showSaveDialog = false;
 		}
 		ImGui::SameLine();
@@ -527,7 +610,7 @@ void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
 	m_reflectMap.RecoveryRenderTarget(renderer);
 
 	renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
-	renderer.GetDevContext()->OMSetDepthStencilState(states.DepthDefault(), 0);
+	//renderer.GetDevContext()->OMSetDepthStencilState(states.DepthDefault(), 0);
 
 	float f2[4] = { 1,1,1,100000 }; // default clipplane always positive return
 	memcpy(renderer.m_cbClipPlane.m_v->clipPlane, f2, sizeof(f2));
@@ -551,7 +634,7 @@ void c3DView::OnResizeEnd(const framework::eDockResize::Enum type, const sRectf 
 // mouse picking process
 bool c3DView::PickingProcess(const POINT &mousePos)
 {
-	// if pivot mode? ignore rigid actor selection
+	// if pivot mode? ignore selection
 	if ((eEditState::Pivot0 == g_global->m_state)
 		|| (eEditState::Pivot1 == g_global->m_state)
 		|| (eEditState::Revolute == g_global->m_state))
@@ -602,7 +685,26 @@ bool c3DView::PickingProcess(const POINT &mousePos)
 		g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 	}
 
-	if (!sync)
+	if (g_global->m_selects.size() > 1) // multi selection?
+	{
+		// update multi selection transform
+		Vector3 center;
+		for (auto &id : g_global->m_selects)
+		{
+			phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
+			if (sync)
+				center += sync->node->m_transform.pos;
+		}
+		center /= (float)g_global->m_selects.size();
+		center.y += 0.5f;
+		g_global->m_multiSelPos = center;
+		g_global->m_multiSelRot = Quaternion();
+		g_global->m_multiSel.m_transform.rot = Quaternion();
+		g_global->m_multiSel.m_transform.pos = center;
+		g_global->m_gizmo.SetControlNode(&g_global->m_multiSel);
+	}
+
+	if (!sync) // no selection?
 	{
 		if (!g_global->m_gizmo.IsKeepEditMode())
 		{
@@ -716,6 +818,9 @@ void c3DView::UpdateLookAt()
 // 카메라 앞에 박스가 있다면, 박스 정면에서 멈춘다.
 void c3DView::OnWheelMove(const float delta, const POINT mousePt)
 {
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
 	UpdateLookAt();
 
 	float len = 0;
@@ -738,8 +843,9 @@ void c3DView::OnMouseMove(const POINT mousePt)
 	m_mousePos = mousePt;
 	if (ImGui::IsMouseHoveringRect(ImVec2(-1000, -1000), ImVec2(1000, 200), false))
 		return;
-
 	if (g_global->m_gizmo.IsKeepEditMode())
+		return;
+	if (m_showSaveDialog || (m_popupMenuState > 0))
 		return;
 
 	// joint pivot setting mode
@@ -793,7 +899,11 @@ void c3DView::OnMouseMove(const POINT mousePt)
 // Handling Mouse Button Down Event
 void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 {
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
 	m_mousePos = mousePt;
+	m_mouseClickPos = mousePt;
 	UpdateLookAt();
 	SetCapture();
 
@@ -867,6 +977,9 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	m_mousePos = mousePt;
 	ReleaseCapture();
 
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
 	switch (button)
 	{
 	case sf::Mouse::Left:
@@ -882,12 +995,29 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	{
 		m_mouseDown[1] = false;
 
+		const int dx = m_mouseClickPos.x - mousePt.x;
+		const int dy = m_mouseClickPos.y - mousePt.y;
+		if (sqrt(dx*dx + dy * dy) > 10)
+			break; // move long distance, not popup menu
+
 		// check show menu to joint connection
-		const int actorId = PickingRigidActor(0, mousePt);
-		if (actorId >= 0)
+		if ((eEditState::Pivot0 == g_global->m_state)
+			|| (eEditState::Pivot1 == g_global->m_state)
+			|| (eEditState::Revolute == g_global->m_state))
+			break;
+
+		const int syncId = PickingRigidActor(0, mousePt);
+		if (syncId >= 0)
 		{
-			m_showPopupMenu = true;
-			m_saveFileSyncId = actorId;
+			m_popupMenuState = 1; // open popup menu
+			m_saveFileSyncId = syncId;
+			g_global->ClearSelection();
+			g_global->SelectObject(syncId);
+			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncId))
+			{
+				g_global->m_gizmo.SetControlNode(sync->node);
+				g_global->m_gizmo.m_type = eGizmoEditType::None;
+			}
 		}
 	}
 	break;
@@ -917,14 +1047,56 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::T: g_global->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
 		case sf::Keyboard::S: g_global->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
 		case sf::Keyboard::H: g_global->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
+		case sf::Keyboard::F5: g_global->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
-			g_global->m_state = eEditState::Normal;
-			g_global->m_gizmo.SetControlNode(nullptr);
-			g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
-			g_global->m_selJoint = nullptr;
-			g_global->ClearSelection();
+			if (m_popupMenuState > 0)
+			{
+				m_popupMenuState = 0;
+			}
+			else if (m_showSaveDialog)
+			{
+				m_showSaveDialog = false;
+			}
+			else
+			{
+				// clear selection
+				g_global->m_state = eEditState::Normal;
+				g_global->m_gizmo.SetControlNode(nullptr);
+				g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+				g_global->m_selJoint = nullptr;
+				g_global->ClearSelection();
+			}
 			break;
+
+		case sf::Keyboard::C:
+		{
+			// copy
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				if (!g_global->m_selects.empty())
+				{
+					phys::sSyncInfo *sync = g_global->FindSyncInfo(g_global->m_selects[0]);
+					if (sync)
+					{
+						//g_global->UpdateAllConnectionActorDimension(sync->actor, true);
+						//evc::WritePhenoTypeFileFrom_RigidActor("tmp.pnt", sync->actor);
+					}
+				}			
+			}
+		}
+		break;
+
+		case sf::Keyboard::P:
+		{
+			// paste
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+
+			}
+		}
+		break;
+
 		}
 		break;
 
