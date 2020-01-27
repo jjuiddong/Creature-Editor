@@ -10,6 +10,7 @@ c3DView::c3DView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
 	, m_showReflection(true)
+	, m_showShadow(true)
 	, m_groundPlane(nullptr)
 	, m_showSaveDialog(false)
 	, m_popupMenuState(0)
@@ -81,6 +82,10 @@ bool c3DView::Init(cRenderer &renderer)
 void c3DView::OnUpdate(const float deltaSeconds)
 {
 	g_global->m_physics.PreUpdate(deltaSeconds);
+
+	for (auto &p : g_global->m_physSync->m_syncs)
+		if (p->joint)
+			p->joint->Update(deltaSeconds);
 }
 
 
@@ -97,6 +102,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	GetMainLight().Bind(renderer);
 
 	// build shadowmap
+	if (m_showShadow)
 	{
 		m_ccsm.UpdateParameter(renderer, GetMainCamera());
 		for (int i = 0; i < cCascadedShadowMap::SHADOWMAP_COUNT; ++i)
@@ -138,8 +144,11 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		CommonStates states(renderer.GetDevice());
 		renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
 
-		m_ccsm.Bind(renderer);
-		m_reflectMap.Bind(renderer, 8);
+		if (m_showShadow)
+			m_ccsm.Bind(renderer);
+		if (m_showReflection)
+			m_reflectMap.Bind(renderer, 8);
+
 		RenderScene(renderer, "ShadowMap", false);
 		RenderEtc(renderer);
 
@@ -252,7 +261,7 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
 			render(sync);
 	}
-	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(0.2f, 0.2f, 1.f, 1).GetVectorXM();
+	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(0.f, 1.f, 0.f, 1).GetVectorXM();
 	for (auto syncId : g_global->m_highLight)
 	{
 		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
@@ -305,7 +314,9 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 	if (sync->actor->m_type != phys::eRigidType::Dynamic) // dynamic actor?
 		return;
 
-	const Transform tfm = g_global->m_gizmo.m_targetTransform;
+	Transform temp = g_global->m_gizmo.m_targetTransform;
+	temp.pos.y = max(0.f, temp.pos.y);
+	const Transform tfm = temp;
 
 	PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
 	sync->actor->SetGlobalPose(tm);
@@ -391,6 +402,7 @@ void c3DView::UpdateSelectModelTransform_MultiObject()
 		const Vector3 p = pos * rot;
 		sync->node->m_transform.rot *= rot;
 		sync->node->m_transform.pos = p + realCenter;
+		sync->node->m_transform.pos.y = max(0.f, sync->node->m_transform.pos.y);
 
 		const Transform tfm = sync->node->m_transform;
 		PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
@@ -451,6 +463,8 @@ void c3DView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("grid", &m_showGrid);
 		ImGui::SameLine();
 		ImGui::Checkbox("reflection", &m_showReflection);
+		ImGui::SameLine();
+		ImGui::Checkbox("shadow", &m_showShadow);
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -637,10 +651,12 @@ bool c3DView::PickingProcess(const POINT &mousePos)
 	// if pivot mode? ignore selection
 	if ((eEditState::Pivot0 == g_global->m_state)
 		|| (eEditState::Pivot1 == g_global->m_state)
-		|| (eEditState::Revolute == g_global->m_state))
+		|| (eEditState::Revolute == g_global->m_state)
+		|| g_global->m_gizmo.IsKeepEditMode()
+		)
 		return false;
 
-	// rigid actor picking
+	// picking rigidactor, joint
 	const int syncId = PickingRigidActor(2, mousePos);
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;

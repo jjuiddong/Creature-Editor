@@ -57,6 +57,7 @@ public:
 
 	bool m_showGrid;
 	bool m_showReflection;
+	bool m_showShadow;
 	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show
 	int m_saveFileSyncId;

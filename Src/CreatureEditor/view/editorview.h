@@ -26,8 +26,10 @@ protected:
 	void RenderDistanceJoint();
 	void RenderD6Joint();
 	void RenderSelectActorJointInfo(const int syncId);
+	void RenderSphericalJointSetting(phys::cJoint *joint);
 	void RenderRevoluteJointSetting(phys::cJoint *joint);
 	void CheckCancelUIJoint();
+	void CheckChangeSelection();
 
 
 public:
@@ -35,5 +37,6 @@ public:
 	float m_radius;
 	float m_halfHeight;
 	float m_density;
-	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
+	bool m_isChangeSelection; // ui information update?
+	vector<int> m_oldSelects;
 };

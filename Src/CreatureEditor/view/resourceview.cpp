@@ -47,12 +47,13 @@ void cResourceView::OnRender(const float deltaSeconds)
 		{
 			const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
 				| ImGuiTreeNodeFlags_OpenOnDoubleClick
+				| ImGuiTreeNodeFlags_Leaf 
+				| ImGuiTreeNodeFlags_NoTreePushOnOpen
 				| ((i == selectIdx) ? ImGuiTreeNodeFlags_Selected : 0);
 
 			if (filter.PassFilter(str.c_str()))
 			{
-				ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen
-					, str.c_str());
+				ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
 
 				if (ImGui::IsItemClicked())
 				{
@@ -64,6 +65,10 @@ void cResourceView::OnRender(const float deltaSeconds)
 						evc::ReadPhenoTypeFile(g_global->GetRenderer()
 							, fileName.c_str()
 							, &syncIds);
+
+						// moving actor position
+
+
 
 						// unlock actor
 						if (!g_global->m_isSpawnLock && !syncIds.empty())

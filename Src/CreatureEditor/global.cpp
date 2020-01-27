@@ -84,18 +84,18 @@ bool cGlobal::ClearSelection()
 // store Modify RigidActor Dimension variable
 // apply when RigidActor physics simulation and wakeup
 // dimension changing is complicate work
-bool cGlobal::ModifyRigidActorTransform(const int actorId, const Vector3 &dim)
+bool cGlobal::ModifyRigidActorTransform(const int syncId, const Vector3 &dim)
 {
-	m_chDimensions[actorId] = dim;
+	m_chDimensions[syncId] = dim;
 	return true;
 }
 
 
 // return Modify actor dimension information
 // if not found, return false
-bool cGlobal::GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out)
+bool cGlobal::GetModifyRigidActorTransform(const int syncId, OUT Vector3 &out)
 {
-	auto it = m_chDimensions.find(actorId);
+	auto it = m_chDimensions.find(syncId);
 	if (it == m_chDimensions.end())
 		return false;
 
@@ -105,9 +105,9 @@ bool cGlobal::GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out)
 
 
 // remove modify rigid actor transform value
-bool cGlobal::RemoveModifyRigidActorTransform(const int actorId)
+bool cGlobal::RemoveModifyRigidActorTransform(const int syncId)
 {
-	auto it = m_chDimensions.find(actorId);
+	auto it = m_chDimensions.find(syncId);
 	if (it == m_chDimensions.end())
 		return false;
 	m_chDimensions.erase(it);

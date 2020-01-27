@@ -10,6 +10,7 @@ cEditorView::cEditorView(const StrId &name)
 	, m_radius(0.5f)
 	, m_halfHeight(1.f)
 	, m_density(1.f)
+	, m_isChangeSelection(false)
 {
 }
 
@@ -52,9 +53,14 @@ void cEditorView::OnRender(const float deltaSeconds)
 	ImGui::Spacing();
 	ImGui::Spacing();
 
+	CheckChangeSelection();
+
 	RenderSpawnTransform();
 	RenderSelectionInfo();
 	RenderJointInfo();
+
+	// final process, recovery
+	m_isChangeSelection = false;
 }
 
 
@@ -247,6 +253,7 @@ void cEditorView::RenderSelectionInfo()
 
 		if (edit0) // position edit
 		{
+			tfm.pos.y = max(0.f, tfm.pos.y);
 			node->m_transform.pos = tfm.pos;
 
 			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
@@ -355,8 +362,19 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 				g_global->m_state = eEditState::Normal;
 			}
 
-			ImGui::Separator();
-			RenderRevoluteJointSetting(joint);
+			switch (joint->m_type)
+			{
+			case phys::eJointType::Fixed: break;
+			case phys::eJointType::Spherical: RenderSphericalJointSetting(joint); break;
+			case phys::eJointType::Revolute: RenderRevoluteJointSetting(joint); break;
+			case phys::eJointType::Prismatic:
+			case phys::eJointType::Distance:
+			case phys::eJointType::D6:
+				break;
+			default:
+				assert(0);
+				break;
+			}
 
 			ImGui::Spacing();
 			ImGui::Spacing();
@@ -372,6 +390,7 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 			}
 			ImGui::PopStyleColor(3);
 
+			ImGui::Separator();
 			ImGui::TreePop();
 		}
 	}
@@ -510,7 +529,7 @@ void cEditorView::RenderSphericalJoint()
 
 		if (isLimit)
 		{
-			joint->SetLimitCone(PxJointLimitCone(limit.x, limit.y, 0.01f));
+			joint->SetConeLimit(PxJointLimitCone(limit.x, limit.y, 0.01f));
 			joint->SetSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
 		}
 
@@ -539,6 +558,9 @@ void cEditorView::RenderRevoluteJoint()
 	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
 	static bool isDrive = false;
 	static float velocity = 1.f;
+	static bool isCycleDrive = false;
+	static float cycleDrivePeriod = 3.f;
+	static float cycleDriveVelocityAccel = 1.0f;
 	static bool isLimit = false;
 
 	ImGui::Text("Angular Limit (Radian)");
@@ -557,6 +579,15 @@ void cEditorView::RenderRevoluteJoint()
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 
+	if (!isDrive)
+		isCycleDrive = false;
+
+	ImGui::TextUnformatted("Cycle");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Cycle", &isCycleDrive);
+	ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &cycleDriveVelocityAccel, 0.001f);
+
 	if (ImGui::Button("Pivot Setting"))
 	{
 		g_global->m_state = eEditState::Pivot0;
@@ -567,9 +598,11 @@ void cEditorView::RenderRevoluteJoint()
 	// update ui joint (once process)
 	if (!g_global->m_showUIJoint || editAxis)
 	{
+		// already register joint?
 		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
 			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
 
+		// change selection?
 		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
 				&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
 			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
@@ -622,14 +655,20 @@ void cEditorView::RenderRevoluteJoint()
 
 		if (isLimit)
 		{
-			joint->SetLimitAngular(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
-			joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, true);
+			joint->EnableAngularLimit(isLimit);
+			joint->SetAngularLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 		}
 
 		if (isDrive)
 		{
+			joint->EnableDrive(isDrive);
 			joint->SetDriveVelocity(velocity);
-			joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
+		}
+
+		if (isDrive && isCycleDrive)
+		{
+			joint->EnableCycleDrive(isCycleDrive);
+			joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
 		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
@@ -661,20 +700,28 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 {
 	using namespace physx;
 
-	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
-	static bool isDrive = false;
-	static float velocity = 1.f;
 	static bool isLimit = false;
+	static PxJointAngularLimitPair limit(-PxPi / 4.f, PxPi / 4.f, 0.01f);
+	static bool isDrive = false;
+	static float driveVelocity = 0.f;
+
+	if (m_isChangeSelection)
+	{
+		isLimit = joint->IsAngularLimit();
+		limit = joint->GetAngularLimit();
+		isDrive = joint->IsDrive();
+		driveVelocity = joint->GetDriveVelocity();
+	}
 
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
-	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
+	ImGui::DragFloat("Lower Limit Angle", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Limit Angle", &limit.upper, 0.001f);
 	ImGui::TextUnformatted("Drive");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Drive", &isDrive);
-	ImGui::DragFloat("Velocity", &velocity, 0.001f);
+	ImGui::DragFloat("Velocity", &driveVelocity, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
@@ -686,13 +733,52 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eLIMIT_ENABLED, isLimit);
+		joint->EnableAngularLimit(isLimit);
 		if (isLimit)
-			joint->SetLimitAngular(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
+			joint->SetAngularLimit(limit);
 
-		joint->SetRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, isDrive);
+		joint->EnableDrive(isDrive);
 		if (isDrive)
-			joint->SetDriveVelocity(velocity);
+			joint->SetDriveVelocity(driveVelocity);
+
+		joint->m_actor0->WakeUp();
+		joint->m_actor1->WakeUp();
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
+{
+	using namespace physx;
+
+	static bool isLimit = false;
+	static PxJointLimitCone limit(-PxPi / 4.f, PxPi / 4.f, 0.01f);
+
+	if (m_isChangeSelection)
+	{
+		isLimit = joint->IsConeLimit();
+		limit = joint->GetConeLimit();
+	}
+
+	ImGui::Text("Limit Cone (Radian)");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::DragFloat("Y Limit Angle", &limit.yAngle, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &limit.zAngle, 0.001f);
+
+	//const char *axisStr = "X\0Y\0Z\0\0";
+	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	//static int axisIdx = 0;
+	//ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Apply Option"))
+	{
+		joint->SetConeLimit(limit);
+		joint->EnableConeLimit(isLimit);
 
 		joint->m_actor0->WakeUp();
 		joint->m_actor1->WakeUp();
@@ -773,4 +859,27 @@ $cancel:
 	g_global->m_showUIJoint = false;
 	g_global->m_physSync->RemoveSyncInfo(&g_global->m_uiJoint);
 	return;
+}
+
+
+// check change selection
+void cEditorView::CheckChangeSelection()
+{
+	if (m_oldSelects.size() != g_global->m_selects.size())
+	{
+		goto $change;
+	}
+	else if (!m_oldSelects.empty())
+	{
+		// compare select ids
+		for (uint i = 0; i < g_global->m_selects.size(); ++i)
+			if (m_oldSelects[i] != g_global->m_selects[i])
+				goto $change;
+	}
+
+	return; // no change
+
+$change:
+	m_isChangeSelection = true;
+	m_oldSelects = g_global->m_selects;
 }

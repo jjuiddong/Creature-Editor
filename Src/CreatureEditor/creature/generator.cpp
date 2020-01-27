@@ -178,7 +178,21 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 			joint.put("pivot len1", j->m_pivots[1].len);
 
 			joint.put<bool>("drive", j->IsDrive());
-			joint.put("drive velocity", j->GetDriveVelocity());
+			joint.put("drive velocity", j->m_maxDriveVelocity);
+
+			joint.put<bool>("cycle", j->m_isCycleDrive);
+			joint.put("cycle period", j->m_cyclePeriod);
+			joint.put("cycle accel", j->m_cycleDriveAccel);
+
+			joint.put<bool>("cone limit", j->IsConeLimit());
+			physx::PxJointLimitCone coneLimit = j->GetConeLimit();
+			text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
+			joint.put<string>("cone limit config", text.c_str());
+
+			joint.put<bool>("angular limit", j->IsAngularLimit());
+			physx::PxJointAngularLimitPair angularLimit = j->GetAngularLimit();
+			text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
+			joint.put<string>("angular limit config", text.c_str());
 
 			jts.add_child("joint", joint);
 		}
@@ -316,6 +330,19 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					const float pivotLen1 = vt0.second.get<float>("pivot len1");
 					const bool isDrive = vt0.second.get<bool>("drive");
 					const float driveVelocity = vt0.second.get<float>("drive velocity");
+					const bool isCycle = vt0.second.get<bool>("cycle", false);
+					const float cyclePeriod = vt0.second.get<float>("cycle period", 0.f);
+					const float cycleAccel = vt0.second.get<float>("cycle accel", 0.f);
+
+					const bool isConeLimit = vt0.second.get<bool>("cone limit", false);
+					const string coneLimitStr = vt0.second.get<string>("cone limit config", "0 0 0.01");
+					const Vector3 tconf0 = ParseVector3(coneLimitStr);
+					physx::PxJointLimitCone coneLimit(tconf0.x, tconf0.y, tconf0.z);
+
+					const bool isAngularLimit = vt0.second.get<bool>("angular limit", false);
+					const string angularLimitStr = vt0.second.get<string>("angular limit config", "0 0 0.01");
+					const Vector3 tconf1 = ParseVector3(angularLimitStr);
+					physx::PxJointAngularLimitPair angularLimit(tconf1.x, tconf1.y, tconf1.z);
 
 					auto it0 = syncs.find(actorId0);
 					auto it1 = syncs.find(actorId1);
@@ -346,6 +373,12 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 							, sync0->actor, sync0->node->m_transform
 							, sync1->actor, sync1->node->m_transform);
 
+						if (isConeLimit)
+						{
+							joint->EnableConeLimit(true);
+							joint->SetConeLimit(coneLimit);
+						}
+
 						cJointRenderer *jointRenderer = new cJointRenderer();
 						jointRenderer->Create(joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
@@ -369,10 +402,22 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 							, sync1->actor, sync1->node->m_transform, pivot1
 							, revoluteAxis);
 
+						if (isAngularLimit)
+						{
+							joint->EnableAngularLimit(true);
+							joint->SetAngularLimit(angularLimit);
+						}
+
 						if (isDrive)
 						{
+							joint->EnableDrive(true);
 							joint->SetDriveVelocity(driveVelocity);
-							joint->SetDrive(true);
+						}
+
+						if (isCycle)
+						{
+							joint->EnableCycleDrive(true);
+							joint->SetCycleDrivePeriod(cyclePeriod, cycleAccel);
 						}
 
 						cJointRenderer *jointRenderer = new cJointRenderer();

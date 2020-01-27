@@ -18,13 +18,15 @@ public:
 	virtual ~cGlobal();
 
 	bool Init(graphic::cRenderer &renderer);
+
+	// selection
 	bool SelectObject(const int syncId, const bool isToggle = false);
 	bool ClearSelection();
 
 	// transform edit function
-	bool ModifyRigidActorTransform(const int actorId, const Vector3 &dim);
-	bool GetModifyRigidActorTransform(const int actorId, OUT Vector3 &out);
-	bool RemoveModifyRigidActorTransform(const int actorId);
+	bool ModifyRigidActorTransform(const int syncId, const Vector3 &dim);
+	bool GetModifyRigidActorTransform(const int syncId, OUT Vector3 &out);
+	bool RemoveModifyRigidActorTransform(const int syncId);
 
 	// utility function
 	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
@@ -53,7 +55,7 @@ public:
 	// spawn control
 	bool m_isSpawnLock; // default: true
 
-	// gizmo
+	// gizmo & selection
 	int m_groundGridPlaneId; // ground plane sync id
 	vector<int> m_selects; // select syncId array
 	vector<int> m_highLight; // highlight syncId array
