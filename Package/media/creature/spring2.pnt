@@ -1,0 +1,83 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10072",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "-1.109381 3.000000 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0.52359879",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10069",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 4.000000 0.000000",
+                "dim": "0.250000 0.250000 0.250000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0.125",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10066",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.250000 0.250000 0.250000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0.125",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10066",
+                "shape id1": "10072",
+                "jointpos": "-0.554691 3.000000 0.000000",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "true",
+                "drive velocity": "3",
+                "cycle": "false",
+                "cycle period": "3",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Prismatic",
+                "shape id0": "10066",
+                "shape id1": "10069",
+                "jointpos": "0.000000 3.500000 0.000000",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "linear limit": "true",
+                "linear limit config 1": "0.500000 1.000000 10.000000",
+                "linear limit config 2": "0.000000 0.000000 0.000000"
+            }
+        }
+    }
+}

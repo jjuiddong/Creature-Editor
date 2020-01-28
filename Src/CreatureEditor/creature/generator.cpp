@@ -10,8 +10,13 @@ namespace evc
 	Vector4 ParseVector4(const string &str);
 	Vector3 ParseVector3(const string &str);
 	Vector2 ParseVector2(const string &str);
+
+	bool Put_RigidActor(boost::property_tree::ptree &parent, phys::cRigidActor *actor);
+	bool Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint);
 }
+
 using namespace evc;
+
 
 
 // create cCreature from rigidactor
@@ -83,6 +88,58 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		}
 	}
 
+	// make ptree
+	try
+	{
+		using boost::property_tree::ptree;
+		ptree props;
+		ptree creature;
+		common::Str128 text;
+		Vector3 v;
+		Quaternion q;
+
+		creature.put("version", "1.01");
+		creature.put("name", "creature");
+
+		// make shape
+		ptree shapes;
+		for (auto &a : actors)
+			Put_RigidActor(shapes, a);
+
+		// make joint
+		ptree jts;
+		for (auto &j : joints)
+			Put_Joint(jts, j);
+
+		creature.add_child("shapes", shapes);
+		creature.add_child("joints", jts);
+		props.add_child("creature", creature);
+		boost::property_tree::write_json(fileName.c_str(), props);
+	}
+	catch (std::exception &e)
+	{
+		common::Str128 msg;
+		msg.Format("Write Error!!, File [ %s ]\n%s"
+			, fileName.c_str(), e.what());
+		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
+		return false;
+	}
+
+	return true;
+}
+
+
+bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
+	, vector<phys::cRigidActor*> actors)
+{
+	using namespace phys;
+
+	set<cJoint*> joints;
+	for (auto &a : actors)
+	{
+		for (auto *j : a->m_joints)
+			joints.insert(j);
+	}
 
 	// make ptree
 	try
@@ -100,101 +157,18 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		// make shape
 		ptree shapes;
 		for (auto &a : actors)
-		{
-			ptree shape;
-
-			shape.put("name", "blank");
-			shape.put<int>("id", a->m_id);
-			shape.put<string>("type", phys::eRigidType::ToString(a->m_type));
-			shape.put<string>("shape", phys::eShapeType::ToString(a->m_shape));
-
-			// find local transform from joint
-			Transform tfm;
-			for (auto &j : a->m_joints)
-			{
-				if (j->m_actor0 == a)
-				{
-					tfm = j->m_actorLocal0;
-					break;
-				}
-				if (j->m_actor1 == a)
-				{
-					tfm = j->m_actorLocal1;
-					break;
-				}
-			}
-			if (a->m_joints.empty()) // not found transform?
-			{
-				if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(a))
-					tfm = sync->node->m_transform;
-			}
-
-			v = tfm.pos;
-			text.Format("%f %f %f", v.x, v.y, v.z);
-			shape.put("pos", text.c_str());
-			
-			v = tfm.scale;
-			text.Format("%f %f %f", v.x, v.y, v.z);
-			shape.put("dim", text.c_str());
-
-			q = tfm.rot;
-			text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
-			shape.put("rot", text.c_str());
-
-			shape.put<float>("mass", a->GetMass());
-			shape.put<float>("angular damping", a->GetAngularDamping());
-			shape.put<float>("linear damping", a->GetLinearDamping());
-			shape.put<bool>("kinematic", a->IsKinematic());
-
-			shapes.add_child("shape", shape);
-		}
+			Put_RigidActor(shapes, a);
 
 		// make joint
 		ptree jts;
 		for (auto &j : joints)
 		{
-			ptree joint;
-
-			joint.put("type", phys::eJointType::ToString(j->m_type));
-			joint.put("shape id0", j->m_actor0->m_id);
-			joint.put("shape id1", j->m_actor1->m_id);
-
-			v = j->m_origPos;
-			text.Format("%f %f %f", v.x, v.y, v.z);
-			joint.put("jointpos", text.c_str());
-
-			q = j->m_rotRevolute;
-			text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
-			joint.put("revolute rot", text.c_str());
-
-			v = j->m_pivots[0].dir;
-			text.Format("%f %f %f", v.x, v.y, v.z);
-			joint.put("pivot dir0", text.c_str());
-			joint.put("pivot len0", j->m_pivots[0].len);
-
-			v = j->m_pivots[1].dir;
-			text.Format("%f %f %f", v.x, v.y, v.z);
-			joint.put("pivot dir1", text.c_str());
-			joint.put("pivot len1", j->m_pivots[1].len);
-
-			joint.put<bool>("drive", j->IsDrive());
-			joint.put("drive velocity", j->m_maxDriveVelocity);
-
-			joint.put<bool>("cycle", j->m_isCycleDrive);
-			joint.put("cycle period", j->m_cyclePeriod);
-			joint.put("cycle accel", j->m_cycleDriveAccel);
-
-			joint.put<bool>("cone limit", j->IsConeLimit());
-			physx::PxJointLimitCone coneLimit = j->GetConeLimit();
-			text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
-			joint.put<string>("cone limit config", text.c_str());
-
-			joint.put<bool>("angular limit", j->IsAngularLimit());
-			physx::PxJointAngularLimitPair angularLimit = j->GetAngularLimit();
-			text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
-			joint.put<string>("angular limit config", text.c_str());
-
-			jts.add_child("joint", joint);
+			// check exist actor?
+			auto it0 = std::find(actors.begin(), actors.end(), j->m_actor0);
+			auto it1 = std::find(actors.begin(), actors.end(), j->m_actor0);
+			if ((actors.end() == it0) || (actors.end() == it1))
+				continue; // ignore joint, if not exist actor
+			Put_Joint(jts, j);
 		}
 
 		creature.add_child("shapes", shapes);
@@ -205,7 +179,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 	catch (std::exception &e)
 	{
 		common::Str128 msg;
-		msg.Format("Write Error!!, File [ %s ]\n%s"
+		msg.Format("Write Error2!!, File [ %s ]\n%s"
 			, fileName.c_str(), e.what());
 		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
 		return false;
@@ -276,10 +250,6 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						const Transform tfm(pos, dim, q);
 						newId = g_evc->m_sync->SpawnSphere(renderer
 							, tfm, dim.x, 1.f, true);
-						if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
-						{
-
-						}
 					}
 					break;
 
@@ -288,10 +258,6 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						const Transform tfm(pos, q);
 						newId = g_evc->m_sync->SpawnCapsule(renderer
 							, tfm, dim.y, dim.x-dim.y, 1.f, true);
-						if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
-						{
-							
-						}
 					}
 					break;
 
@@ -328,21 +294,6 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					const Vector3 pivotDir1 = ParseVector3(pivotDirStr1);
 					const float pivotLen0 = vt0.second.get<float>("pivot len0");
 					const float pivotLen1 = vt0.second.get<float>("pivot len1");
-					const bool isDrive = vt0.second.get<bool>("drive");
-					const float driveVelocity = vt0.second.get<float>("drive velocity");
-					const bool isCycle = vt0.second.get<bool>("cycle", false);
-					const float cyclePeriod = vt0.second.get<float>("cycle period", 0.f);
-					const float cycleAccel = vt0.second.get<float>("cycle accel", 0.f);
-
-					const bool isConeLimit = vt0.second.get<bool>("cone limit", false);
-					const string coneLimitStr = vt0.second.get<string>("cone limit config", "0 0 0.01");
-					const Vector3 tconf0 = ParseVector3(coneLimitStr);
-					physx::PxJointLimitCone coneLimit(tconf0.x, tconf0.y, tconf0.z);
-
-					const bool isAngularLimit = vt0.second.get<bool>("angular limit", false);
-					const string angularLimitStr = vt0.second.get<string>("angular limit config", "0 0 0.01");
-					const Vector3 tconf1 = ParseVector3(angularLimitStr);
-					physx::PxJointAngularLimitPair angularLimit(tconf1.x, tconf1.y, tconf1.z);
 
 					auto it0 = syncs.find(actorId0);
 					auto it1 = syncs.find(actorId1);
@@ -350,6 +301,15 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						throw std::exception("not found actor ptr");
 					phys::sSyncInfo *sync0 = it0->second;
 					phys::sSyncInfo *sync1 = it1->second;
+
+					// GetPivotWorldTransform
+					const Transform tfm0 = sync0->node->m_transform;
+					const Transform tfm1 = sync1->node->m_transform;
+					const Vector3 localPos0 = pivotDir0 * tfm0.rot * pivotLen0;
+					const Vector3 pivot0 = tfm0.pos + localPos0;
+					const Vector3 localPos1 = pivotDir1 * tfm1.rot * pivotLen1;
+					const Vector3 pivot1 = tfm1.pos + localPos1;
+					const Vector3 revoluteAxis = Vector3(1, 0, 0) * revoluteQ;
 
 					switch (type)
 					{
@@ -368,6 +328,11 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 					case phys::eJointType::Spherical:
 					{
+						const bool isConeLimit = vt0.second.get<bool>("cone limit", false);
+						const string coneLimitStr = vt0.second.get<string>("cone limit config", "0 0 0.01");
+						const Vector3 tconf0 = ParseVector3(coneLimitStr);
+						physx::PxJointLimitCone coneLimit(tconf0.x, tconf0.y, tconf0.z);
+
 						phys::cJoint *joint = new phys::cJoint();
 						joint->CreateSpherical(g_global->m_physics
 							, sync0->actor, sync0->node->m_transform
@@ -387,14 +352,16 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 					case phys::eJointType::Revolute:
 					{
-						// GetPivotWorldTransform
-						const Transform tfm0 = sync0->node->m_transform;
-						const Transform tfm1 = sync1->node->m_transform;
-						const Vector3 localPos0 = pivotDir0 * tfm0.rot * pivotLen0;
-						const Vector3 pivot0 = tfm0.pos + localPos0;
-						const Vector3 localPos1 = pivotDir1 * tfm1.rot * pivotLen1;
-						const Vector3 pivot1 = tfm1.pos + localPos1;
-						const Vector3 revoluteAxis = Vector3(1,0,0) * revoluteQ;
+						const bool isDrive = vt0.second.get<bool>("drive");
+						const float driveVelocity = vt0.second.get<float>("drive velocity");
+						const bool isCycle = vt0.second.get<bool>("cycle", false);
+						const float cyclePeriod = vt0.second.get<float>("cycle period", 0.f);
+						const float cycleAccel = vt0.second.get<float>("cycle accel", 0.f);
+
+						const bool isAngularLimit = vt0.second.get<bool>("angular limit", false);
+						const string angularLimitStr = vt0.second.get<string>("angular limit config", "0 0 0.01");
+						const Vector3 tconf1 = ParseVector3(angularLimitStr);
+						physx::PxJointAngularLimitPair angularLimit(tconf1.x, tconf1.y, tconf1.z);
 
 						phys::cJoint *joint = new phys::cJoint();
 						joint->CreateRevolute(g_global->m_physics
@@ -428,9 +395,66 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 
 					case phys::eJointType::Prismatic:
-						break;
+					{
+						const bool isLinearLimit = vt0.second.get<bool>("linear limit");
+						const string linearLimitStr1 = vt0.second.get<string>("linear limit config 1"
+							, "0 0 0");
+						const string linearLimitStr2 = vt0.second.get<string>("linear limit config 2"
+							, "0 0 0");
+						const Vector3 tconf1 = ParseVector3(linearLimitStr1);
+						const Vector3 tconf2 = ParseVector3(linearLimitStr2);
+
+						physx::PxJointLinearLimitPair linearLimit(0,0,physx::PxSpring(0,0));
+						linearLimit.lower = tconf1.x;
+						linearLimit.upper = tconf1.y;
+						linearLimit.stiffness = tconf1.z;
+						linearLimit.damping = tconf2.x;
+						linearLimit.contactDistance = tconf2.y;
+						linearLimit.bounceThreshold = tconf2.z;
+
+						phys::cJoint *joint = new phys::cJoint();
+						joint->CreatePrismatic(g_global->m_physics
+							, sync0->actor, sync0->node->m_transform, pivot0
+							, sync1->actor, sync1->node->m_transform, pivot1
+							, revoluteAxis);
+
+						if (isLinearLimit)
+						{
+							joint->EnableLinearLimit(true);
+							joint->SetLinearLimit(linearLimit);
+						}
+
+						cJointRenderer *jointRenderer = new cJointRenderer();
+						jointRenderer->Create(joint);
+						g_evc->m_sync->AddJoint(joint, jointRenderer);
+					}
+					break;
+
 					case phys::eJointType::Distance:
-						break;
+					{
+						const bool isDistanceLimit = vt0.second.get<bool>("distance limit");
+						const float minDist = vt0.second.get<float>("min distance", 0.f);
+						const float maxDist = vt0.second.get<float>("max distance", 0.f);
+
+						phys::cJoint *joint = new phys::cJoint();
+						joint->CreateDistance(g_global->m_physics
+							, sync0->actor, sync0->node->m_transform, pivot0
+							, sync1->actor, sync1->node->m_transform, pivot1);
+
+						if (isDistanceLimit)
+						{
+							joint->EnableDistanceLimit(true);
+							joint->SetDistanceLimit(minDist, maxDist);
+						}
+
+						cJointRenderer *jointRenderer = new cJointRenderer();
+						jointRenderer->Create(joint);
+						g_evc->m_sync->AddJoint(joint, jointRenderer);
+
+					}
+					break;
+
+
 					case phys::eJointType::D6:
 						break;
 					default:
@@ -505,4 +529,159 @@ Vector2 evc::ParseVector2(const string &str)
 			, (float)atof(toks[1].c_str()));
 	}
 	return Vector2(0, 0);
+}
+
+
+// put rigid actor property to parent ptree
+bool evc::Put_RigidActor(boost::property_tree::ptree &parent, phys::cRigidActor *actor)
+{
+	using boost::property_tree::ptree;
+	Vector3 v;
+	Quaternion q;
+	common::Str128 text;
+
+	ptree shape;
+
+	shape.put("name", "blank");
+	shape.put<int>("id", actor->m_id);
+	shape.put<string>("type", phys::eRigidType::ToString(actor->m_type));
+	shape.put<string>("shape", phys::eShapeType::ToString(actor->m_shape));
+
+	// find local transform from joint
+	Transform tfm;
+	for (auto &j : actor->m_joints)
+	{
+		if (j->m_actor0 == actor)
+		{
+			tfm = j->m_actorLocal0;
+			break;
+		}
+		if (j->m_actor1 == actor)
+		{
+			tfm = j->m_actorLocal1;
+			break;
+		}
+	}
+	if (actor->m_joints.empty()) // not found transform?
+	{
+		if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(actor))
+			tfm = sync->node->m_transform;
+	}
+
+	v = tfm.pos;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	shape.put("pos", text.c_str());
+
+	v = tfm.scale;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	shape.put("dim", text.c_str());
+
+	q = tfm.rot;
+	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
+	shape.put("rot", text.c_str());
+
+	shape.put<float>("mass", actor->GetMass());
+	shape.put<float>("angular damping", actor->GetAngularDamping());
+	shape.put<float>("linear damping", actor->GetLinearDamping());
+	shape.put<bool>("kinematic", actor->IsKinematic());
+
+	parent.add_child("shape", shape);
+
+	return true;
+}
+
+
+// put joint property to parent ptree
+bool evc::Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint)
+{
+	using boost::property_tree::ptree;
+	Vector3 v;
+	Quaternion q;
+	common::Str128 text;
+
+	ptree j;
+
+	j.put("type", phys::eJointType::ToString(joint->m_type));
+	j.put("shape id0", joint->m_actor0->m_id);
+	j.put("shape id1", joint->m_actor1->m_id);
+
+	v = joint->m_origPos;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("jointpos", text.c_str());
+
+	q = joint->m_rotRevolute;
+	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
+	j.put("revolute rot", text.c_str());
+
+	v = joint->m_pivots[0].dir;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("pivot dir0", text.c_str());
+	j.put("pivot len0", joint->m_pivots[0].len);
+
+	v = joint->m_pivots[1].dir;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("pivot dir1", text.c_str());
+	j.put("pivot len1", joint->m_pivots[1].len);
+
+	switch (joint->m_type)
+	{
+	case phys::eJointType::Fixed: break;
+	case phys::eJointType::Spherical:
+	{
+		j.put<bool>("cone limit", joint->IsConeLimit());
+		physx::PxJointLimitCone coneLimit = joint->GetConeLimit();
+		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
+		j.put<string>("cone limit config", text.c_str());
+	}
+	break;
+	case phys::eJointType::Revolute:
+	{
+		j.put<bool>("drive", joint->IsDrive());
+		j.put("drive velocity", joint->m_maxDriveVelocity);
+
+		j.put<bool>("cycle", joint->m_isCycleDrive);
+		j.put("cycle period", joint->m_cyclePeriod);
+		j.put("cycle accel", joint->m_cycleDriveAccel);
+
+		j.put<bool>("cone limit", joint->IsConeLimit());
+		physx::PxJointLimitCone coneLimit = joint->GetConeLimit();
+		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
+		j.put<string>("cone limit config", text.c_str());
+
+		j.put<bool>("angular limit", joint->IsAngularLimit());
+		physx::PxJointAngularLimitPair angularLimit = joint->GetAngularLimit();
+		text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
+		j.put<string>("angular limit config", text.c_str());
+	}
+	break;
+
+	case phys::eJointType::Prismatic:
+	{
+		j.put<bool>("linear limit", joint->IsLinearLimit());
+		physx::PxJointLinearLimitPair linearLimit = joint->GetLinearLimit();
+		text.Format("%f %f %f", linearLimit.lower, linearLimit.upper
+			, linearLimit.stiffness);
+		j.put<string>("linear limit config 1", text.c_str());
+		text.Format("%f %f %f", linearLimit.damping, linearLimit.contactDistance
+			, linearLimit.bounceThreshold);
+		j.put<string>("linear limit config 2", text.c_str());
+	}
+	break;
+
+	case phys::eJointType::Distance:
+	{
+		j.put<bool>("distance limit", joint->IsLinearLimit());
+		const Vector2 dist = joint->GetDistanceLimit();
+		j.put<float>("min distance", dist.x);
+		j.put<float>("max distance", dist.y);
+	}
+	break;
+
+	case phys::eJointType::D6:
+		break;
+	}
+
+	parent.add_child("joint", j);
+
+	return true;
 }

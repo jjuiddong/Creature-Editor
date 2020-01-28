@@ -25,7 +25,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 	static ImGuiTextFilter filter;
 	ImGui::Text("Search");
 	ImGui::SameLine();
-	filter.Draw("##Search");
+	filter.Draw("##Search", 200);
 
 	ImGui::SameLine();
 
@@ -67,8 +67,20 @@ void cResourceView::OnRender(const float deltaSeconds)
 							, &syncIds);
 
 						// moving actor position
+						if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]))
+						{
+							g_global->UpdateAllConnectionActorTransform(sync->actor
+								, Transform(g_global->m_spawnTransform.pos));
 
+							// selection
+							g_global->m_state = eEditState::Normal;
+							g_global->m_gizmo.SetControlNode(nullptr);
+							g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+							g_global->m_selJoint = nullptr;
+							g_global->ClearSelection();
 
+							g_global->SetAllConnectionActorSelect(sync->actor);
+						}
 
 						// unlock actor
 						if (!g_global->m_isSpawnLock && !syncIds.empty())

@@ -14,6 +14,7 @@ c3DView::c3DView(const string &name)
 	, m_groundPlane(nullptr)
 	, m_showSaveDialog(false)
 	, m_popupMenuState(0)
+	, m_popupMenuType(0)
 {
 }
 
@@ -121,14 +122,17 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	}
 
 	// Render Outline select object
-	if (!g_global->m_selects.empty())
+	if (!g_global->m_selects.empty() || !g_global->m_highLights.empty())
 	{
 		m_depthBuff.Begin(renderer);
 		RenderSelectModel(renderer, true, XMIdentity);
 		m_depthBuff.End(renderer);
 	}
 
-	const bool isShowGizmo = (g_global->m_selects.size() >= 1);
+	const bool isShowGizmo = (g_global->m_selects.size() >= 1)
+		&& !::GetAsyncKeyState(VK_SHIFT)
+		&& !::GetAsyncKeyState(VK_CONTROL)
+		;
 
 	bool isGizmoEdit = false;
 	if (m_renderTarget.Begin(renderer))
@@ -154,6 +158,24 @@ void c3DView::OnPreRender(const float deltaSeconds)
 
 		if (isShowGizmo)
 			isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
+
+		// render spawn position
+		{
+			Vector3 spawnPos = g_global->m_spawnTransform.pos;
+			spawnPos.y = 0.f;
+
+			renderer.m_dbgCube.SetColor(cColor::GREEN);
+			renderer.m_dbgCube.SetCube(Transform(spawnPos, Vector3::Ones*0.2f));
+			renderer.m_dbgCube.Render(renderer);
+		}
+
+		// render reserve spawn position (to show popupmenu selection)
+		if ((m_popupMenuState == 2) && (m_popupMenuType == 1))
+		{
+			renderer.m_dbgCube.SetColor(cColor::BLUE);
+			renderer.m_dbgCube.SetCube(Transform(m_tempSpawnPos, Vector3(0.05f,5.f,0.05f)));
+			renderer.m_dbgCube.Render(renderer);
+		}
 
 		renderer.RenderAxis2();
 	}
@@ -230,7 +252,7 @@ void c3DView::RenderEtc(graphic::cRenderer &renderer)
 void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 	, const XMMATRIX &tm)
 {
-	if (g_global->m_selects.empty() && g_global->m_highLight.empty())
+	if (g_global->m_selects.empty() && g_global->m_highLights.empty())
 		return;
 
 	// render function object
@@ -262,7 +284,7 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 			render(sync);
 	}
 	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(0.f, 1.f, 0.f, 1).GetVectorXM();
-	for (auto syncId : g_global->m_highLight)
+	for (auto syncId : g_global->m_highLights)
 	{
 		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
 			render(sync);
@@ -349,7 +371,8 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 			case eGizmoEditAxis::Z: scale = sync->node->m_transform.scale.z; break;
 			}
 
-			((cSphere*)sync->node)->SetRadius(scale);
+			((cSphere*)sync->node)->SetRadius(scale); // update radius transform
+			g_global->m_gizmo.UpdateTargetTransform(sync->node->m_transform); // update gizmo
 			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(scale, 1, 1));
 		}
 		break;
@@ -366,7 +389,8 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 
 			const float halfHeight = scale.x - radius;
 
-			((cCapsule*)sync->node)->SetDimension(radius, halfHeight);
+			((cCapsule*)sync->node)->SetDimension(radius, halfHeight); // update capsule transform
+			g_global->m_gizmo.UpdateTargetTransform(sync->node->m_transform); // update gizmo
 			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(halfHeight, radius, radius));
 		}
 		break;
@@ -465,6 +489,14 @@ void c3DView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("reflection", &m_showReflection);
 		ImGui::SameLine();
 		ImGui::Checkbox("shadow", &m_showShadow);
+		if (m_isOrbitMove)
+		{
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
+			ImGui::TextUnformatted("Oribit");
+			ImGui::PopStyleColor();
+		}
+
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -478,27 +510,44 @@ void c3DView::RenderPopupMenu()
 {
 	if (m_popupMenuState == 1)
 	{
-		ImGui::OpenPopup("PopupMenu");
+		switch (m_popupMenuType)
+		{
+		case 0: ImGui::OpenPopup("Actor PopupMenu"); break;
+		case 1: ImGui::OpenPopup("Spawn PopupMenu"); break;
+		default: assert(0); break;
+		}
 		m_popupMenuState = 2;
 	}
 
-	if (ImGui::BeginPopup("PopupMenu"))
+	if (ImGui::BeginPopup("Actor PopupMenu"))
 	{
+		if (g_global->m_selects.empty())
+		{
+			ImGui::EndPopup();
+			return;
+		}
+
 		bool isLockMenu = false;
 		bool isUnlockMenu = false;
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId);
-		if (sync && sync->actor)
-		{	
-			if (sync->actor->IsKinematic())
-			{
-				isLockMenu = false;
-				isUnlockMenu = true;
-			}
-			else
-			{
-				isLockMenu = true;
-				isUnlockMenu = false;
-			}
+
+		// check menu enable
+		int cntKinematic[2] = { 0, 0 }; // kinematic, unkinematic
+		for (auto id : g_global->m_selects)
+			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+				if (sync && sync->actor)
+					cntKinematic[sync->actor->IsKinematic()]++;
+
+		if (cntKinematic[0] > 0)
+			isLockMenu = true;
+		if (cntKinematic[1] > 0)
+			isUnlockMenu = true;
+
+		phys::sSyncInfo *sync = g_global->FindSyncInfo(*g_global->m_selects.begin());
+		phys::cRigidActor *actor = (sync && sync->actor) ? sync->actor : nullptr;
+		if (!actor)
+		{
+			ImGui::EndPopup();
+			return;
 		}
 
 		if (ImGui::MenuItem("Save Creature"))
@@ -506,24 +555,42 @@ void c3DView::RenderPopupMenu()
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
 		}
+		if (ImGui::MenuItem("Select All"))
+		{
+			g_global->SetAllConnectionActorSelect(actor);
+		}
 		if (ImGui::MenuItem("Lock", nullptr, false, isLockMenu))
 		{
-			sync->actor->SetKinematic(true);
+			for (auto id : g_global->m_selects)
+				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+					if (sync && sync->actor)
+						sync->actor->SetKinematic(true);
 		}
 		if (ImGui::MenuItem("Lock All", nullptr, false, isLockMenu))
 		{
 			// all connect actor lock
-			g_global->SetAllConnectionActorKinematic(sync->actor, true);
+			g_global->SetAllConnectionActorKinematic(actor, true);
 		}
 		if (ImGui::MenuItem("Unlock", nullptr, false, isUnlockMenu))
 		{
-			sync->actor->SetKinematic(false);
-			sync->actor->WakeUp();
+			for (auto id : g_global->m_selects)
+				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+					if (sync && sync->actor)
+						sync->actor->SetKinematic(false);
 		}
 		if (ImGui::MenuItem("Unlock All", nullptr, false, isUnlockMenu))
 		{
 			// all connect actor unlock
-			g_global->SetAllConnectionActorKinematic(sync->actor, false);
+			g_global->UpdateAllConnectionActorDimension(actor, false);
+		}
+		ImGui::EndPopup();
+	}
+	else if (ImGui::BeginPopup("Spawn PopupMenu"))
+	{
+		if (ImGui::MenuItem("Locate SpawnPos"))
+		{
+			g_global->m_spawnTransform.pos.x = m_tempSpawnPos.x;
+			g_global->m_spawnTransform.pos.z = m_tempSpawnPos.z;
 		}
 		ImGui::EndPopup();
 	}
@@ -652,6 +719,7 @@ bool c3DView::PickingProcess(const POINT &mousePos)
 	if ((eEditState::Pivot0 == g_global->m_state)
 		|| (eEditState::Pivot1 == g_global->m_state)
 		|| (eEditState::Revolute == g_global->m_state)
+		|| (eEditState::SpawnLocation == g_global->m_state)
 		|| g_global->m_gizmo.IsKeepEditMode()
 		)
 		return false;
@@ -690,39 +758,23 @@ bool c3DView::PickingProcess(const POINT &mousePos)
 		g_global->ClearSelection();
 		g_global->SelectObject(syncId);
 		
-		g_global->m_highLight.clear();
+		g_global->m_highLights.clear();
 		if (phys::sSyncInfo *p = physSync->FindSyncInfo(sync->joint->m_actor0))
-			g_global->m_highLight.push_back(p->id);
+			g_global->m_highLights.insert(p->id);
 		if (phys::sSyncInfo *p = physSync->FindSyncInfo(sync->joint->m_actor1))
-			g_global->m_highLight.push_back(p->id);
+			g_global->m_highLights.insert(p->id);
 
 		g_global->m_state = eEditState::Revolute;
 		g_global->m_gizmo.SetControlNode(sync->node);
 		g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 	}
 
-	if (g_global->m_selects.size() > 1) // multi selection?
-	{
-		// update multi selection transform
-		Vector3 center;
-		for (auto &id : g_global->m_selects)
-		{
-			phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
-			if (sync)
-				center += sync->node->m_transform.pos;
-		}
-		center /= (float)g_global->m_selects.size();
-		center.y += 0.5f;
-		g_global->m_multiSelPos = center;
-		g_global->m_multiSelRot = Quaternion();
-		g_global->m_multiSel.m_transform.rot = Quaternion();
-		g_global->m_multiSel.m_transform.pos = center;
-		g_global->m_gizmo.SetControlNode(&g_global->m_multiSel);
-	}
-
 	if (!sync) // no selection?
 	{
-		if (!g_global->m_gizmo.IsKeepEditMode())
+		if (!g_global->m_gizmo.IsKeepEditMode()
+			&& !::GetAsyncKeyState(VK_SHIFT) 
+			&& !::GetAsyncKeyState(VK_CONTROL)
+			)
 		{
 			g_global->m_gizmo.SetControlNode(nullptr);
 			g_global->ClearSelection();
@@ -752,12 +804,14 @@ int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 	phys::cPhysicsSync *sync = g_global->m_physSync;
 	for (auto &p : sync->m_syncs)
 	{
-		if (p->name == "plane")
-			continue;
+		if ((p->name == "plane") || (p->name == "wall"))
+			continue; // ground or wall?
+
+		const bool isSpherePicking = (p->actor && (p->actor->m_shape == phys::eShapeType::Sphere));
 
 		graphic::cNode *node = p->node;
 		float distance = FLT_MAX;
-		if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+		if (node->Picking(ray, eNodeType::MODEL, isSpherePicking, &distance))
 		{
 			if (distance < minDist)
 			{
@@ -768,40 +822,6 @@ int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 			}
 		}
 	}
-
-	// picking joint
-	//if ((pickType == 1) || (pickType == 2))
-	//{
-	//	for (auto &p : g_global->m_jointRenderers)
-	//	{
-	//		graphic::cNode *node = p;
-	//		float distance = FLT_MAX;
-	//		if (node->Picking(ray, eNodeType::MODEL, false, &distance))
-	//		{
-	//			if (distance < minDist)
-	//			{
-	//				minId = p->m_id;
-	//				minDist = distance;
-	//				if (outDistance)
-	//					*outDistance = distance;
-	//			}
-	//		}
-	//	}
-
-	//	// check ui joint renderer
-	//	float distance = FLT_MAX;
-	//	if (g_global->m_showUIJoint
-	//		&& g_global->m_uiJointRenderer.Picking(ray, eNodeType::MODEL, false, &distance))
-	//	{
-	//		if (distance < minDist)
-	//		{
-	//			minId = g_global->m_uiJointRenderer.m_id;
-	//			minDist = distance;
-	//			if (outDistance)
-	//				*outDistance = distance;
-	//		}
-	//	}
-	//}
 
 	return minId;
 }
@@ -822,7 +842,7 @@ void c3DView::UpdateLookAt()
 	}
 	else
 	{ // horizontal viewing
-		const Vector3 lookAt = GetMainCamera().m_eyePos + GetMainCamera().GetDirection() * 50.f;
+		const Vector3 lookAt = GetMainCamera().m_eyePos + GetMainCamera().GetDirection() * 5.f;
 		GetMainCamera().m_lookAt = lookAt;
 	}
 
@@ -843,7 +863,7 @@ void c3DView::OnWheelMove(const float delta, const POINT mousePt)
 	const Plane groundPlane(Vector3(0, 1, 0), 0);
 	const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
 	Vector3 lookAt = groundPlane.Pick(ray.orig, ray.dir);
-	len = (ray.orig - lookAt).Length();
+	len = min(50.f, (ray.orig - lookAt).Length());
 
 	const int lv = 10;
 	const float zoomLen = min(len * 0.1f, (float)(2 << (16 - lv)));
@@ -857,8 +877,6 @@ void c3DView::OnMouseMove(const POINT mousePt)
 {
 	const POINT delta = { mousePt.x - m_mousePos.x, mousePt.y - m_mousePos.y };
 	m_mousePos = mousePt;
-	if (ImGui::IsMouseHoveringRect(ImVec2(-1000, -1000), ImVec2(1000, 200), false))
-		return;
 	if (g_global->m_gizmo.IsKeepEditMode())
 		return;
 	if (m_showSaveDialog || (m_popupMenuState > 0))
@@ -899,9 +917,23 @@ void c3DView::OnMouseMove(const POINT mousePt)
 	}
 	else if (m_mouseDown[1])
 	{
-		const float scale = 0.005f;
-		m_camera.Yaw2(delta.x * scale, Vector3(0, 1, 0));
-		m_camera.Pitch2(delta.y * scale, Vector3(0, 1, 0));
+		const float scale = 0.003f;
+		if (m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 50.f)
+		{
+			// cancel orbit moving
+			m_isOrbitMove = false;
+		}
+
+		if (m_isOrbitMove)
+		{
+			m_camera.Yaw3(delta.x * scale, m_orbitTarget);
+			m_camera.Pitch3(delta.y * scale, m_orbitTarget);
+		}
+		else
+		{
+			m_camera.Yaw2(delta.x * scale, Vector3(0, 1, 0));
+			m_camera.Pitch2(delta.y * scale, Vector3(0, 1, 0));
+		}
 	}
 	else if (m_mouseDown[2])
 	{
@@ -915,9 +947,6 @@ void c3DView::OnMouseMove(const POINT mousePt)
 // Handling Mouse Button Down Event
 void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 {
-	if (m_showSaveDialog || (m_popupMenuState > 0))
-		return;
-
 	m_mousePos = mousePt;
 	m_mouseClickPos = mousePt;
 	UpdateLookAt();
@@ -926,7 +955,10 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 	const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
 	const Plane groundPlane(Vector3(0, 1, 0), 0);
 	const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
-	m_rotateLen = (target - ray.orig).Length();
+	m_rotateLen = ray.orig.y * 0.9f;// (target - ray.orig).Length();
+
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
 
 	switch (button)
 	{
@@ -974,12 +1006,34 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 				}//~sync
 			}//~selects
 		} //~joint pivot setting mode
+
+		if (eEditState::SpawnLocation == g_global->m_state)
+		{
+			g_global->m_spawnTransform.pos = target;
+			g_global->m_state = eEditState::Normal;
+		}
+
 	}//~case
 	break;
 
 	case sf::Mouse::Right:
+	{
 		m_mouseDown[1] = true;
-		break;
+
+		// orbit moving
+		// select target object center orbit moving
+		const int syncId = PickingRigidActor(0, mousePt);
+		phys::sSyncInfo *sync = g_global->FindSyncInfo(syncId);
+		if (sync && sync->node)
+		{
+			m_isOrbitMove = true;
+			m_orbitTarget = sync->node->m_transform.pos;
+			g_global->m_highLights.clear();
+			g_global->m_highLights.insert(syncId);
+		}
+	}
+	break;
+
 	case sf::Mouse::Middle:
 		m_mouseDown[2] = true;
 		break;
@@ -1000,9 +1054,10 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	{
 	case sf::Mouse::Left:
 	{
-		m_mouseDown[0] = false;
+		if (m_mouseDown[0]) // mouse down -> up event?
+			PickingProcess(mousePt);
 
-		PickingProcess(mousePt);
+		m_mouseDown[0] = false;
 	}
 	break;
 
@@ -1014,26 +1069,41 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 		const int dx = m_mouseClickPos.x - mousePt.x;
 		const int dy = m_mouseClickPos.y - mousePt.y;
 		if (sqrt(dx*dx + dy * dy) > 10)
-			break; // move long distance, not popup menu
+			break; // move long distance, do not show popup menu
 
 		// check show menu to joint connection
 		if ((eEditState::Pivot0 == g_global->m_state)
 			|| (eEditState::Pivot1 == g_global->m_state)
-			|| (eEditState::Revolute == g_global->m_state))
+			|| (eEditState::Revolute == g_global->m_state)
+			|| (eEditState::SpawnLocation == g_global->m_state))
 			break;
 
 		const int syncId = PickingRigidActor(0, mousePt);
 		if (syncId >= 0)
 		{
 			m_popupMenuState = 1; // open popup menu
+			m_popupMenuType = 0; // actor menu
 			m_saveFileSyncId = syncId;
-			g_global->ClearSelection();
+			//g_global->ClearSelection();
 			g_global->SelectObject(syncId);
 			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncId))
 			{
-				g_global->m_gizmo.SetControlNode(sync->node);
+				//g_global->m_gizmo.SetControlNode(sync->node);
 				g_global->m_gizmo.m_type = eGizmoEditType::None;
 			}
+		}
+		else
+		{
+			// spawn pos popupmenu
+			// picking ground?
+			const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+			const Plane groundPlane(Vector3(0, 1, 0), 0);
+			const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
+			//m_rotateLen = (target - ray.orig).Length();
+
+			m_popupMenuState = 1; // open popup menu
+			m_popupMenuType = 1; // spawn selection menu
+			m_tempSpawnPos = target;
 		}
 	}
 	break;
@@ -1051,6 +1121,10 @@ void c3DView::OnEventProc(const sf::Event &evt)
 	switch (evt.type)
 	{
 	case sf::Event::KeyPressed:
+		if ((m_owner->GetFocus() != this)
+			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resourceView))
+			break;
+
 		switch (evt.key.cmd)
 		{
 		case sf::Keyboard::Return:
@@ -1066,6 +1140,8 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::F5: g_global->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
+			m_isOrbitMove = false;
+
 			if (m_popupMenuState > 0)
 			{
 				m_popupMenuState = 0;
@@ -1092,24 +1168,56 @@ void c3DView::OnEventProc(const sf::Event &evt)
 			{
 				if (!g_global->m_selects.empty())
 				{
-					phys::sSyncInfo *sync = g_global->FindSyncInfo(g_global->m_selects[0]);
+					phys::sSyncInfo *sync = g_global->FindSyncInfo(*g_global->m_selects.begin());
 					if (sync)
 					{
-						//g_global->UpdateAllConnectionActorDimension(sync->actor, true);
-						//evc::WritePhenoTypeFileFrom_RigidActor("tmp.pnt", sync->actor);
+						g_global->UpdateAllConnectionActorDimension(sync->actor, true);
+
+						vector<phys::cRigidActor*> actors;
+						for (auto &id : g_global->m_selects)
+							if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+								if (sync->actor)
+									actors.push_back(sync->actor);
+						evc::WritePhenoTypeFileFrom_RigidActor("tmp.pnt", actors);
 					}
-				}			
+				}
 			}
 		}
 		break;
 
-		case sf::Keyboard::P:
+		case sf::Keyboard::V:
 		{
 			// paste
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
+				vector<int> syncIds;
+				evc::ReadPhenoTypeFile(g_global->GetRenderer(), "tmp.pnt", &syncIds);
+				if (syncIds.empty())
+					break;
 
-			}
+				// moving actor position to camera center
+				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]))
+				{
+					const Ray ray = m_camera.GetRay();
+					const Vector3 spawnPos = ray.orig + ray.dir * 8.f - sync->node->m_transform.pos;
+
+					for (auto &id : g_global->m_selects)
+					{
+						phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
+						if (!sync && !sync->node)
+							continue;
+
+						sync->node->m_transform.pos += spawnPos;
+
+						if (sync->actor)
+						{
+							sync->actor->SetGlobalPose( physx::PxTransform(
+									*(physx::PxVec3*)&sync->node->m_transform.pos
+									, *(physx::PxQuat*)&sync->node->m_transform.rot));
+						}
+					}
+				}//~if FindSyncInfo()
+			}//~VK_CONTROL
 		}
 		break;
 

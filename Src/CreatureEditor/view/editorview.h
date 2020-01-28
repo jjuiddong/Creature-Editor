@@ -33,7 +33,6 @@ protected:
 
 
 public:
-	Transform m_transform; // spawn actor transform
 	float m_radius;
 	float m_halfHeight;
 	float m_density;

@@ -1,0 +1,22 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10431",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "1.091932 2.039385 0.909707",
+                "dim": "0.782000 0.085000 0.085000",
+                "rot": "0.000000 0.000000 -0.387058 0.922057",
+                "mass": "2.09439516",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": ""
+    }
+}

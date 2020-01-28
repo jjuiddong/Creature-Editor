@@ -5,7 +5,7 @@
 #pragma once
 
 
-enum class eEditState {Normal, Pivot0, Pivot1, Revolute};
+enum class eEditState {Normal, Pivot0, Pivot1, Revolute, SpawnLocation};
 
 class c3DView;
 class cEditorView;
@@ -33,7 +33,9 @@ public:
 	phys::sSyncInfo* FindSyncInfo(const int syncId);
 	bool UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic);
 	bool SetAllConnectionActorKinematic(phys::cRigidActor *actor, const bool isKinematic);
+	bool SetAllConnectionActorSelect(phys::cRigidActor *actor);
 	bool UpdateAllConnectionActorDimension(phys::cRigidActor *actor, const bool isKinematic);
+	bool UpdateAllConnectionActorTransform(phys::cRigidActor *actor, const Transform &transform);	
 	bool RefreshResourceView();
 
 	graphic::cRenderer& GetRenderer();
@@ -54,11 +56,12 @@ public:
 
 	// spawn control
 	bool m_isSpawnLock; // default: true
+	Transform m_spawnTransform;
 
 	// gizmo & selection
 	int m_groundGridPlaneId; // ground plane sync id
 	vector<int> m_selects; // select syncId array
-	vector<int> m_highLight; // highlight syncId array
+	set<int> m_highLights; // hilight syncId array
 	graphic::cNode m_multiSel; // multi selection moving transform
 	Quaternion m_multiSelRot; // multi selection rotation offset (prev rotation)
 	Vector3 m_multiSelPos; // multi selection position offset (prev position)

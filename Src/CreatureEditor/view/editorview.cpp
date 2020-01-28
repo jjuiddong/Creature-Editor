@@ -6,7 +6,6 @@ using namespace graphic;
 
 cEditorView::cEditorView(const StrId &name)
 	: framework::cDockWindow(name)
-	, m_transform(Vector3(0, 3, 0), Vector3(0.5f,0.5f,0.5f))
 	, m_radius(0.5f)
 	, m_halfHeight(1.f)
 	, m_density(1.f)
@@ -76,14 +75,17 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::TextUnformatted("Lock ( Kinematic )  ");
 		ImGui::SameLine();
 		ImGui::Checkbox("##kinematic", &g_global->m_isSpawnLock);
+		ImGui::SameLine(235);
+		if (ImGui::Button("SpawnPos"))
+			g_global->m_state = eEditState::SpawnLocation;
 
 		ImGui::TextUnformatted("Pos  ");
 		ImGui::SameLine();
-		ImGui::DragFloat3("##position", (float*)&m_transform.pos, 0.001f);
+		ImGui::DragFloat3("##position", (float*)&g_global->m_spawnTransform.pos, 0.001f);
 
 		ImGui::TextUnformatted("Dim ");
 		ImGui::SameLine();
-		ImGui::DragFloat3("##scale", (float*)&m_transform.scale, 0.001f, 0.01f, 1000.f);
+		ImGui::DragFloat3("##scale", (float*)&g_global->m_spawnTransform.scale, 0.001f, 0.01f, 1000.f);
 
 		ImGui::TextUnformatted("Rot  ");
 		ImGui::SameLine();
@@ -110,19 +112,19 @@ void cEditorView::RenderSpawnTransform()
 		int syncId = -1;
 		if (ImGui::Button("Box"))
 		{
-			syncId = physSync->SpawnBox(renderer, m_transform, m_density);
+			syncId = physSync->SpawnBox(renderer, g_global->m_spawnTransform, m_density);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Sphere"))
 		{
-			syncId = physSync->SpawnSphere(renderer, m_transform, m_radius, m_density);
+			syncId = physSync->SpawnSphere(renderer, g_global->m_spawnTransform, m_radius, m_density);
 		}
 
 		ImGui::SameLine();
 		if (ImGui::Button("Capsule"))
 		{
-			Transform tfm(m_transform.pos, m_transform.rot);
+			Transform tfm(g_global->m_spawnTransform.pos, g_global->m_spawnTransform.rot);
 			syncId = physSync->SpawnCapsule(renderer, tfm, m_radius, m_halfHeight, m_density);
 		}
 
@@ -653,23 +655,21 @@ void cEditorView::RenderRevoluteJoint()
 			, sync1->actor, sync1->node->m_transform, pivot1.pos
 			, axis[axisIdx]);
 
+		joint->EnableAngularLimit(isLimit);
+
 		if (isLimit)
-		{
-			joint->EnableAngularLimit(isLimit);
 			joint->SetAngularLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
-		}
+		else
+			joint->SetAngularLimit(PxJointAngularLimitPair(FLT_MIN, FLT_MAX));
+			//joint->SetAngularLimit(PxJointAngularLimitPair(-PxPi*2.f, PxPi*2.f, 0.01f));
 
+		joint->EnableDrive(isDrive);
 		if (isDrive)
-		{
-			joint->EnableDrive(isDrive);
 			joint->SetDriveVelocity(velocity);
-		}
 
+		joint->EnableCycleDrive(isDrive && isCycleDrive);
 		if (isDrive && isCycleDrive)
-		{
-			joint->EnableCycleDrive(isCycleDrive);
 			joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
-		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
 		jointRenderer->Create(joint);
@@ -683,11 +683,233 @@ void cEditorView::RenderRevoluteJoint()
 
 void cEditorView::RenderPrismaticJoint()
 {
+	using namespace physx;
+
+	auto it = g_global->m_selects.begin();
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
+		return;
+
+	static Vector2 limit1(1.f, 2.f); // lower, upper
+	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
+	static Vector2 limit3(3.f, 0.0f); // length
+	static bool isLimit = false;
+	static bool isSpring = true;
+
+	ImGui::Text("Linear Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::DragFloat("Lower Limit", &limit1.x, 0.001f);
+	ImGui::DragFloat("Upper Limit", &limit1.y, 0.001f);
+	ImGui::Text("Spring");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Spring", &isSpring);
+	ImGui::DragFloat("Stiffness", &limit2.x, 0.001f);
+	ImGui::DragFloat("Damping", &limit2.y, 0.001f);
+	ImGui::DragFloat("Length (linear)", &limit3.x, 0.001f);
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	// update ui joint (once process)
+	if (!g_global->m_showUIJoint || editAxis)
+	{
+		// already register joint?
+		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
+			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
+
+		// change selection?
+		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
+			&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
+			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
+				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
+
+		g_global->m_showUIJoint = true;
+
+		if (!isPrevSelection || editAxis) // new selection?
+		{
+			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
+			g_global->m_uiJoint.m_actor0 = sync0->actor;
+			g_global->m_uiJoint.m_actor1 = sync1->actor;
+			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
+			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
+			g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
+			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[0].len = 0;
+			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[1].len = 0;
+
+			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+			g_global->m_uiJointRenderer.m_sync0 = sync0;
+			g_global->m_uiJointRenderer.m_sync1 = sync1;
+			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
+				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
+			g_global->m_uiJointRenderer.SetRevoluteAxis(axis[axisIdx], jointPos);
+		}
+	}
+	//~
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Prismatic Joint"))
+	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreatePrismatic(g_global->m_physics
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos
+			, axis[axisIdx]);
+
+		if (isLimit)
+		{
+			joint->EnableLinearLimit(isLimit);
+			if (isSpring)
+			{
+				joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
+					, physx::PxSpring(limit2.x, limit2.y)));
+			}
+			else
+			{
+				PxTolerancesScale scale;
+				scale.length = limit3.x;
+				joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
+			}
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->m_state = eEditState::Normal;
+	}
+	ImGui::PopStyleColor(3);
 }
 
 
 void cEditorView::RenderDistanceJoint()
 {
+	using namespace physx;
+
+	auto it = g_global->m_selects.begin();
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
+		return;
+
+	static Vector2 limit(0.f, 2.f);
+	static bool isLimit = false;
+
+	ImGui::Text("Distance Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::DragFloat("min distance", &limit.x, 0.001f);
+	ImGui::DragFloat("max distance", &limit.y, 0.001f);
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	// update ui joint (once process)
+	if (!g_global->m_showUIJoint) 
+	{
+		// already register joint?
+		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
+			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
+
+		// change selection?
+		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
+			&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
+			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
+				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
+
+		g_global->m_showUIJoint = true;
+
+		if (!isPrevSelection) // new selection?
+		{
+			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
+			g_global->m_uiJoint.m_actor0 = sync0->actor;
+			g_global->m_uiJoint.m_actor1 = sync1->actor;
+			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
+			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
+			g_global->m_uiJoint.m_revoluteAxis = Vector3(1, 0, 0);
+			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[0].len = 0;
+			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[1].len = 0;
+
+			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+			g_global->m_uiJointRenderer.m_sync0 = sync0;
+			g_global->m_uiJointRenderer.m_sync1 = sync1;
+			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
+				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
+			g_global->m_uiJointRenderer.SetRevoluteAxis(Vector3(1,0,0), jointPos);
+		}
+	}
+	//~
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Distance Joint"))
+	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreateDistance(g_global->m_physics
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos);
+
+		if (isLimit)
+		{
+			joint->EnableDistanceLimit(isLimit);
+			joint->SetDistanceLimit(limit.x, limit.y);
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->m_state = eEditState::Normal;
+	}
+	ImGui::PopStyleColor(3);
+
 }
 
 

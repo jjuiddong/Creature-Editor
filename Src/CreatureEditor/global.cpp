@@ -7,6 +7,7 @@
 
 cGlobal::cGlobal()
 	: m_3dView(nullptr)
+	, m_spawnTransform(Vector3(0, 3, 0), Vector3(0.5f, 0.5f, 0.5f))
 	, m_editorView(nullptr)
 	, m_physSync(nullptr)
 	, m_state(eEditState::Normal)
@@ -36,10 +37,14 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 	// wall
 	const float wall = 100.f;
 	const float h = 2.5f;
-	m_physSync->SpawnBox(renderer, Transform(Vector3(wall,h,0), Vector3(0.5f,h, wall)), 1.f, true);
-	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, wall), Vector3(wall, h, 0.5f)), 1.f, true);
-	m_physSync->SpawnBox(renderer, Transform(Vector3(-wall, h, 0), Vector3(0.5f, h, wall)), 1.f, true);
-	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, -wall), Vector3(wall, h, 0.5f)), 1.f, true);
+	m_physSync->SpawnBox(renderer, Transform(Vector3(wall,h,0), Vector3(0.5f,h, wall))
+		, 1.f, true, "wall");
+	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, wall), Vector3(wall, h, 0.5f))
+		, 1.f, true, "wall");
+	m_physSync->SpawnBox(renderer, Transform(Vector3(-wall, h, 0), Vector3(0.5f, h, wall))
+		, 1.f, true, "wall");
+	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, -wall), Vector3(wall, h, 0.5f))
+		, 1.f, true, "wall");
 	//~wall
 
 	m_gizmo.Create(renderer);
@@ -69,6 +74,26 @@ bool cGlobal::SelectObject(const int syncId
 		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), syncId))
 			m_selects.push_back(syncId);
 	}
+
+	// update multi selection transform
+	if (m_selects.size() > 1)
+	{
+		Vector3 center;
+		for (auto &id : m_selects)
+		{
+			phys::sSyncInfo *sync = FindSyncInfo(id);
+			if (sync)
+				center += sync->node->m_transform.pos;
+		}
+		center /= (float)m_selects.size();
+		center.y += 0.5f;
+		m_multiSelPos = center;
+		m_multiSelRot = Quaternion();
+		m_multiSel.m_transform.rot = Quaternion();
+		m_multiSel.m_transform.pos = center;
+		m_gizmo.SetControlNode(&m_multiSel);
+	}
+
 	return true;
 }
 
@@ -76,7 +101,7 @@ bool cGlobal::SelectObject(const int syncId
 bool cGlobal::ClearSelection()
 {
 	m_selects.clear();
-	m_highLight.clear();
+	m_highLights.clear();
 	return true;
 }
 
@@ -168,17 +193,17 @@ bool TraverseAllConnectionActor(phys::cRigidActor *actor, Fn fn)
 // update dimension information to cRigidActor
 bool cGlobal::UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic)
 {
-	phys::sSyncInfo *sync = g_global->m_physSync->FindSyncInfo(actor);
+	phys::sSyncInfo *sync = m_physSync->FindSyncInfo(actor);
 	if (sync)
 	{
 		// is change dimension?
 		// apply modify dimension
 		Vector3 dim;
-		if (g_global->GetModifyRigidActorTransform(sync->id, dim))
+		if (GetModifyRigidActorTransform(sync->id, dim))
 		{
 			// apply physics shape
-			actor->ChangeDimension(g_global->m_physics, dim);
-			g_global->RemoveModifyRigidActorTransform(sync->id);
+			actor->ChangeDimension(m_physics, dim);
+			RemoveModifyRigidActorTransform(sync->id);
 		}
 	}
 
@@ -208,6 +233,22 @@ bool cGlobal::SetAllConnectionActorKinematic(phys::cRigidActor *actor
 }
 
 
+// select all connection actor
+bool cGlobal::SetAllConnectionActorSelect(phys::cRigidActor *actor)
+{
+	ClearSelection();
+
+	TraverseAllConnectionActor(actor,
+		[&](phys::cRigidActor *a) {
+		phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a);
+		if (sync)
+			SelectObject(sync->id);
+		return true;
+	});
+	return true;
+}
+
+
 // update all connection actor dimension value
 // update rigidactor dimension
 // actor dimension delay update, before operation to actor object
@@ -219,7 +260,7 @@ bool cGlobal::UpdateAllConnectionActorDimension(phys::cRigidActor *actor
 		[&](phys::cRigidActor *a) {			
 			UpdateActorDimension(a, isKinematic);
 
-			phys::sSyncInfo *sync = g_global->m_physSync->FindSyncInfo(a);
+			phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a);
 			if (!sync)
 				return true;
 
@@ -230,6 +271,27 @@ bool cGlobal::UpdateAllConnectionActorDimension(phys::cRigidActor *actor
 					joint->m_actorLocal0 = sync->node->m_transform;
 				if (joint->m_actor1 == a)
 					joint->m_actorLocal1 = sync->node->m_transform;
+			}
+			return true;
+		}
+	);
+
+	return true;
+}
+
+
+// update all actor transform
+bool cGlobal::UpdateAllConnectionActorTransform(phys::cRigidActor *actor
+	, const Transform &transform)
+{
+	TraverseAllConnectionActor(actor,
+		[&](phys::cRigidActor *a) {
+			using namespace physx;
+			if (phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a))
+			{
+				sync->node->m_transform.pos += transform.pos;
+				a->SetGlobalPose(PxTransform(*(PxVec3*)&sync->node->m_transform.pos
+					, *(PxQuat*)&sync->node->m_transform.rot));
 			}
 			return true;
 		}

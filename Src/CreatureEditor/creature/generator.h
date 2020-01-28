@@ -18,6 +18,9 @@ namespace evc
 	bool WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		, phys::cRigidActor *actor);
 
+	bool WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
+		, vector<phys::cRigidActor*> actors);
+
 	cCreature* ReadPhenoTypeFile(graphic::cRenderer &renderer
 		, const StrPath &fileName
 		, OUT vector<int> *outSyncIds = nullptr);

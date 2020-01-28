@@ -1,0 +1,143 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10126",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "-1.351937 2.047152 -0.599897",
+                "dim": "0.845000 0.154000 0.154000",
+                "rot": "0.197440 -0.090583 0.407037 0.887208",
+                "mass": "2.09439516",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10129",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "1.041512 1.850456 1.415101",
+                "dim": "0.837000 0.155000 0.155000",
+                "rot": "-0.168022 -0.087506 -0.453546 0.870866",
+                "mass": "2.09439516",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10138",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "0.058817 3.000000 0.970829",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0.52359879",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10132",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.703000 0.703000 0.703000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0.52359879",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10141",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "1.261597 1.944826 -0.655180",
+                "dim": "0.804000 0.175000 0.175000",
+                "rot": "0.200419 0.103476 -0.446941 0.865662",
+                "mass": "2.09439516",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10135",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "-1.157327 1.900738 1.440671",
+                "dim": "0.928000 0.118000 0.118000",
+                "rot": "-0.159559 0.066325 0.378064 0.909513",
+                "mass": "2.09439516",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10132",
+                "shape id1": "10138",
+                "jointpos": "0.029408 3.000000 0.485415",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10138",
+                "shape id1": "10135",
+                "jointpos": "-0.549255 2.450369 1.205750",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10132",
+                "shape id1": "10141",
+                "jointpos": "0.630799 2.472413 -0.327590",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10132",
+                "shape id1": "10126",
+                "jointpos": "-0.675969 2.523576 -0.299948",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10138",
+                "shape id1": "10129",
+                "jointpos": "0.550165 2.425228 1.192965",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            }
+        }
+    }
+}

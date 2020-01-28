@@ -1,0 +1,50 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10115",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.108646 3.742956 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10118",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.036100 7.603689 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Distance",
+                "shape id0": "10118",
+                "shape id1": "10115",
+                "jointpos": "0.072373 5.673323 0.000000",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "1.000000 0.000000 0.000000",
+                "pivot len0": "0.0362730026",
+                "pivot dir1": "-1.000000 0.000000 0.000000",
+                "pivot len1": "0.0362730026",
+                "distance limit": "false",
+                "min distance": "0",
+                "max distance": "2"
+            }
+        }
+    }
+}

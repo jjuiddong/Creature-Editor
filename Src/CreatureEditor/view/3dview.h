@@ -60,7 +60,11 @@ public:
 	bool m_showShadow;
 	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show
-	int m_saveFileSyncId;
+	int m_popupMenuType; // 0:actor menu, 1:spawn selection menu
+	int m_saveFileSyncId; // save file id
+	bool m_isOrbitMove;
+	Vector3 m_orbitTarget;
+	Vector3 m_tempSpawnPos;
 
 	Vector3 m_pivotPos;
 
