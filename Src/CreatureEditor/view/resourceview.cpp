@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "resourceview.h"
+#include "3dview.h"
 
 using namespace graphic;
 
@@ -69,8 +70,13 @@ void cResourceView::OnRender(const float deltaSeconds)
 						// moving actor position
 						if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]))
 						{
+							const Ray ray = g_global->m_3dView->m_camera.GetRay();
+							Vector3 spawnPos = ray.orig + ray.dir * 10.f 
+								- sync->node->m_transform.pos;
+							spawnPos.y = 0;
+
 							g_global->UpdateAllConnectionActorTransform(sync->actor
-								, Transform(g_global->m_spawnTransform.pos));
+								, Transform(spawnPos));
 
 							// selection
 							g_global->m_state = eEditState::Normal;

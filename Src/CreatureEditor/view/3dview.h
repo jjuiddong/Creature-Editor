@@ -27,6 +27,7 @@ protected:
 	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 		, const XMMATRIX &tm);
 	void RenderPopupMenu();
+	void RenderTooltip();
 	void RenderSaveDialog();
 	void RenderReflectionMap(graphic::cRenderer &renderer);
 	void UpdateSelectModelTransform(const bool isGizmoEdit);

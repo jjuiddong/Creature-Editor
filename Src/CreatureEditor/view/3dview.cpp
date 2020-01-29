@@ -130,8 +130,8 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	}
 
 	const bool isShowGizmo = (g_global->m_selects.size() >= 1)
-		&& !::GetAsyncKeyState(VK_SHIFT)
-		&& !::GetAsyncKeyState(VK_CONTROL)
+		&& !((::GetFocus() == m_owner->getSystemHandle()) && ::GetAsyncKeyState(VK_SHIFT))
+		&& !((::GetFocus() == m_owner->getSystemHandle()) && ::GetAsyncKeyState(VK_CONTROL))
 		;
 
 	bool isGizmoEdit = false;
@@ -158,6 +158,14 @@ void c3DView::OnPreRender(const float deltaSeconds)
 
 		if (isShowGizmo)
 			isGizmoEdit = g_global->m_gizmo.Render(renderer, deltaSeconds, m_mousePos, m_mouseDown[0]);
+
+		if (isShowGizmo)
+		{
+			const Transform &tfm = g_global->m_gizmo.m_targetTransform;
+			renderer.m_dbgLine.m_isSolid = true;
+			renderer.m_dbgLine.SetLine(tfm.pos, Vector3(tfm.pos.x, 0, tfm.pos.z), 0.01f);
+			renderer.m_dbgLine.Render(renderer);
+		}
 
 		// render spawn position
 		{
@@ -502,6 +510,7 @@ void c3DView::OnRender(const float deltaSeconds)
 	ImGui::PopStyleColor();
 
 	RenderPopupMenu();
+	RenderTooltip();
 	RenderSaveDialog();
 }
 
@@ -576,12 +585,28 @@ void c3DView::RenderPopupMenu()
 			for (auto id : g_global->m_selects)
 				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
 					if (sync && sync->actor)
-						sync->actor->SetKinematic(false);
+						g_global->UpdateActorDimension(sync->actor, false);
 		}
 		if (ImGui::MenuItem("Unlock All", nullptr, false, isUnlockMenu))
 		{
 			// all connect actor unlock
 			g_global->UpdateAllConnectionActorDimension(actor, false);
+		}
+		
+		ImGui::Separator();
+
+		if (ImGui::MenuItem("Remove All Joint", nullptr, false, true))
+		{
+			// remove connection joint
+			set<phys::cJoint*> rms;
+			for (auto id : g_global->m_selects)
+				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+					if (sync && sync->actor)
+						for (auto &j : sync->actor->m_joints)
+							rms.insert(j);
+
+			for (auto *j : rms)
+				g_global->m_physSync->RemoveSyncInfo(j);
 		}
 		ImGui::EndPopup();
 	}
@@ -597,6 +622,34 @@ void c3DView::RenderPopupMenu()
 	else
 	{
 		m_popupMenuState = 0;
+	}
+}
+
+
+void c3DView::RenderTooltip()
+{
+	if (g_global->m_gizmo.IsKeepEditMode())
+	{
+		ImGui::SetNextWindowBgAlpha(0.7f);
+		ImGui::BeginTooltip();
+		const Transform &tm = g_global->m_gizmo.m_targetTransform;
+		switch (g_global->m_gizmo.m_type)
+		{
+		case eGizmoEditType::TRANSLATE:
+			ImGui::Text("x=%0.2f y=%0.2f z=%0.2f", tm.pos.x, tm.pos.y, tm.pos.z);
+			break;
+		case eGizmoEditType::SCALE:
+			ImGui::Text("x=%0.2f y=%0.2f z=%0.2f", tm.scale.x, tm.scale.y, tm.scale.z);
+			break;
+		case eGizmoEditType::ROTATE:
+		{
+			Vector3 rpy = tm.rot.Euler();
+			rpy = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
+			ImGui::Text("x=%0.2f y=%0.2f z=%0.2f", rpy.x, rpy.y, rpy.z);
+		}
+		break;
+		}
+		ImGui::EndTooltip();
 	}
 }
 
@@ -1127,10 +1180,11 @@ void c3DView::OnEventProc(const sf::Event &evt)
 
 		switch (evt.key.cmd)
 		{
-		case sf::Keyboard::Return:
-			break;
-
-		case sf::Keyboard::Space:
+		case sf::Keyboard::Return: break;
+		case sf::Keyboard::Space: break;
+		case sf::Keyboard::Home: 
+			if (::GetAsyncKeyState(VK_SHIFT))
+				m_camera.SetCamera(Vector3(30,20,-30), Vector3(0,0,0), Vector3(0, 1, 0));
 			break;
 
 		case sf::Keyboard::R: g_global->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
@@ -1199,22 +1253,25 @@ void c3DView::OnEventProc(const sf::Event &evt)
 				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]))
 				{
 					const Ray ray = m_camera.GetRay();
-					const Vector3 spawnPos = ray.orig + ray.dir * 8.f - sync->node->m_transform.pos;
+					Vector3 spawnPos = ray.orig + ray.dir * 10.f - sync->node->m_transform.pos;
+					spawnPos.y = 0;
 
-					for (auto &id : g_global->m_selects)
+					g_global->ClearSelection();
+
+					for (auto &id : syncIds)
 					{
 						phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
 						if (!sync && !sync->node)
 							continue;
-
 						sync->node->m_transform.pos += spawnPos;
-
 						if (sync->actor)
 						{
 							sync->actor->SetGlobalPose( physx::PxTransform(
 									*(physx::PxVec3*)&sync->node->m_transform.pos
 									, *(physx::PxQuat*)&sync->node->m_transform.rot));
 						}
+
+						g_global->SelectObject(id);
 					}
 				}//~if FindSyncInfo()
 			}//~VK_CONTROL

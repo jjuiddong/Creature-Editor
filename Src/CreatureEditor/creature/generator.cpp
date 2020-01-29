@@ -334,7 +334,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						physx::PxJointLimitCone coneLimit(tconf0.x, tconf0.y, tconf0.z);
 
 						phys::cJoint *joint = new phys::cJoint();
-						joint->CreateSpherical(g_global->m_physics
+						joint->CreateSpherical(*g_evc->m_phys
 							, sync0->actor, sync0->node->m_transform
 							, sync1->actor, sync1->node->m_transform);
 
@@ -364,7 +364,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						physx::PxJointAngularLimitPair angularLimit(tconf1.x, tconf1.y, tconf1.z);
 
 						phys::cJoint *joint = new phys::cJoint();
-						joint->CreateRevolute(g_global->m_physics
+						joint->CreateRevolute(*g_evc->m_phys
 							, sync0->actor, sync0->node->m_transform, pivot0
 							, sync1->actor, sync1->node->m_transform, pivot1
 							, revoluteAxis);
@@ -413,7 +413,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						linearLimit.bounceThreshold = tconf2.z;
 
 						phys::cJoint *joint = new phys::cJoint();
-						joint->CreatePrismatic(g_global->m_physics
+						joint->CreatePrismatic(*g_evc->m_phys
 							, sync0->actor, sync0->node->m_transform, pivot0
 							, sync1->actor, sync1->node->m_transform, pivot1
 							, revoluteAxis);
@@ -437,7 +437,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						const float maxDist = vt0.second.get<float>("max distance", 0.f);
 
 						phys::cJoint *joint = new phys::cJoint();
-						joint->CreateDistance(g_global->m_physics
+						joint->CreateDistance(*g_evc->m_phys
 							, sync0->actor, sync0->node->m_transform, pivot0
 							, sync1->actor, sync1->node->m_transform, pivot1);
 
@@ -454,9 +454,102 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					}
 					break;
 
-
 					case phys::eJointType::D6:
-						break;
+					{
+						using namespace physx;
+						Str128 text;
+
+						int motionVal[6];
+						bool driveVal[6];
+						struct sDriveParam
+						{
+							float stiffness;
+							float damping;
+							float forceLimit;
+							bool accel;
+						};
+						sDriveParam driveConfigs[6];
+
+						for (int i = 0; i < 6; ++i)
+						{
+							text.Format("d6 motion %d", i);
+							motionVal[i] = vt0.second.get<int>(text.c_str(), 0);
+						}
+
+						for (int i = 0; i < 6; ++i)
+						{
+							text.Format("d6 drive %d stiffness", i);
+							driveConfigs[i].stiffness = vt0.second.get<float>(text.c_str(), 0.f);
+							
+							text.Format("d6 drive %d damping", i);
+							driveConfigs[i].damping = vt0.second.get<float>(text.c_str(), 0.f);
+							
+							text.Format("d6 drive %d forcelimit", i);
+							driveConfigs[i].forceLimit = vt0.second.get<float>(text.c_str(), 0.f);
+							
+							text.Format("d6 drive %d accel", i);
+							driveConfigs[i].accel = vt0.second.get<bool>(text.c_str(), false);
+
+							driveVal[i] = driveConfigs[i].stiffness != 0;
+						}
+
+						physx::PxJointLinearLimit linearLimit(0.f, physx::PxSpring(0.f, 0.f));
+						linearLimit.value = vt0.second.get<float>("linear extent", 0.f);
+						linearLimit.stiffness = vt0.second.get<float>("linear stiffness", 0.f);
+						linearLimit.damping = vt0.second.get<float>("linear damping", 0.f);
+						bool isLinearLimit = linearLimit.stiffness != 0.f;
+
+						PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
+						twistLimit.lower = vt0.second.get<float>("angular lower", 0.f);
+						twistLimit.upper = vt0.second.get<float>("angular upper", 0.f);
+						bool isTwistLimit = twistLimit.lower != 0.f;
+
+						PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
+						swingLimit.yAngle = vt0.second.get<float>("cone yAngle", 0.f);
+						swingLimit.zAngle = vt0.second.get<float>("cone zAngle", 0.f);
+						bool isSwingLimit = swingLimit.yAngle != 0.f;
+
+						const string linearVelStr = vt0.second.get<string>("linear drive velocity", "0 0 0");
+						const Vector3 linearDriveVelocity = ParseVector3(linearVelStr);
+						const string angularVelStr = vt0.second.get<string>("angular drive velocity", "0 0 0");
+						const Vector3 angularDriveVelocity = ParseVector3(angularVelStr);
+
+						phys::cJoint *joint = new phys::cJoint();
+						joint->CreateD6(*g_evc->m_phys
+							, sync0->actor, sync0->node->m_transform, pivot0
+							, sync1->actor, sync1->node->m_transform, pivot1);
+
+						for (int i = 0; i < 6; ++i)
+							joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
+
+						for (int i = 0; i < 6; ++i)
+						{
+							if (driveVal[i])
+							{
+								joint->SetD6Drive((PxD6Drive::Enum)i
+									, physx::PxD6JointDrive(driveConfigs[i].stiffness
+										, driveConfigs[i].damping
+										, driveConfigs[i].forceLimit
+										, driveConfigs[i].accel));
+							}
+						}
+
+						if (isLinearLimit)
+							joint->SetD6LinearLimit(linearLimit);
+						if (isTwistLimit)
+							joint->SetD6TwistLimit(twistLimit);
+						if (isSwingLimit)
+							joint->SetD6SwingLimit(swingLimit);
+
+						joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
+
+						cJointRenderer *jointRenderer = new cJointRenderer();
+						jointRenderer->Create(joint);
+						g_evc->m_sync->AddJoint(joint, jointRenderer);
+					}
+					break;
+
+
 					default:
 						throw std::exception("joint type error");
 					}
@@ -678,7 +771,52 @@ bool evc::Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint)
 	break;
 
 	case phys::eJointType::D6:
-		break;
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			const physx::PxD6Motion::Enum motion = joint->GetMotion((physx::PxD6Axis::Enum)i);
+			text.Format("d6 motion %d", i);
+			j.put<int>(text.c_str(), (int)motion);
+		}
+
+		for (int i = 0; i < 6; ++i)
+		{
+			const physx::PxD6JointDrive drive = joint->GetD6Drive((physx::PxD6Drive::Enum)i);
+			text.Format("d6 drive %d stiffness", i);
+			j.put<float>(text.c_str(), drive.stiffness);
+			text.Format("d6 drive %d damping", i);
+			j.put<float>(text.c_str(), drive.damping);
+			text.Format("d6 drive %d forcelimit", i);
+			j.put<float>(text.c_str(), drive.forceLimit);
+			const bool accel = drive.flags.isSet(physx::PxD6JointDriveFlag::eACCELERATION);
+			text.Format("d6 drive %d accel", i);
+			j.put<bool>(text.c_str(), accel);
+		}
+
+		const physx::PxJointLinearLimit linearLimit = joint->GetD6LinearLimit();
+		j.put<float>("linear extent", linearLimit.value);
+		j.put<float>("linear stiffness", linearLimit.stiffness);
+		j.put<float>("linear damping", linearLimit.damping);
+
+		const physx::PxJointAngularLimitPair angularLimit = joint->GetD6TwistLimit();
+		j.put<float>("angular lower", angularLimit.lower);
+		j.put<float>("angular upper", angularLimit.upper);
+
+		const physx::PxJointLimitCone coneLimit = joint->GetD6SwingLimit();
+		j.put<float>("cone yAngle", coneLimit.yAngle);
+		j.put<float>("cone zAngle", coneLimit.zAngle);
+
+		const std::pair<Vector3, Vector3> driveVelocity =
+			joint->GetD6DriveVelocity();
+
+		const Vector3 linearVel = std::get<0>(driveVelocity);
+		const Vector3 angularVel = std::get<1>(driveVelocity);
+		text.Format("%f %f %f", linearVel.x, linearVel.y, linearVel.z);
+		j.put<string>("linear drive velocity", text.c_str());
+		text.Format("%f %f %f", angularVel.x, angularVel.y, angularVel.z);
+		j.put<string>("angular drive velocity", text.c_str());
+	}
+	break;
 	}
 
 	parent.add_child("joint", j);

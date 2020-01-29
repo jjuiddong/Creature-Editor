@@ -71,7 +71,6 @@ void cEditorView::RenderSpawnTransform()
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("Create RigidBody"))
 	{
-		//static bool isKinematic = true;
 		ImGui::TextUnformatted("Lock ( Kinematic )  ");
 		ImGui::SameLine();
 		ImGui::Checkbox("##kinematic", &g_global->m_isSpawnLock);
@@ -142,6 +141,9 @@ void cEditorView::RenderSpawnTransform()
 				g_global->ClearSelection();
 				g_global->SelectObject(syncId);
 				g_global->m_gizmo.SetControlNode(sync->node);
+
+				// change focus
+				m_owner->SetFocus((cDockWindow*)g_global->m_3dView);				
 			}
 		}
 
@@ -170,6 +172,13 @@ void cEditorView::RenderSelectionInfo()
 		phys::cRigidActor *actor = sync->actor;
 		graphic::cNode *node = sync->node;
 		Transform tfm = node->m_transform;
+
+		if (m_isChangeSelection)
+		{
+			const Vector3 rpy = tfm.rot.Euler();
+			m_eulerAngle = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
+		}
+
 		float mass = actor->GetMass();
 		float linearDamping = actor->GetLinearDamping();
 		float angularDamping = actor->GetAngularDamping();
@@ -232,8 +241,7 @@ void cEditorView::RenderSelectionInfo()
 		// edit rotation
 		ImGui::TextUnformatted("Rot            ");
 		ImGui::SameLine();
-		static Vector3 ryp;//roll yaw pitch
-		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&ryp, 0.001f);
+		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&m_eulerAngle, 0.1f);
 
 		ImGui::TextUnformatted("Mass         ");
 		ImGui::SameLine();
@@ -295,7 +303,13 @@ void cEditorView::RenderSelectionInfo()
 
 		if (edit2) // rotation edit
 		{
-			//selectModel->m_transform.rot.Euler2(ryp);
+			const Vector3 rpy(ANGLE2RAD(m_eulerAngle.x)
+				, ANGLE2RAD(m_eulerAngle.y), ANGLE2RAD(m_eulerAngle.z));
+			tfm.rot.Euler(rpy);
+			node->m_transform.rot = tfm.rot;
+
+			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
+			actor->SetGlobalPose(tm);
 		}
 
 		if (edit4) // mass edit
@@ -369,8 +383,8 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 			case phys::eJointType::Fixed: break;
 			case phys::eJointType::Spherical: RenderSphericalJointSetting(joint); break;
 			case phys::eJointType::Revolute: RenderRevoluteJointSetting(joint); break;
-			case phys::eJointType::Prismatic:
-			case phys::eJointType::Distance:
+			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(joint); break;
+			case phys::eJointType::Distance: RenderDistanceJointSetting(joint); break;
 			case phys::eJointType::D6:
 				break;
 			default:
@@ -402,9 +416,7 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 	{
 		// clear selection
 		g_global->m_state = eEditState::Normal;
-		//g_global->m_gizmo.SetControlNode(nullptr);
 		g_global->m_selJoint = nullptr;
-		//g_global->ClearSelection();
 	}
 	for (auto &joint : rmJoints)
 		physSync->RemoveSyncInfo(joint);
@@ -557,7 +569,7 @@ void cEditorView::RenderRevoluteJoint()
 	if (!sync0 || !sync1)
 		return;
 
-	static Vector2 limit(-PxPi / 4.f, PxPi / 4.f);
+	static Vector2 limit(-PxPi / 2.f, PxPi / 2.f);
 	static bool isDrive = false;
 	static float velocity = 1.f;
 	static bool isCycleDrive = false;
@@ -783,9 +795,10 @@ void cEditorView::RenderPrismaticJoint()
 			, sync1->actor, sync1->node->m_transform, pivot1.pos
 			, axis[axisIdx]);
 
+		joint->EnableLinearLimit(isLimit);
+
 		if (isLimit)
 		{
-			joint->EnableLinearLimit(isLimit);
 			if (isSpring)
 			{
 				joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
@@ -913,8 +926,242 @@ void cEditorView::RenderDistanceJoint()
 }
 
 
+// 
 void cEditorView::RenderD6Joint()
 {
+	using namespace physx;
+
+	const char *motionAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Twist   ", "Swing1", "Swing2" };
+	const char *motionStr = "Lock\0Limit\0Free\0\0";
+	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Swing   ", "Twist", "Slerp" };
+
+	static int motionVal[6] = { 0, 0, 0, 0, 0, 0 };
+	static bool driveVal[6] = { 0, 0, 0, 0, 0, 0 };
+	struct sDriveParam 
+	{
+		float stiffness;
+		float damping;
+		float forceLimit;
+		bool accel;
+	};
+	static sDriveParam driveConfigs[6] = {
+		{10.f, 0.f, PX_MAX_F32, true}, // X
+		{10.f, 0.f, PX_MAX_F32, true}, // Y
+		{10.f, 0.f, PX_MAX_F32, true}, // Z
+		{10.f, 0.f, PX_MAX_F32, true}, // Twist
+		{10.f, 0.f, PX_MAX_F32, true}, // Swing1
+		{10.f, 0.f, PX_MAX_F32, true}, // Swing2
+	};
+	static PxJointLinearLimit linearLimit(1.f, PxSpring(10.f, 0.f));
+	static PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
+	static PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
+	static bool isLinearLimit = false;
+	static bool isTwistLimit = false;
+	static bool isSwingLimit = false;
+	static Vector3 linearDriveVelocity(0, 0, 0);
+	static Vector3 angularDriveVelocity(0, 0, 0);
+
+	auto it = g_global->m_selects.begin();
+	const int syncId0 = *it++;
+	const int syncId1 = *it++;
+
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
+		return;
+
+	// Motion
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Motion"))
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			int id = i * 100;
+			ImGui::PushItemWidth(200);
+			ImGui::TextUnformatted(motionAxis[i]);
+			ImGui::SameLine();
+			ImGui::PushID(id++);
+			if (ImGui::Combo("##Motion", &motionVal[i], motionStr))
+			{
+				if (driveVal[i])
+					driveVal[i] = (0 != motionVal[i]); // motion lock -> drive lock
+			}
+			ImGui::PopID();
+			ImGui::PopItemWidth();
+		}
+		ImGui::TreePop();
+	}
+	ImGui::Separator();
+	// Drive
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Drive"))
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			int id = i * 1000;
+			ImGui::Checkbox(driveAxis[i], &driveVal[i]);
+
+			if (driveVal[i])
+			{
+				sDriveParam &drive = driveConfigs[i];
+
+				ImGui::Indent(30);
+				ImGui::PushItemWidth(150);
+
+				ImGui::TextUnformatted("Stiffness   ");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Stiffness", &drive.stiffness);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Dampping");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Dampping", &drive.damping);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Force Limit");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Force Limit", &drive.forceLimit);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Accel");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::Checkbox("##Accel", &drive.accel);
+				ImGui::PopID();
+
+				ImGui::PopItemWidth();
+				ImGui::Unindent(30);
+
+				ImGui::Separator();
+			}//~drive
+
+			ImGui::Spacing();
+		}//~for drive axis 6
+		ImGui::TreePop();
+	}//~drive tree node
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Linear Drive Velocity");
+	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&linearDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::TextUnformatted("Angular Drive Velocity");
+	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&angularDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::Separator();
+
+	// linear limit
+	{
+		ImGui::TextUnformatted("Linear Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Linear Limit", &isLinearLimit);
+		if (isLinearLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Extend", &linearLimit.value, 0.001f);
+			ImGui::DragFloat("Stiffness", &linearLimit.stiffness, 0.001f);
+			ImGui::DragFloat("Damping", &linearLimit.damping, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// twist limit
+	{
+		ImGui::TextUnformatted("Twist Limit ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Twist Limit", &isTwistLimit);
+		if (isTwistLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Lower Angle", &twistLimit.lower, 0.001f);
+			ImGui::DragFloat("Upper Angle", &twistLimit.upper, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// swing limit
+	{
+		ImGui::TextUnformatted("Swing Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Swing Limit", &isSwingLimit);
+		if (isSwingLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Y Angle", &swingLimit.yAngle, 0.001f);
+			ImGui::DragFloat("Z Angle", &swingLimit.zAngle, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0.1f, 1.f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0.1f, 1.f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0.1f, 1.f));
+	if (ImGui::Button("Create D6 Joint"))
+	{
+		g_global->UpdateActorDimension(sync0->actor, true);
+		g_global->UpdateActorDimension(sync1->actor, true);
+
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
+		phys::cJoint *joint = new phys::cJoint();
+		joint->CreateD6(g_global->m_physics
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos);
+
+		for (int i = 0; i < 6; ++i)
+			joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
+
+		for (int i = 0; i < 6; ++i)
+		{
+			if (driveVal[i])
+			{
+				joint->SetD6Drive((PxD6Drive::Enum)i
+					, physx::PxD6JointDrive(driveConfigs[i].stiffness
+						, driveConfigs[i].damping
+						, driveConfigs[i].forceLimit
+						, driveConfigs[i].accel));
+			}
+		}
+
+		if (isLinearLimit)
+			joint->SetD6LinearLimit(linearLimit);
+		if (isTwistLimit)
+			joint->SetD6TwistLimit(twistLimit);
+		if (isSwingLimit)
+			joint->SetD6SwingLimit(swingLimit);
+
+		joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(joint);
+		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->m_state = eEditState::Normal;
+	}
+	ImGui::PopStyleColor(3);
+	ImGui::Spacing();
+	ImGui::Spacing();
 }
 
 
@@ -923,7 +1170,7 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	using namespace physx;
 
 	static bool isLimit = false;
-	static PxJointAngularLimitPair limit(-PxPi / 4.f, PxPi / 4.f, 0.01f);
+	static PxJointAngularLimitPair limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
 	static bool isDrive = false;
 	static float driveVelocity = 0.f;
 
@@ -938,17 +1185,26 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Lower Limit Angle", &limit.lower, 0.001f);
-	ImGui::DragFloat("Upper Limit Angle", &limit.upper, 0.001f);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Lower Angle", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Angle", &limit.upper, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
 	ImGui::TextUnformatted("Drive");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Drive", &isDrive);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
 	ImGui::DragFloat("Velocity", &driveVelocity, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -970,12 +1226,135 @@ void cEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 }
 
 
+void cEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
+{
+	using namespace physx;
+
+	static Vector2 limit1(1.f, 2.f); // lower, upper
+	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
+	static Vector2 limit3(3.f, 0.0f); // length
+	static bool isLimit = false;
+	static bool isSpring = true;
+
+	if (m_isChangeSelection)
+	{
+		isLimit = joint->IsLinearLimit();
+		PxJointLinearLimitPair limit(0, 0, PxSpring(0,0));
+		limit = joint->GetLinearLimit();
+		limit1.x = isLimit ? limit.lower : 0.f;
+		limit1.y = isLimit ? limit.upper : 0.f;
+		limit2.x = limit.stiffness;
+		limit2.y = limit.damping;
+		//limit3.x = ?;
+		isSpring = limit.stiffness != 0.f;
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Linear Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Lower Limit", &limit1.x, 0.001f);
+	ImGui::DragFloat("Upper Limit", &limit1.y, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+	
+	ImGui::Text("Spring");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Spring", &isSpring);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Stiffness", &limit2.x, 0.001f);
+	ImGui::DragFloat("Damping", &limit2.y, 0.001f);
+	ImGui::DragFloat("Length (linear)", &limit3.x, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Apply Option"))
+	{
+		joint->EnableLinearLimit(isLimit);
+
+		if (isLimit)
+		{
+			if (isSpring)
+			{
+				joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
+					, physx::PxSpring(limit2.x, limit2.y)));
+			}
+			else
+			{
+				PxTolerancesScale scale;
+				scale.length = limit3.x;
+				joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
+			}
+		}
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderDistanceJointSetting(phys::cJoint *joint)
+{
+	static Vector2 limit(0.f, 2.f);
+	static bool isLimit = false;
+
+	if (m_isChangeSelection)
+	{
+		isLimit = joint->IsDistanceLimit();
+		limit = joint->GetDistanceLimit();
+	}
+
+	ImGui::Text("Distance Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::DragFloat("min distance", &limit.x, 0.001f);
+	ImGui::DragFloat("max distance", &limit.y, 0.001f);
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->m_state = eEditState::Pivot0;
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Apply Option"))
+	{
+		joint->EnableDistanceLimit(isLimit);
+		if (isLimit)
+			joint->SetDistanceLimit(limit.x, limit.y);
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
 void cEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
 {
 	using namespace physx;
 
 	static bool isLimit = false;
-	static PxJointLimitCone limit(-PxPi / 4.f, PxPi / 4.f, 0.01f);
+	static PxJointLimitCone limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
 
 	if (m_isChangeSelection)
 	{
@@ -986,8 +1365,12 @@ void cEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
 	ImGui::Text("Limit Cone (Radian)");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Y Limit Angle", &limit.yAngle, 0.001f);
-	ImGui::DragFloat("Z Limit Angle", &limit.zAngle, 0.001f);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Y Angle", &limit.yAngle, 0.001f);
+	ImGui::DragFloat("Z Angle", &limit.zAngle, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
 
 	//const char *axisStr = "X\0Y\0Z\0\0";
 	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };

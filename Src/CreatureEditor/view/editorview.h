@@ -28,6 +28,8 @@ protected:
 	void RenderSelectActorJointInfo(const int syncId);
 	void RenderSphericalJointSetting(phys::cJoint *joint);
 	void RenderRevoluteJointSetting(phys::cJoint *joint);
+	void RenderPrismaticJointSetting(phys::cJoint *joint);
+	void RenderDistanceJointSetting(phys::cJoint *joint);
 	void CheckCancelUIJoint();
 	void CheckChangeSelection();
 
@@ -36,6 +38,7 @@ public:
 	float m_radius;
 	float m_halfHeight;
 	float m_density;
+	Vector3 m_eulerAngle; // roll,pitch,yaw (angle)
 	bool m_isChangeSelection; // ui information update?
 	vector<int> m_oldSelects;
 };
