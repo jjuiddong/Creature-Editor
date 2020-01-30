@@ -1,0 +1,50 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10068",
+                "type": "Dynamic",
+                "shape": "Cylinder",
+                "pos": "0.000000 2.890444 0.000000",
+                "dim": "0.256917 0.500000 0.500000",
+                "rot": "0.000036 0.000077 0.706887 0.707327",
+                "mass": "0.198479056",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10065",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 0.500158 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "-0.000112 0.000073 0.000025 1.000000",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Prismatic",
+                "shape id0": "10065",
+                "shape id1": "10068",
+                "jointpos": "0.000000 1.695301 0.000000",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "linear limit": "true",
+                "linear limit config 1": "1.000000 2.000000 10.000000",
+                "linear limit config 2": "0.000000 0.000000 0.000000"
+            }
+        }
+    }
+}

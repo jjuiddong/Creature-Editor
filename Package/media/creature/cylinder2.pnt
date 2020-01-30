@@ -1,0 +1,56 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10049",
+                "type": "Dynamic",
+                "shape": "Cylinder",
+                "pos": "-7.005353 3.007731 3.065702",
+                "dim": "2.862883 0.500000 0.500000",
+                "rot": "0.055156 -0.891694 -0.019176 -0.448857",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10052",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-6.913931 0.572500 2.804871",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "-0.050356 0.805219 0.027767 0.590182",
+                "mass": "1",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10052",
+                "shape id1": "10049",
+                "jointpos": "-6.793788 1.787085 2.225660",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "0.108002 0.000000 -0.994151",
+                "pivot len0": "0.0128611401",
+                "pivot dir1": "0.999365 0.000000 0.035623",
+                "pivot len1": "0.358917117",
+                "drive": "true",
+                "drive velocity": "3",
+                "cycle": "false",
+                "cycle period": "3",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "0.000000 340282346638528859811704183484516925440.000000 0.010000"
+            }
+        }
+    }
+}
