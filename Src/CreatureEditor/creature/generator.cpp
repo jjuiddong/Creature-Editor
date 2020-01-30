@@ -163,7 +163,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		ptree jts;
 		for (auto &j : joints)
 		{
-			// check exist actor?
+// check exist actor?
 			auto it0 = std::find(actors.begin(), actors.end(), j->m_actor0);
 			auto it1 = std::find(actors.begin(), actors.end(), j->m_actor0);
 			if ((actors.end() == it0) || (actors.end() == it1))
@@ -257,7 +257,15 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					{
 						const Transform tfm(pos, q);
 						newId = g_evc->m_sync->SpawnCapsule(renderer
-							, tfm, dim.y, dim.x-dim.y, 1.f, true);
+							, tfm, dim.y, dim.x - dim.y, 1.f, true);
+					}
+					break;
+
+					case phys::eShapeType::Cylinder:
+					{
+						const Transform tfm(pos, q);
+						newId = g_evc->m_sync->SpawnCylinder(renderer
+							, tfm, dim.y, dim.x, 1.f, true);
 					}
 					break;
 

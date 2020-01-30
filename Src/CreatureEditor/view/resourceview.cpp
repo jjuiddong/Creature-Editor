@@ -40,7 +40,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 	static int selectIdx = -1;
 	int i = 0;
 
-	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
 	if (ImGui::TreeNode((void*)0, "Creature Files"))
 	{
 		ImGui::Columns(5, "texturecolumns5", false);

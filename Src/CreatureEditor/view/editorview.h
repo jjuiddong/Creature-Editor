@@ -30,6 +30,7 @@ protected:
 	void RenderRevoluteJointSetting(phys::cJoint *joint);
 	void RenderPrismaticJointSetting(phys::cJoint *joint);
 	void RenderDistanceJointSetting(phys::cJoint *joint);
+	void RenderD6JointSetting(phys::cJoint *joint);
 	void CheckCancelUIJoint();
 	void CheckChangeSelection();
 

@@ -402,6 +402,24 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(halfHeight, radius, radius));
 		}
 		break;
+		case phys::eShapeType::Cylinder:
+		{
+			const Vector3 scale = sync->node->m_transform.scale;
+			float radius = 1.f;
+			switch (g_global->m_gizmo.m_axisType)
+			{
+			case eGizmoEditAxis::X: radius = scale.y; break;
+			case eGizmoEditAxis::Y: radius = scale.y; break;
+			case eGizmoEditAxis::Z: radius = scale.z; break;
+			}
+
+			const float height = scale.x;
+
+			((cCylinder*)sync->node)->SetDimension(radius, height); // update capsule transform
+			g_global->m_gizmo.UpdateTargetTransform(sync->node->m_transform); // update gizmo
+			g_global->ModifyRigidActorTransform(selectSyncId, Vector3(height, radius, radius));
+		}
+		break;
 		}
 	}
 }
@@ -501,7 +519,7 @@ void c3DView::OnRender(const float deltaSeconds)
 		{
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
-			ImGui::TextUnformatted("Oribit");
+			ImGui::TextUnformatted("Orbit");
 			ImGui::PopStyleColor();
 		}
 
@@ -530,8 +548,9 @@ void c3DView::RenderPopupMenu()
 
 	if (ImGui::BeginPopup("Actor PopupMenu"))
 	{
-		if (g_global->m_selects.empty())
+		if ((m_popupMenuState == 3) || g_global->m_selects.empty())
 		{
+			ImGui::CloseCurrentPopup();
 			ImGui::EndPopup();
 			return;
 		}
@@ -564,11 +583,11 @@ void c3DView::RenderPopupMenu()
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
 		}
-		if (ImGui::MenuItem("Select All"))
+		if (ImGui::MenuItem("Select All", "A"))
 		{
 			g_global->SetAllConnectionActorSelect(actor);
 		}
-		if (ImGui::MenuItem("Lock", nullptr, false, isLockMenu))
+		if (ImGui::MenuItem("Lock", "L", false, isLockMenu))
 		{
 			for (auto id : g_global->m_selects)
 				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
@@ -580,7 +599,7 @@ void c3DView::RenderPopupMenu()
 			// all connect actor lock
 			g_global->SetAllConnectionActorKinematic(actor, true);
 		}
-		if (ImGui::MenuItem("Unlock", nullptr, false, isUnlockMenu))
+		if (ImGui::MenuItem("Unlock", "U", false, isUnlockMenu))
 		{
 			for (auto id : g_global->m_selects)
 				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
@@ -595,7 +614,7 @@ void c3DView::RenderPopupMenu()
 		
 		ImGui::Separator();
 
-		if (ImGui::MenuItem("Remove All Joint", nullptr, false, true))
+		if (ImGui::MenuItem("Remove All Joint", "J", false, true))
 		{
 			// remove connection joint
 			set<phys::cJoint*> rms;
@@ -605,8 +624,18 @@ void c3DView::RenderPopupMenu()
 						for (auto &j : sync->actor->m_joints)
 							rms.insert(j);
 
+			vector<phys::cRigidActor*> wakeups;
 			for (auto *j : rms)
+			{
+				wakeups.push_back(j->m_actor0);
+				wakeups.push_back(j->m_actor1);
 				g_global->m_physSync->RemoveSyncInfo(j);
+			}
+
+			// wakeup
+			for (auto *actor : wakeups)
+				if (actor)
+					actor->WakeUp();
 		}
 		ImGui::EndPopup();
 	}
@@ -1081,8 +1110,6 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 		{
 			m_isOrbitMove = true;
 			m_orbitTarget = sync->node->m_transform.pos;
-			g_global->m_highLights.clear();
-			g_global->m_highLights.insert(syncId);
 		}
 	}
 	break;
@@ -1215,9 +1242,8 @@ void c3DView::OnEventProc(const sf::Event &evt)
 			}
 			break;
 
-		case sf::Keyboard::C:
-		{
-			// copy
+		case sf::Keyboard::C: // copy
+		{			
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
 				if (!g_global->m_selects.empty())
@@ -1239,9 +1265,8 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		}
 		break;
 
-		case sf::Keyboard::V:
-		{
-			// paste
+		case sf::Keyboard::V: // paste
+		{			
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
 				vector<int> syncIds;
@@ -1278,6 +1303,84 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		}
 		break;
 
+		case sf::Keyboard::A: // popup menu shortcut, select
+		{
+			if ((m_popupMenuState == 2) && (m_popupMenuType == 0))
+			{
+				for (auto id : g_global->m_selects)
+				{
+					if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+					{
+						if (sync && sync->actor)
+						{
+							g_global->SetAllConnectionActorSelect(sync->actor);
+							break;
+						}
+					}
+				}
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
+		case sf::Keyboard::U: // popup menu shortcut, unlock
+		{
+			if ((m_popupMenuState == 2) && (m_popupMenuType == 0))
+			{
+				for (auto id : g_global->m_selects)
+					if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+						if (sync && sync->actor)
+							g_global->UpdateActorDimension(sync->actor, false);
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
+		case sf::Keyboard::L: // popup menu shortcut, lock
+		{
+			if ((m_popupMenuState == 2) && (m_popupMenuType == 0))
+			{
+				for (auto id : g_global->m_selects)
+					if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+						if (sync && sync->actor)
+							sync->actor->SetKinematic(true);
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
+		case sf::Keyboard::J: // popup menu shortcut, joint remove
+		{
+			if (m_popupMenuState == 2)
+			{
+				// remove connection joint
+				set<phys::cJoint*> rms;
+				for (auto id : g_global->m_selects)
+					if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+						if (sync && sync->actor)
+							for (auto &j : sync->actor->m_joints)
+								rms.insert(j);
+
+				vector<phys::cRigidActor*> wakeups;
+				for (auto *j : rms)
+				{
+					wakeups.push_back(j->m_actor0);
+					wakeups.push_back(j->m_actor1);
+					g_global->m_physSync->RemoveSyncInfo(j);
+				}
+
+				// wake up
+				for (auto *actor : wakeups)
+					if (actor)
+						actor->WakeUp();
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
 		}
 		break;
 

@@ -127,6 +127,13 @@ void cEditorView::RenderSpawnTransform()
 			syncId = physSync->SpawnCapsule(renderer, tfm, m_radius, m_halfHeight, m_density);
 		}
 
+		ImGui::SameLine();
+		if (ImGui::Button("Cylinder"))
+		{
+			Transform tfm(g_global->m_spawnTransform.pos, g_global->m_spawnTransform.rot);
+			syncId = physSync->SpawnCylinder(renderer, tfm, m_radius, m_halfHeight, m_density);
+		}
+
 		ImGui::PopStyleColor(3);
 
 		if (syncId >= 0)// creation?
@@ -213,7 +220,7 @@ void cEditorView::RenderSelectionInfo()
 		// edit scale
 		bool edit1 = false;
 		bool edit1_1 = false;
-		float radius = 0.f, halfHeight = 0.f; // capsule info
+		float radius = 0.f, halfHeight = 0.f, height = 0.f; // capsule,cylinder info
 		switch (actor->m_shape)
 		{
 		case phys::eShapeType::Box:
@@ -235,6 +242,16 @@ void cEditorView::RenderSelectionInfo()
 			ImGui::TextUnformatted("HalfHeight");
 			ImGui::SameLine();
 			edit1_1 = ImGui::DragFloat("##halfheight2", &halfHeight, 0.001f, 0.01f, 1000.f);
+			break;
+		case phys::eShapeType::Cylinder:
+			radius = ((cCylinder*)node)->m_radius;
+			height = ((cCylinder*)node)->m_height;
+			ImGui::TextUnformatted("Radius       ");
+			ImGui::SameLine();
+			edit1 = ImGui::DragFloat("##scale2", &radius, 0.001f, 0.01f, 1000.f);
+			ImGui::TextUnformatted("Height       ");
+			ImGui::SameLine();
+			edit1_1 = ImGui::DragFloat("##height2", &height, 0.001f, 0.01f, 1000.f);
 			break;
 		}
 
@@ -296,6 +313,12 @@ void cEditorView::RenderSelectionInfo()
 			{
 				((cCapsule*)node)->SetDimension(radius, halfHeight);
 				g_global->ModifyRigidActorTransform(selSyncId, Vector3(halfHeight, radius, radius));
+			}
+			break;
+			case phys::eShapeType::Cylinder:
+			{
+				((cCylinder*)node)->SetDimension(radius, height);
+				g_global->ModifyRigidActorTransform(selSyncId, Vector3(height, radius, radius));
 			}
 			break;
 			}
@@ -385,8 +408,7 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 			case phys::eJointType::Revolute: RenderRevoluteJointSetting(joint); break;
 			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(joint); break;
 			case phys::eJointType::Distance: RenderDistanceJointSetting(joint); break;
-			case phys::eJointType::D6:
-				break;
+			case phys::eJointType::D6: RenderD6JointSetting(joint); break;
 			default:
 				assert(0);
 				break;
@@ -1279,13 +1301,6 @@ void cEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 	ImGui::Spacing();
 	ImGui::Spacing();
 
-	if (ImGui::Button("Pivot Setting"))
-	{
-		g_global->m_state = eEditState::Pivot0;
-		g_global->m_selJoint = &g_global->m_uiJoint;
-		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
-	}
-
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
@@ -1329,13 +1344,6 @@ void cEditorView::RenderDistanceJointSetting(phys::cJoint *joint)
 	ImGui::DragFloat("min distance", &limit.x, 0.001f);
 	ImGui::DragFloat("max distance", &limit.y, 0.001f);
 
-	if (ImGui::Button("Pivot Setting"))
-	{
-		g_global->m_state = eEditState::Pivot0;
-		g_global->m_selJoint = &g_global->m_uiJoint;
-		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
-	}
-
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
@@ -1344,6 +1352,234 @@ void cEditorView::RenderDistanceJointSetting(phys::cJoint *joint)
 		joint->EnableDistanceLimit(isLimit);
 		if (isLimit)
 			joint->SetDistanceLimit(limit.x, limit.y);
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
+void cEditorView::RenderD6JointSetting(phys::cJoint *joint)
+{
+	using namespace physx;
+
+	const char *motionAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Twist   ", "Swing1", "Swing2" };
+	const char *motionStr = "Lock\0Limit\0Free\0\0";
+	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Swing   ", "Twist", "Slerp" };
+
+	static int motionVal[6] = { 0, 0, 0, 0, 0, 0 };
+	static bool driveVal[6] = { 0, 0, 0, 0, 0, 0 };
+	struct sDriveParam
+	{
+		float stiffness;
+		float damping;
+		float forceLimit;
+		bool accel;
+	};
+	static sDriveParam driveConfigs[6] = {
+		{10.f, 0.f, PX_MAX_F32, true}, // X
+		{10.f, 0.f, PX_MAX_F32, true}, // Y
+		{10.f, 0.f, PX_MAX_F32, true}, // Z
+		{10.f, 0.f, PX_MAX_F32, true}, // Twist
+		{10.f, 0.f, PX_MAX_F32, true}, // Swing1
+		{10.f, 0.f, PX_MAX_F32, true}, // Swing2
+	};
+	static PxJointLinearLimit linearLimit(1.f, PxSpring(10.f, 0.f));
+	static PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
+	static PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
+	static bool isLinearLimit = false;
+	static bool isTwistLimit = false;
+	static bool isSwingLimit = false;
+	static Vector3 linearDriveVelocity(0, 0, 0);
+	static Vector3 angularDriveVelocity(0, 0, 0);
+
+	if (m_isChangeSelection)
+	{
+		for (int i = 0; i < 6; ++i)
+			motionVal[i] = (int)joint->GetMotion((PxD6Axis::Enum)i);
+
+		for (int i = 0; i < 6; ++i)
+		{
+			const PxD6JointDrive drive = joint->GetD6Drive((PxD6Drive::Enum)i);
+			driveConfigs[i].stiffness = drive.stiffness;
+			driveConfigs[i].damping = drive.damping;
+			driveConfigs[i].forceLimit = drive.forceLimit;
+			driveVal[i] = drive.stiffness != 0.f;
+		}
+
+		linearLimit = joint->GetD6LinearLimit();
+		twistLimit = joint->GetD6TwistLimit();
+		swingLimit = joint->GetD6SwingLimit();
+		isLinearLimit = linearLimit.stiffness != 0.f;
+		isTwistLimit = twistLimit.lower != 0.f;
+		isSwingLimit = swingLimit.yAngle != 0.f;
+
+		std::pair<Vector3, Vector3> ret = joint->GetD6DriveVelocity();
+		linearDriveVelocity = std::get<0>(ret);
+		angularDriveVelocity = std::get<1>(ret);
+	}
+
+	// Motion
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Motion"))
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			int id = i * 100;
+			ImGui::PushItemWidth(200);
+			ImGui::TextUnformatted(motionAxis[i]);
+			ImGui::SameLine();
+			ImGui::PushID(id++);
+			if (ImGui::Combo("##Motion", &motionVal[i], motionStr))
+			{
+				if (driveVal[i])
+					driveVal[i] = (0 != motionVal[i]); // motion lock -> drive lock
+			}
+			ImGui::PopID();
+			ImGui::PopItemWidth();
+		}
+		ImGui::TreePop();
+	}
+	ImGui::Separator();
+	// Drive
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Drive"))
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			int id = i * 1000;
+			ImGui::Checkbox(driveAxis[i], &driveVal[i]);
+
+			if (driveVal[i])
+			{
+				sDriveParam &drive = driveConfigs[i];
+
+				ImGui::Indent(30);
+				ImGui::PushItemWidth(150);
+
+				ImGui::TextUnformatted("Stiffness   ");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Stiffness", &drive.stiffness);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Dampping");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Dampping", &drive.damping);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Force Limit");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Force Limit", &drive.forceLimit);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Accel");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::Checkbox("##Accel", &drive.accel);
+				ImGui::PopID();
+
+				ImGui::PopItemWidth();
+				ImGui::Unindent(30);
+
+				ImGui::Separator();
+			}//~drive
+
+			ImGui::Spacing();
+		}//~for drive axis 6
+		ImGui::TreePop();
+	}//~drive tree node
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Linear Drive Velocity");
+	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&linearDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::TextUnformatted("Angular Drive Velocity");
+	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&angularDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::Separator();
+
+	// linear limit
+	{
+		ImGui::TextUnformatted("Linear Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Linear Limit", &isLinearLimit);
+		if (isLinearLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Extend", &linearLimit.value, 0.001f);
+			ImGui::DragFloat("Stiffness", &linearLimit.stiffness, 0.001f);
+			ImGui::DragFloat("Damping", &linearLimit.damping, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// twist limit
+	{
+		ImGui::TextUnformatted("Twist Limit ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Twist Limit", &isTwistLimit);
+		if (isTwistLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Lower Angle", &twistLimit.lower, 0.001f);
+			ImGui::DragFloat("Upper Angle", &twistLimit.upper, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// swing limit
+	{
+		ImGui::TextUnformatted("Swing Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Swing Limit", &isSwingLimit);
+		if (isSwingLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Y Angle", &swingLimit.yAngle, 0.001f);
+			ImGui::DragFloat("Z Angle", &swingLimit.zAngle, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Apply Option"))
+	{
+		for (int i = 0; i < 6; ++i)
+			joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
+
+		for (int i = 0; i < 6; ++i)
+		{
+			if (driveVal[i])
+			{
+				joint->SetD6Drive((PxD6Drive::Enum)i
+					, physx::PxD6JointDrive(driveConfigs[i].stiffness
+						, driveConfigs[i].damping
+						, driveConfigs[i].forceLimit
+						, driveConfigs[i].accel));
+			}
+		}
+
+		if (isLinearLimit)
+			joint->SetD6LinearLimit(linearLimit);
+		if (isTwistLimit)
+			joint->SetD6TwistLimit(twistLimit);
+		if (isSwingLimit)
+			joint->SetD6SwingLimit(swingLimit);
+
+		joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
 	}
 	ImGui::PopStyleColor(3);
 }
