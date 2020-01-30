@@ -21,3 +21,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/snake.jpg?raw=true)
 - Damper & Spring
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/springv.jpg?raw=true)
+- D6 Joint
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/articulate.jpg?raw=true)
