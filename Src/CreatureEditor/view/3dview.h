@@ -60,6 +60,7 @@ public:
 	bool m_showReflection;
 	bool m_showShadow;
 	bool m_showSaveDialog;
+	bool m_isSaveOnlySelectionActor;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
 	int m_popupMenuType; // 0:actor menu, 1:spawn selection menu
 	int m_saveFileSyncId; // save file id

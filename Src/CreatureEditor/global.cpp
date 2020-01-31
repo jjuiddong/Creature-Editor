@@ -10,9 +10,12 @@ cGlobal::cGlobal()
 	, m_spawnTransform(Vector3(0, 3, 0), Vector3(0.5f, 0.5f, 0.5f))
 	, m_editorView(nullptr)
 	, m_physSync(nullptr)
-	, m_state(eEditState::Normal)
+	, m_mode(eEditMode::Normal)
 	, m_showUIJoint(false)
 	, m_isSpawnLock(true)
+	, m_pairSyncId0(-1)
+	, m_pairSyncId1(-1)
+	, m_fixJointSelection(false)
 {
 }
 
@@ -51,9 +54,22 @@ bool cGlobal::Init(graphic::cRenderer &renderer)
 
 	// initialize ui joint
 	m_uiJoint.CreateReferenceMode();
-	m_uiJointRenderer.Create(&m_uiJoint);
+	m_uiJointRenderer.Create(*m_physSync, &m_uiJoint);
 
 	return true;
+}
+
+
+// change edit state
+void cGlobal::ChangeEditMode(const eEditMode state)
+{
+	m_mode = state;
+}
+
+
+eEditMode cGlobal::GetEditMode()
+{
+	return m_mode;
 }
 
 

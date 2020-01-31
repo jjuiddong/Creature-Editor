@@ -68,37 +68,64 @@ void cResourceView::OnRender(const float deltaSeconds)
 							, &syncIds);
 
 						// moving actor position
-						if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]))
+						if (!syncIds.empty())
 						{
-							const Ray ray = g_global->m_3dView->m_camera.GetRay();
-							Vector3 spawnPos = ray.orig + ray.dir * 10.f 
-								- sync->node->m_transform.pos;
+							using namespace physx;
+
+							// setting spawn position
+							Vector3 center;
+							for (auto id : syncIds)
+								if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+									if (sync->node)
+										center += sync->node->m_transform.pos;
+							center /= syncIds.size();
+
+							const Vector2 size(g_global->m_3dView->m_camera.m_width, g_global->m_3dView->m_camera.m_height);
+							const Ray ray = g_global->m_3dView->m_camera.GetRay(
+								(int)size.x/2, (int)size.y/2+(int)size.y/5 );
+							const Plane ground(Vector3(0, 1, 0), 0);
+							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+							Vector3 spawnPos = targetPos - center;
 							spawnPos.y = 0;
 
-							g_global->UpdateAllConnectionActorTransform(sync->actor
-								, Transform(spawnPos));
+							// update actor position
+							for (auto id : syncIds)
+							{
+								phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
+								if (!sync || !sync->node)
+									continue;
+
+								sync->node->m_transform.pos += spawnPos;
+								if (sync->actor)
+									sync->actor->SetGlobalPose(
+										PxTransform(*(PxVec3*)&sync->node->m_transform.pos
+										, *(PxQuat*)&sync->node->m_transform.rot));
+							}
 
 							// selection
-							g_global->m_state = eEditState::Normal;
+							g_global->m_mode = eEditMode::Normal;
 							g_global->m_gizmo.SetControlNode(nullptr);
 							g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
 							g_global->m_selJoint = nullptr;
 							g_global->ClearSelection();
 
-							g_global->SetAllConnectionActorSelect(sync->actor);
-						}
+							for (auto id : syncIds)
+								g_global->SelectObject(id);
 
-						// unlock actor
-						if (!g_global->m_isSpawnLock && !syncIds.empty())
-						{
-							phys::sSyncInfo *sync = g_global->FindSyncInfo(syncIds[0]);
-							if (sync)
-								g_global->SetAllConnectionActorKinematic(sync->actor, false);
-						}
-					}
-				}
+							// unlock actor
+							if (!g_global->m_isSpawnLock)
+							{
+								for (auto id : syncIds)
+									if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
+										if (sync->actor)
+											sync->actor->SetKinematic(false);
+							}
+
+						}//~syncIds.empty()
+					}//~IsDoubleClicked
+				}//~IsItemClicked
 				ImGui::NextColumn();
-			}
+			}//~PassFilter
 			++i;
 		}
 		ImGui::TreePop();

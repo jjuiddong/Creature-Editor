@@ -1,0 +1,122 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature",
+        "shapes": {
+            "shape": {
+                "name": "blank",
+                "id": "10197",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "21.210014 3.000000 28.501160",
+                "dim": "0.500000 2.965162 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "5.93032312",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10200",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "19.583599 5.647221 27.379791",
+                "dim": "4.611076 0.165819 0.257071",
+                "rot": "-0.000023 -0.002252 0.000001 0.999997",
+                "mass": "1.57245398",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10203",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "21.260008 2.997130 26.309786",
+                "dim": "0.500000 2.965162 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "5.93032312",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            },
+            "shape": {
+                "name": "blank",
+                "id": "10194",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "23.474089 3.000000 27.308294",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "10",
+                "angular damping": "1",
+                "linear damping": "1",
+                "kinematic": "true"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10197",
+                "shape id1": "10200",
+                "jointpos": "-0.018394 5.667397 0.443281",
+                "revolute rot": "0.000000 -0.707107 0.000000 0.707107",
+                "pivot dir0": "0.028325 0.999599 0.000002",
+                "pivot len0": "2.66847014",
+                "pivot dir1": "0.999919 0.011849 -0.004394",
+                "pivot len1": "1.70223451",
+                "drive": "false",
+                "drive velocity": "0",
+                "cycle": "false",
+                "cycle period": "3",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10203",
+                "shape id1": "10200",
+                "jointpos": "-0.015265 5.664467 -0.652533",
+                "revolute rot": "0.000000 -0.707107 0.000000 0.707107",
+                "pivot dir0": "0.010781 0.999942 0.000003",
+                "pivot len0": "2.66749382",
+                "pivot dir1": "0.999938 0.010110 -0.004545",
+                "pivot len1": "1.70529294",
+                "drive": "false",
+                "drive velocity": "0",
+                "cycle": "false",
+                "cycle period": "3",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10194",
+                "shape id1": "10200",
+                "jointpos": "23.535328 4.323613 27.344044",
+                "revolute rot": "0.000000 -0.707107 0.000000 0.707107",
+                "pivot dir0": "0.046220 0.998931 0.000000",
+                "pivot len0": "1.3250283",
+                "pivot dir1": "0.948213 -0.317603 -0.004285",
+                "pivot len1": "4.16750097",
+                "drive": "false",
+                "drive velocity": "0",
+                "cycle": "false",
+                "cycle period": "3",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-6.283185 6.283185 0.010000"
+            }
+        }
+    }
+}

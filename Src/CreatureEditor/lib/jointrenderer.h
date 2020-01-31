@@ -15,7 +15,7 @@ public:
 	cJointRenderer();
 	virtual ~cJointRenderer();
 
-	bool Create(phys::cJoint *joint);
+	bool Create(phys::cPhysicsSync &sync, phys::cJoint *joint);
 
 	virtual bool Update(graphic::cRenderer &renderer, const float deltaSeconds) override;
 	virtual bool Render(graphic::cRenderer &renderer
@@ -32,7 +32,7 @@ public:
 	void SetRevoluteAxisPos(const Vector3 &pos);
 	bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 		, const Vector3 &axisPos=Vector3::Zeroes);
-	bool ApplyPivot();
+	bool ApplyPivot(phys::cPhysicsEngine &physics);
 	void Clear();
 
 
@@ -44,4 +44,5 @@ public:
 	phys::cJoint *m_joint; // reference
 	phys::sSyncInfo *m_sync0; // reference
 	phys::sSyncInfo *m_sync1; // reference
+	bool m_highlightRevoluteJoint;
 };

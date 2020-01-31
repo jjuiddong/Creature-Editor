@@ -5,6 +5,7 @@
 #include "view/3dview.h"
 #include "view/editorview.h"
 #include "view/resourceview.h"
+#include "view/simulationview.h"
 
 cGlobal *g_global = nullptr;
 
@@ -77,9 +78,13 @@ bool cViewer::OnInit()
 	resourceView->Create(eDockState::DOCKWINDOW, eDockSlot::BOTTOM, this, p3dView, 0.2f
 		, framework::eDockSizingOption::PIXEL);
 
+	cSimulationView *simView = new cSimulationView("Simulation");
+	simView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, resourceView, 0.5f);
+
 	g_global->m_3dView = p3dView;
 	g_global->m_editorView = editView;
 	g_global->m_resourceView = resourceView;
+	g_global->m_simView = simView;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

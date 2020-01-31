@@ -5,11 +5,12 @@
 #pragma once
 
 
-enum class eEditState {Normal, Pivot0, Pivot1, Revolute, SpawnLocation};
+enum class eEditMode {Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation};
 
 class c3DView;
 class cEditorView;
 class cResourceView;
+class cSimulationView;
 
 class cGlobal
 {
@@ -18,6 +19,10 @@ public:
 	virtual ~cGlobal();
 
 	bool Init(graphic::cRenderer &renderer);
+
+	// mode change
+	void ChangeEditMode(const eEditMode state);
+	eEditMode GetEditMode();
 
 	// selection
 	bool SelectObject(const int syncId, const bool isToggle = false);
@@ -47,10 +52,11 @@ protected:
 
 
 public:
-	eEditState m_state;
+	eEditMode m_mode;
 	c3DView *m_3dView;
 	cEditorView *m_editorView;
 	cResourceView *m_resourceView;
+	cSimulationView *m_simView;
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 
@@ -73,6 +79,9 @@ public:
 	// joint
 	phys::cJoint *m_selJoint; // reference
 	bool m_showUIJoint;
-	phys::cJoint m_uiJoint;
-	cJointRenderer m_uiJointRenderer;
+	phys::cJoint m_uiJoint; // joint edit mode ui
+	cJointRenderer m_uiJointRenderer; // joint edit mode ui
+	bool m_fixJointSelection;
+	int m_pairSyncId0; // joint edit mode, actor0
+	int m_pairSyncId1; // joint edit mode, actor1
 };

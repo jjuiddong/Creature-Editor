@@ -76,7 +76,7 @@ void cEditorView::RenderSpawnTransform()
 		ImGui::Checkbox("##kinematic", &g_global->m_isSpawnLock);
 		ImGui::SameLine(235);
 		if (ImGui::Button("SpawnPos"))
-			g_global->m_state = eEditState::SpawnLocation;
+			g_global->ChangeEditMode(eEditMode::SpawnLocation);
 
 		ImGui::TextUnformatted("Pos  ");
 		ImGui::SameLine();
@@ -144,7 +144,7 @@ void cEditorView::RenderSpawnTransform()
 				sync->actor->SetKinematic(g_global->m_isSpawnLock);
 
 				// select spawn rigidactor
-				g_global->m_state = eEditState::Normal;
+				g_global->ChangeEditMode(eEditMode::Normal);
 				g_global->ClearSelection();
 				g_global->SelectObject(syncId);
 				g_global->m_gizmo.SetControlNode(sync->node);
@@ -386,7 +386,7 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 
 			if (ImGui::Button("Pivot Setting"))
 			{
-				g_global->m_state = eEditState::Pivot0;
+				g_global->ChangeEditMode(eEditMode::Pivot0);
 				g_global->m_selJoint = joint;
 				g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 			}
@@ -396,9 +396,9 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 			{
 				cJointRenderer *jointRenderer = g_global->FindJointRenderer(joint);
 				if (jointRenderer)
-					jointRenderer->ApplyPivot();
+					jointRenderer->ApplyPivot(g_global->m_physics);
 
-				g_global->m_state = eEditState::Normal;
+				g_global->ChangeEditMode(eEditMode::Normal);
 			}
 
 			switch (joint->m_type)
@@ -437,7 +437,7 @@ void cEditorView::RenderSelectActorJointInfo(const int syncId)
 	if (!rmJoints.empty())
 	{
 		// clear selection
-		g_global->m_state = eEditState::Normal;
+		g_global->ChangeEditMode(eEditMode::Normal);
 		g_global->m_selJoint = nullptr;
 	}
 	for (auto &joint : rmJoints)
@@ -450,7 +450,8 @@ void cEditorView::RenderJointInfo()
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 	if (ImGui::CollapsingHeader("Create Joint"))
 	{
-		CheckCancelUIJoint();
+		if (CheckCancelUIJoint())
+			g_global->ChangeEditMode(eEditMode::Normal); // cancel ui
 
 		if (g_global->m_selects.size() == 2)
 		{
@@ -472,6 +473,25 @@ void cEditorView::RenderJointInfo()
 						if (j1 == j2)
 							return; // already connection joint
 			}
+
+			if ((g_global->GetEditMode() != eEditMode::Pivot0)
+				&& (g_global->GetEditMode() != eEditMode::Pivot1)
+				&& (g_global->GetEditMode() != eEditMode::Revolute)
+				&& (g_global->GetEditMode() != eEditMode::JointEdit))
+			{
+				auto it = g_global->m_selects.begin();
+				g_global->m_pairSyncId0 = *it++;
+				g_global->m_pairSyncId1 = *it++;
+				g_global->ChangeEditMode(eEditMode::JointEdit); // joint edit mode
+			}
+		}
+
+		if ((g_global->GetEditMode() == eEditMode::Pivot0)
+			|| (g_global->GetEditMode() == eEditMode::Pivot1)
+			|| (g_global->GetEditMode() == eEditMode::Revolute)
+			|| (g_global->GetEditMode() == eEditMode::JointEdit))
+		{
+			ImGui::Checkbox("Fix Selection", &g_global->m_fixJointSelection);
 
 			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
 			static int idx = 0;
@@ -496,15 +516,28 @@ void cEditorView::RenderJointInfo()
 
 void cEditorView::RenderFixedJoint()
 {
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
 	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
 	if (!sync0 || !sync1)
 		return;
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+
+	UpdateUIJoint(sync0, sync1, editAxis, axis[axisIdx]);
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->ChangeEditMode(eEditMode::Pivot0);
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -514,14 +547,19 @@ void cEditorView::RenderFixedJoint()
 		g_global->UpdateActorDimension(sync0->actor, true);
 		g_global->UpdateActorDimension(sync1->actor, true);
 
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateFixed(g_global->m_physics
-			, sync0->actor, sync0->node->m_transform
-			, sync1->actor, sync1->node->m_transform);
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos);
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -531,9 +569,8 @@ void cEditorView::RenderSphericalJoint()
 {
 	using namespace physx;
 
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
@@ -544,11 +581,24 @@ void cEditorView::RenderSphericalJoint()
 	static Vector2 limit(PxPi / 2.f, PxPi / 6.f);
 	static bool isLimit;
 	ImGui::Text("Limit Cone (Radian)");
-	//ImGui::TextUnformatted("Limit");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &isLimit);
 	ImGui::DragFloat("Y Limit Angle", &limit.x, 0.001f);
 	ImGui::DragFloat("Z Limit Angle", &limit.y, 0.001f);	
+
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+
+	UpdateUIJoint(sync0, sync1, editAxis, axis[axisIdx]);
+
+	if (ImGui::Button("Pivot Setting"))
+	{
+		g_global->ChangeEditMode(eEditMode::Pivot0);
+		g_global->m_selJoint = &g_global->m_uiJoint;
+		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
+	}
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -558,10 +608,13 @@ void cEditorView::RenderSphericalJoint()
 		g_global->UpdateActorDimension(sync0->actor, true);
 		g_global->UpdateActorDimension(sync1->actor, true);
 
+		const Transform pivot0 = g_global->m_uiJointRenderer.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_global->m_uiJointRenderer.GetPivotWorldTransform(1);
+
 		phys::cJoint *joint = new phys::cJoint();
 		joint->CreateSpherical(g_global->m_physics
-			, sync0->actor, sync0->node->m_transform
-			, sync1->actor, sync1->node->m_transform);
+			, sync0->actor, sync0->node->m_transform, pivot0.pos
+			, sync1->actor, sync1->node->m_transform, pivot1.pos);
 
 		if (isLimit)
 		{
@@ -570,8 +623,10 @@ void cEditorView::RenderSphericalJoint()
 		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
+
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -581,9 +636,8 @@ void cEditorView::RenderRevoluteJoint()
 {
 	using namespace physx;
 
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
@@ -626,48 +680,12 @@ void cEditorView::RenderRevoluteJoint()
 
 	if (ImGui::Button("Pivot Setting"))
 	{
-		g_global->m_state = eEditState::Pivot0;
+		g_global->ChangeEditMode(eEditMode::Pivot0);
 		g_global->m_selJoint = &g_global->m_uiJoint;
 		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
-	// update ui joint (once process)
-	if (!g_global->m_showUIJoint || editAxis)
-	{
-		// already register joint?
-		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
-			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
-
-		// change selection?
-		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
-				&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
-			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
-				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
-
-		g_global->m_showUIJoint = true;
-
-		if (!isPrevSelection || editAxis) // new selection?
-		{
-			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
-			g_global->m_uiJoint.m_actor0 = sync0->actor;
-			g_global->m_uiJoint.m_actor1 = sync1->actor;
-			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
-			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
-			g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
-			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[0].len = 0;
-			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[1].len = 0;
-
-			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
-			g_global->m_uiJointRenderer.m_sync0 = sync0;
-			g_global->m_uiJointRenderer.m_sync1 = sync1;
-			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
-				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-			g_global->m_uiJointRenderer.SetRevoluteAxis(axis[axisIdx], jointPos);
-		}
-	}
-	//~
+	UpdateUIJoint(sync0, sync1, editAxis, axis[axisIdx]);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -694,8 +712,8 @@ void cEditorView::RenderRevoluteJoint()
 		if (isLimit)
 			joint->SetAngularLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
 		else
-			joint->SetAngularLimit(PxJointAngularLimitPair(FLT_MIN, FLT_MAX));
-			//joint->SetAngularLimit(PxJointAngularLimitPair(-PxPi*2.f, PxPi*2.f, 0.01f));
+			joint->SetAngularLimit(PxJointAngularLimitPair(-PxPi*2.f, PxPi*2.f, 0.01f));
+			//joint->SetAngularLimit(PxJointAngularLimitPair(FLT_MIN, FLT_MAX));
 
 		joint->EnableDrive(isDrive);
 		if (isDrive)
@@ -706,10 +724,10 @@ void cEditorView::RenderRevoluteJoint()
 			joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
 
-		g_global->m_state = eEditState::Normal;
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -719,9 +737,8 @@ void cEditorView::RenderPrismaticJoint()
 {
 	using namespace physx;
 
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
@@ -754,48 +771,12 @@ void cEditorView::RenderPrismaticJoint()
 
 	if (ImGui::Button("Pivot Setting"))
 	{
-		g_global->m_state = eEditState::Pivot0;
+		g_global->ChangeEditMode(eEditMode::Pivot0);
 		g_global->m_selJoint = &g_global->m_uiJoint;
 		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
-	// update ui joint (once process)
-	if (!g_global->m_showUIJoint || editAxis)
-	{
-		// already register joint?
-		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
-			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
-
-		// change selection?
-		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
-			&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
-			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
-				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
-
-		g_global->m_showUIJoint = true;
-
-		if (!isPrevSelection || editAxis) // new selection?
-		{
-			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
-			g_global->m_uiJoint.m_actor0 = sync0->actor;
-			g_global->m_uiJoint.m_actor1 = sync1->actor;
-			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
-			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
-			g_global->m_uiJoint.m_revoluteAxis = axis[axisIdx];
-			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[0].len = 0;
-			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[1].len = 0;
-
-			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
-			g_global->m_uiJointRenderer.m_sync0 = sync0;
-			g_global->m_uiJointRenderer.m_sync1 = sync1;
-			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
-				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-			g_global->m_uiJointRenderer.SetRevoluteAxis(axis[axisIdx], jointPos);
-		}
-	}
-	//~
+	UpdateUIJoint(sync0, sync1, editAxis, axis[axisIdx]);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -835,10 +816,10 @@ void cEditorView::RenderPrismaticJoint()
 		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
 
-		g_global->m_state = eEditState::Normal;
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -848,9 +829,8 @@ void cEditorView::RenderDistanceJoint()
 {
 	using namespace physx;
 
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
@@ -867,50 +847,19 @@ void cEditorView::RenderDistanceJoint()
 	ImGui::DragFloat("min distance", &limit.x, 0.001f);
 	ImGui::DragFloat("max distance", &limit.y, 0.001f);
 
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+
+	UpdateUIJoint(sync0, sync1, editAxis, axis[axisIdx]);
+
 	if (ImGui::Button("Pivot Setting"))
 	{
-		g_global->m_state = eEditState::Pivot0;
+		g_global->ChangeEditMode(eEditMode::Pivot0);
 		g_global->m_selJoint = &g_global->m_uiJoint;
 		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
-
-	// update ui joint (once process)
-	if (!g_global->m_showUIJoint) 
-	{
-		// already register joint?
-		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
-			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
-
-		// change selection?
-		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
-			&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
-			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
-				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
-
-		g_global->m_showUIJoint = true;
-
-		if (!isPrevSelection) // new selection?
-		{
-			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
-			g_global->m_uiJoint.m_actor0 = sync0->actor;
-			g_global->m_uiJoint.m_actor1 = sync1->actor;
-			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
-			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
-			g_global->m_uiJoint.m_revoluteAxis = Vector3(1, 0, 0);
-			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[0].len = 0;
-			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
-			g_global->m_uiJoint.m_pivots[1].len = 0;
-
-			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
-			g_global->m_uiJointRenderer.m_sync0 = sync0;
-			g_global->m_uiJointRenderer.m_sync1 = sync1;
-			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
-				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-			g_global->m_uiJointRenderer.SetRevoluteAxis(Vector3(1,0,0), jointPos);
-		}
-	}
-	//~
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -938,13 +887,12 @@ void cEditorView::RenderDistanceJoint()
 		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
 
-		g_global->m_state = eEditState::Normal;
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
-
 }
 
 
@@ -952,6 +900,9 @@ void cEditorView::RenderDistanceJoint()
 void cEditorView::RenderD6Joint()
 {
 	using namespace physx;
+
+	const int syncId0 = g_global->m_pairSyncId0;
+	const int syncId1 = g_global->m_pairSyncId1;
 
 	const char *motionAxis[6] = { "X         ", "Y         ", "Z          "
 		, "Twist   ", "Swing1", "Swing2" };
@@ -984,10 +935,6 @@ void cEditorView::RenderD6Joint()
 	static bool isSwingLimit = false;
 	static Vector3 linearDriveVelocity(0, 0, 0);
 	static Vector3 angularDriveVelocity(0, 0, 0);
-
-	auto it = g_global->m_selects.begin();
-	const int syncId0 = *it++;
-	const int syncId1 = *it++;
 
 	phys::cPhysicsSync *physSync = g_global->m_physSync;
 	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
@@ -1126,7 +1073,7 @@ void cEditorView::RenderD6Joint()
 
 	if (ImGui::Button("Pivot Setting"))
 	{
-		g_global->m_state = eEditState::Pivot0;
+		g_global->ChangeEditMode(eEditMode::Pivot0);
 		g_global->m_selJoint = &g_global->m_uiJoint;
 		g_global->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
@@ -1176,10 +1123,10 @@ void cEditorView::RenderD6Joint()
 		joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
-		jointRenderer->Create(joint);
+		jointRenderer->Create(*g_global->m_physSync, joint);
 		physSync->AddJoint(joint, jointRenderer);
 
-		g_global->m_state = eEditState::Normal;
+		g_global->ChangeEditMode(eEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
 	ImGui::Spacing();
@@ -1629,12 +1576,18 @@ void cEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
 
 
 // check cancel show ui joint
-void cEditorView::CheckCancelUIJoint()
+// return true if change state
+bool cEditorView::CheckCancelUIJoint()
 {
 	if (!g_global->m_showUIJoint)
-		return;
-
-	bool isCancelUIJoint = false;
+	{
+		// fixed, spherical, distance, d6 joint?
+		// check cancel ui joint
+		if ((g_global->m_selects.size() != 2)
+			&& (g_global->GetEditMode() == eEditMode::JointEdit))
+			goto $cancel;
+		return false;
+	}
 
 	if ((g_global->m_selects.size() != 1)
 		&& (g_global->m_selects.size() != 2)
@@ -1645,7 +1598,7 @@ void cEditorView::CheckCancelUIJoint()
 	else if (g_global->m_selects.size() == 1)
 	{
 		phys::sSyncInfo *sync0 = g_global->FindSyncInfo(g_global->m_selects[0]);
-		if (!sync0->joint)
+		if (!sync0->joint) // ui joint selection?
 			goto $cancel;
 	}
 	else
@@ -1694,12 +1647,12 @@ void cEditorView::CheckCancelUIJoint()
 		}
 	}
 
-	return;
+	return false;
 
 $cancel:
 	g_global->m_showUIJoint = false;
 	g_global->m_physSync->RemoveSyncInfo(&g_global->m_uiJoint);
-	return;
+	return true;
 }
 
 
@@ -1723,4 +1676,71 @@ void cEditorView::CheckChangeSelection()
 $change:
 	m_isChangeSelection = true;
 	m_oldSelects = g_global->m_selects;
+}
+
+
+// update ui joint information
+void cEditorView::UpdateUIJoint(phys::sSyncInfo *sync0
+	, phys::sSyncInfo *sync1, const bool editAxis
+	, const Vector3 &revoluteAxis)
+{
+	phys::cPhysicsSync *physSync = g_global->m_physSync;
+
+	// update ui joint (once process)
+	if (!g_global->m_showUIJoint || editAxis || m_isChangeSelection)
+	{
+		// already register joint?
+		if (!g_global->FindJointRenderer(&g_global->m_uiJoint))
+			physSync->AddJoint(&g_global->m_uiJoint, &g_global->m_uiJointRenderer, false);
+
+		// change selection?
+		const bool isPrevSelection = (((g_global->m_uiJoint.m_actor0 == sync0->actor)
+			&& (g_global->m_uiJoint.m_actor1 == sync1->actor))
+			|| ((g_global->m_uiJoint.m_actor1 == sync0->actor)
+				&& (g_global->m_uiJoint.m_actor0 == sync1->actor)));
+
+		g_global->m_showUIJoint = true;
+
+		{
+			g_global->m_uiJoint.m_type = phys::eJointType::Revolute;
+			g_global->m_uiJoint.m_actor0 = sync0->actor;
+			g_global->m_uiJoint.m_actor1 = sync1->actor;
+			g_global->m_uiJoint.m_actorLocal0 = sync0->node->m_transform;
+			g_global->m_uiJoint.m_actorLocal1 = sync1->node->m_transform;
+			g_global->m_uiJoint.m_revoluteAxis = revoluteAxis;
+
+			g_global->m_uiJoint.m_pivots[0].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[0].len = 0;
+			g_global->m_uiJoint.m_pivots[1].dir = Vector3::Zeroes;
+			g_global->m_uiJoint.m_pivots[1].len = 0;
+
+			g_global->m_uiJointRenderer.m_joint = &g_global->m_uiJoint;
+			g_global->m_uiJointRenderer.m_sync0 = sync0;
+			g_global->m_uiJointRenderer.m_sync1 = sync1;
+
+			// auto pivot position targeting
+			const Vector3 pos0 = sync0->node->m_transform.pos;
+			const Vector3 pos1 = sync1->node->m_transform.pos;
+			const Ray ray0(pos1, revoluteAxis);
+			const Ray ray1(pos1, -revoluteAxis);
+
+			float dist0 = 0, dist1 = 0;
+			sync0->node->Picking(ray0, graphic::eNodeType::MODEL, false, &dist0);
+			sync0->node->Picking(ray1, graphic::eNodeType::MODEL, false, &dist1);
+			if (dist0 != 0 || dist1 != 0) // find pivot pos
+			{
+				const Vector3 pivot0 = (dist0 != 0) ?
+					revoluteAxis * dist0 + pos1
+					: -revoluteAxis * dist1 + pos1;
+
+				g_global->m_uiJoint.m_pivots[0].dir = (pivot0 - pos0).Normal();
+				g_global->m_uiJoint.m_pivots[0].len = pivot0.Distance(pos0);
+			}
+			//~auto pivot position
+
+			const Vector3 jointPos = (g_global->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
+				g_global->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
+			g_global->m_uiJointRenderer.SetRevoluteAxis(revoluteAxis, jointPos);
+		}
+	}
 }

@@ -28,6 +28,9 @@
     <ClCompile Include="creature\evc.cpp">
       <Filter>creature</Filter>
     </ClCompile>
+    <ClCompile Include="view\simulationview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -55,6 +58,9 @@
     </ClInclude>
     <ClInclude Include="creature\evc.h">
       <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="view\simulationview.h">
+      <Filter>view</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

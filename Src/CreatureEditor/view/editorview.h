@@ -4,6 +4,9 @@
 //
 #pragma once
 
+namespace phys {
+	struct sSyncInfo;
+}
 
 class cEditorView : public framework::cDockWindow
 {
@@ -31,8 +34,11 @@ protected:
 	void RenderPrismaticJointSetting(phys::cJoint *joint);
 	void RenderDistanceJointSetting(phys::cJoint *joint);
 	void RenderD6JointSetting(phys::cJoint *joint);
-	void CheckCancelUIJoint();
+	bool CheckCancelUIJoint();
 	void CheckChangeSelection();
+	void UpdateUIJoint(phys::sSyncInfo *sync0
+		, phys::sSyncInfo *sync1, const bool editAxis
+		, const Vector3 &revoluteAxis);
 
 
 public:

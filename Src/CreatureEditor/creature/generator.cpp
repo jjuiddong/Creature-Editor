@@ -306,7 +306,8 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					auto it0 = syncs.find(actorId0);
 					auto it1 = syncs.find(actorId1);
 					if ((syncs.end() == it0) || (syncs.end() == it1))
-						throw std::exception("not found actor ptr");
+						continue; // error but continue
+
 					phys::sSyncInfo *sync0 = it0->second;
 					phys::sSyncInfo *sync1 = it1->second;
 
@@ -325,11 +326,11 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					{
 						phys::cJoint *joint = new phys::cJoint();
 						joint->CreateFixed(*g_evc->m_phys
-							, sync0->actor, sync0->node->m_transform
-							, sync1->actor, sync1->node->m_transform);
+							, sync0->actor, sync0->node->m_transform, pivot0
+							, sync1->actor, sync1->node->m_transform, pivot1);
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 					}
 					break;
@@ -343,8 +344,8 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 						phys::cJoint *joint = new phys::cJoint();
 						joint->CreateSpherical(*g_evc->m_phys
-							, sync0->actor, sync0->node->m_transform
-							, sync1->actor, sync1->node->m_transform);
+							, sync0->actor, sync0->node->m_transform, pivot0
+							, sync1->actor, sync1->node->m_transform, pivot1);
 
 						if (isConeLimit)
 						{
@@ -353,7 +354,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						}
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 					}
 					break;
@@ -396,7 +397,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						}
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 					}
 					break;
@@ -433,7 +434,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						}
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 					}
 					break;
@@ -456,7 +457,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						}
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 
 					}
@@ -552,7 +553,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
 
 						cJointRenderer *jointRenderer = new cJointRenderer();
-						jointRenderer->Create(joint);
+						jointRenderer->Create(*g_evc->m_sync, joint);
 						g_evc->m_sync->AddJoint(joint, jointRenderer);
 					}
 					break;
