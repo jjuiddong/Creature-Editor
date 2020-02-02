@@ -282,9 +282,7 @@ void cEditorView::RenderSelectionInfo()
 		{
 			tfm.pos.y = max(0.f, tfm.pos.y);
 			node->m_transform.pos = tfm.pos;
-
-			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-			actor->SetGlobalPose(tm);
+			actor->SetGlobalPose(tfm);
 		}
 
 		if (edit1 || edit1_1) // scale edit
@@ -330,9 +328,7 @@ void cEditorView::RenderSelectionInfo()
 				, ANGLE2RAD(m_eulerAngle.y), ANGLE2RAD(m_eulerAngle.z));
 			tfm.rot.Euler(rpy);
 			node->m_transform.rot = tfm.rot;
-
-			PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-			actor->SetGlobalPose(tm);
+			actor->SetGlobalPose(tfm);
 		}
 
 		if (edit4) // mass edit

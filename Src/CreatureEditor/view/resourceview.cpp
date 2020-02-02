@@ -43,7 +43,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
 	if (ImGui::TreeNode((void*)0, "Creature Files"))
 	{
-		ImGui::Columns(5, "texturecolumns5", false);
+		ImGui::Columns(4, "texturecolumns5", false);
 		for (auto &str : m_fileList)
 		{
 			const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
@@ -97,9 +97,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 
 								sync->node->m_transform.pos += spawnPos;
 								if (sync->actor)
-									sync->actor->SetGlobalPose(
-										PxTransform(*(PxVec3*)&sync->node->m_transform.pos
-										, *(PxQuat*)&sync->node->m_transform.rot));
+									sync->actor->SetGlobalPose(sync->node->m_transform);
 							}
 
 							// selection

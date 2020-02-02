@@ -347,8 +347,7 @@ void c3DView::UpdateSelectModelTransform_RigidActor()
 	temp.pos.y = max(0.f, temp.pos.y);
 	const Transform tfm = temp;
 
-	PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-	sync->actor->SetGlobalPose(tm);
+	sync->actor->SetGlobalPose(tfm);
 
 	// change dimension? apply wakeup
 	if (eGizmoEditType::SCALE == g_global->m_gizmo.m_type)
@@ -454,8 +453,7 @@ void c3DView::UpdateSelectModelTransform_MultiObject()
 		sync->node->m_transform.pos.y = max(0.f, sync->node->m_transform.pos.y);
 
 		const Transform tfm = sync->node->m_transform;
-		PxTransform tm(*(PxVec3*)&tfm.pos, *(PxQuat*)&tfm.rot);
-		sync->actor->SetGlobalPose(tm); // update physics transform
+		sync->actor->SetGlobalPose(tfm); // update physics transform
 	}
 }
 
@@ -560,17 +558,15 @@ void c3DView::RenderPopupMenu()
 		// check menu enable
 		int cntKinematic[2] = { 0, 0 }; // kinematic, unkinematic
 		for (auto id : g_global->m_selects)
-			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-				if (sync && sync->actor)
-					cntKinematic[sync->actor->IsKinematic()]++;
+			if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+				cntKinematic[actor->IsKinematic()]++;
 
 		if (cntKinematic[0] > 0)
 			isLockMenu = true;
 		if (cntKinematic[1] > 0)
 			isUnlockMenu = true;
 
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(*g_global->m_selects.begin());
-		phys::cRigidActor *actor = (sync && sync->actor) ? sync->actor : nullptr;
+		phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(*g_global->m_selects.begin());
 		if (!actor)
 		{
 			ImGui::EndPopup();
@@ -590,9 +586,8 @@ void c3DView::RenderPopupMenu()
 		if (ImGui::MenuItem("Lock", "L", false, isLockMenu))
 		{
 			for (auto id : g_global->m_selects)
-				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-					if (sync && sync->actor)
-						sync->actor->SetKinematic(true);
+				if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+					actor->SetKinematic(true);
 		}
 		if (ImGui::MenuItem("Lock All", nullptr, false, isLockMenu))
 		{
@@ -602,9 +597,8 @@ void c3DView::RenderPopupMenu()
 		if (ImGui::MenuItem("Unlock", "U", false, isUnlockMenu))
 		{
 			for (auto id : g_global->m_selects)
-				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-					if (sync && sync->actor)
-						g_global->UpdateActorDimension(sync->actor, false);
+				if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+					g_global->UpdateActorDimension(actor, false);
 		}
 		if (ImGui::MenuItem("Unlock All", nullptr, false, isUnlockMenu))
 		{
@@ -619,10 +613,9 @@ void c3DView::RenderPopupMenu()
 			// remove connection joint
 			set<phys::cJoint*> rms;
 			for (auto id : g_global->m_selects)
-				if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-					if (sync && sync->actor)
-						for (auto &j : sync->actor->m_joints)
-							rms.insert(j);
+				if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+					for (auto &j : actor->m_joints)
+						rms.insert(j);
 
 			vector<phys::cRigidActor*> wakeups;
 			for (auto *j : rms)
@@ -725,7 +718,7 @@ void c3DView::RenderSaveDialog()
 		if (isSaveBtnClick || isSave)
 		{
 			const StrPath filePath = StrPath("./media/creature/") + fileName;
-			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId))
+			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(m_saveFileSyncId))				
 			{
 				bool isSave = true;
 				if (filePath.IsFileExist()) // file already exist?
@@ -750,9 +743,8 @@ void c3DView::RenderSaveDialog()
 					{
 						vector<phys::cRigidActor*> actors;
 						for (auto &id : g_global->m_selects)
-							if (phys::sSyncInfo *p = g_global->FindSyncInfo(id))
-								if (p->actor)
-									actors.push_back(p->actor);
+							if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+								actors.push_back(actor);
 						for (auto *a : actors)
 							g_global->UpdateActorDimension(a, true);
 
@@ -1223,11 +1215,9 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 			m_popupMenuState = 1; // open popup menu
 			m_popupMenuType = 0; // actor menu
 			m_saveFileSyncId = syncId;
-			//g_global->ClearSelection();
 			g_global->SelectObject(syncId);
 			if (phys::sSyncInfo *sync = g_global->FindSyncInfo(syncId))
 			{
-				//g_global->m_gizmo.SetControlNode(sync->node);
 				g_global->m_gizmo.m_type = eGizmoEditType::None;
 			}
 		}
@@ -1238,7 +1228,6 @@ void c3DView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 			const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
 			const Plane groundPlane(Vector3(0, 1, 0), 0);
 			const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
-			//m_rotateLen = (target - ray.orig).Length();
 
 			m_popupMenuState = 1; // open popup menu
 			m_popupMenuType = 1; // spawn selection menu
@@ -1316,16 +1305,15 @@ void c3DView::OnEventProc(const sf::Event &evt)
 			{
 				if (!g_global->m_selects.empty())
 				{
-					phys::sSyncInfo *sync = g_global->FindSyncInfo(*g_global->m_selects.begin());
-					if (sync)
+					phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(*g_global->m_selects.begin());
+					if (actor)
 					{
-						g_global->UpdateAllConnectionActorDimension(sync->actor, true);
+						g_global->UpdateAllConnectionActorDimension(actor, true);
 
 						vector<phys::cRigidActor*> actors;
 						for (auto &id : g_global->m_selects)
-							if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-								if (sync->actor)
-									actors.push_back(sync->actor);
+							if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+								actors.push_back(actor);
 						evc::WritePhenoTypeFileFrom_RigidActor("tmp.pnt", actors);
 					}
 				}
@@ -1356,16 +1344,12 @@ void c3DView::OnEventProc(const sf::Event &evt)
 
 					for (auto &id : syncIds)
 					{
-						phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
-						if (!sync && !sync->node)
+						phys::sSyncInfo *p = g_global->FindSyncInfo(id);
+						if (!p && !p->node)
 							continue;
-						sync->node->m_transform.pos += spawnPos;
-						if (sync->actor)
-						{
-							sync->actor->SetGlobalPose( physx::PxTransform(
-									*(physx::PxVec3*)&sync->node->m_transform.pos
-									, *(physx::PxQuat*)&sync->node->m_transform.rot));
-						}
+						p->node->m_transform.pos += spawnPos;
+						if (p->actor)
+							p->actor->SetGlobalPose(p->node->m_transform);
 
 						g_global->SelectObject(id);
 					}

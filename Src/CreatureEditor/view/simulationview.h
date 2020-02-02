@@ -15,6 +15,22 @@ public:
 	virtual void OnRender(const float deltaSeconds) override;
 
 
-public:
+protected:
+	void Play();
+	void RecoverySavedPose();
+	void SavePoseCurrentSelection();
+	void SaveKinematicStateCurrentSelection();
+	void RenderSavePoseList();
+	void RenderUnlockActorList();
 
+
+public:
+	struct sPose
+	{
+		int id; // sync id
+		bool kinematic;
+		Transform transform;
+	};
+	vector<sPose> m_poseSaved;
+	vector<int> m_unLockIds; // sync id
 };

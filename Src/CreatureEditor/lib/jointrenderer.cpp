@@ -59,12 +59,18 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	if (m_techniqueName == "BuildShadowMap")
 		return true;
 
+	if (m_joint->m_isBroken) // broken joint?
+		return true;
+
 	if (m_joint->m_joint) // broken joint?
 	{
 		const bool broken = (m_joint->m_joint->getConstraintFlags()
 			& physx::PxConstraintFlag::eBROKEN);
 		if (broken)
+		{
+			m_joint->m_isBroken = true;
 			return true;
+		}
 	}
 
 	renderer.m_dbgCube.SetTechnique(m_techniqueName.c_str());

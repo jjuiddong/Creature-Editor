@@ -173,6 +173,15 @@ phys::sSyncInfo* cGlobal::FindSyncInfo(const int syncId)
 	return m_physSync->FindSyncInfo(syncId);
 }
 
+// find rigid actor from syncid
+phys::cRigidActor* cGlobal::FindRigidActorFromSyncId(const int syncId)
+{
+	phys::sSyncInfo *sync = m_physSync->FindSyncInfo(syncId);
+	if (!sync)
+		return nullptr;
+	return sync->actor;
+}
+
 
 // traverse all connection actor
 template<typename Fn>
@@ -306,8 +315,7 @@ bool cGlobal::UpdateAllConnectionActorTransform(phys::cRigidActor *actor
 			if (phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a))
 			{
 				sync->node->m_transform.pos += transform.pos;
-				a->SetGlobalPose(PxTransform(*(PxVec3*)&sync->node->m_transform.pos
-					, *(PxQuat*)&sync->node->m_transform.rot));
+				a->SetGlobalPose(sync->node->m_transform);
 			}
 			return true;
 		}

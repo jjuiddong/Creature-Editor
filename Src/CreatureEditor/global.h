@@ -36,6 +36,7 @@ public:
 	// utility function
 	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
 	phys::sSyncInfo* FindSyncInfo(const int syncId);
+	phys::cRigidActor* FindRigidActorFromSyncId(const int syncId);
 	bool UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic);
 	bool SetAllConnectionActorKinematic(phys::cRigidActor *actor, const bool isKinematic);
 	bool SetAllConnectionActorSelect(phys::cRigidActor *actor);

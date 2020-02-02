@@ -163,7 +163,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		ptree jts;
 		for (auto &j : joints)
 		{
-// check exist actor?
+			// check exist actor?
 			auto it0 = std::find(actors.begin(), actors.end(), j->m_actor0);
 			auto it1 = std::find(actors.begin(), actors.end(), j->m_actor0);
 			if ((actors.end() == it0) || (actors.end() == it1))
@@ -291,8 +291,6 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 						vt0.second.get<string>("type", "Fixed"));
 					const int actorId0 = vt0.second.get<int>("shape id0");
 					const int actorId1 = vt0.second.get<int>("shape id1");
-					const string posStr = vt0.second.get<string>("jointpos", "0 0 0");
-					const Vector3 pos = ParseVector3(posStr);
 					const string revoluteRotStr = vt0.second.get<string>("revolute rot", "0 0 0 1");
 					const Vector4 rot = ParseVector4(revoluteRotStr);
 					const Quaternion revoluteQ(rot.x, rot.y, rot.z, rot.w);
