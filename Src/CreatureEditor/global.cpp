@@ -3,6 +3,7 @@
 #include "global.h"
 #include "view/3dview.h"
 #include "view/resourceview.h"
+#include "creature/creature.h"
 
 
 cGlobal::cGlobal()
@@ -70,6 +71,14 @@ void cGlobal::ChangeEditMode(const eEditMode state)
 eEditMode cGlobal::GetEditMode()
 {
 	return m_mode;
+}
+
+
+// add creature ptr
+bool cGlobal::AddCreature(evc::cCreature *creature)
+{
+	m_creatures.push_back(creature);
+	return true;
 }
 
 
@@ -370,6 +379,10 @@ graphic::cRenderer& cGlobal::GetRenderer()
 
 void cGlobal::Clear()
 {
+	for (auto &p : m_creatures)
+		delete p;
+	m_creatures.clear();
+
 	evc::ReleaseEvc();
 	m_chDimensions.clear();
 	m_physics.Clear();

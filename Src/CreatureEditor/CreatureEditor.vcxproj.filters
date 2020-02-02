@@ -31,6 +31,12 @@
     <ClCompile Include="view\simulationview.cpp">
       <Filter>view</Filter>
     </ClCompile>
+    <ClCompile Include="creature\genotype\GenotypeParser.cpp">
+      <Filter>creature\genotype</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\genotype\GenotypeScanner.cpp">
+      <Filter>creature\genotype</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -62,6 +68,12 @@
     <ClInclude Include="view\simulationview.h">
       <Filter>view</Filter>
     </ClInclude>
+    <ClInclude Include="creature\genotype\GenotypeParser.h">
+      <Filter>creature\genotype</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\genotype\GenotypeScanner.h">
+      <Filter>creature\genotype</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="view">
@@ -72,6 +84,9 @@
     </Filter>
     <Filter Include="creature">
       <UniqueIdentifier>{151fd2b2-b7d5-477b-a0af-ea30ed31a495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="creature\genotype">
+      <UniqueIdentifier>{407b2618-24ab-494b-81c1-093fcb6639cf}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

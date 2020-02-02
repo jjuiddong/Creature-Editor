@@ -158,6 +158,8 @@
     <ClCompile Include="creature\creature.cpp" />
     <ClCompile Include="creature\evc.cpp" />
     <ClCompile Include="creature\generator.cpp" />
+    <ClCompile Include="creature\genotype\GenotypeParser.cpp" />
+    <ClCompile Include="creature\genotype\GenotypeScanner.cpp" />
     <ClCompile Include="creature\pnode.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp" />
@@ -174,6 +176,8 @@
     <ClInclude Include="creature\creature.h" />
     <ClInclude Include="creature\evc.h" />
     <ClInclude Include="creature\generator.h" />
+    <ClInclude Include="creature\genotype\GenotypeParser.h" />
+    <ClInclude Include="creature\genotype\GenotypeScanner.h" />
     <ClInclude Include="creature\pnode.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="lib\jointrenderer.h" />

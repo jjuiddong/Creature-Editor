@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "resourceview.h"
 #include "3dview.h"
+#include "../creature/creature.h"
 
 using namespace graphic;
 
@@ -61,46 +62,28 @@ void cResourceView::OnRender(const float deltaSeconds)
 					selectIdx = i;
 					if (ImGui::IsMouseDoubleClicked(0))
 					{
+						// create creature
 						const StrPath fileName = StrPath("./media/creature/") + str;
-						vector<int> syncIds;
-						evc::ReadPhenoTypeFile(g_global->GetRenderer()
-							, fileName.c_str()
-							, &syncIds);
 
-						// moving actor position
+						const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+						const Vector2 size(camera.m_width, camera.m_height);
+						const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+						const Plane ground(Vector3(0, 1, 0), 0);
+						const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+
+						evc::cCreature *creature = new evc::cCreature();
+						creature->Read(g_global->GetRenderer(), fileName, Transform(targetPos));
+						g_global->AddCreature(creature);
+
+						// unlock actor
+						if (!g_global->m_isSpawnLock)
+							creature->SetKinematic(false);
+
+						// selection
+						vector<int> syncIds;
+						creature->GetSyncIds(syncIds);
 						if (!syncIds.empty())
 						{
-							using namespace physx;
-
-							// setting spawn position
-							Vector3 center;
-							for (auto id : syncIds)
-								if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-									if (sync->node)
-										center += sync->node->m_transform.pos;
-							center /= syncIds.size();
-
-							const Vector2 size(g_global->m_3dView->m_camera.m_width, g_global->m_3dView->m_camera.m_height);
-							const Ray ray = g_global->m_3dView->m_camera.GetRay(
-								(int)size.x/2, (int)size.y/2+(int)size.y/5 );
-							const Plane ground(Vector3(0, 1, 0), 0);
-							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-							Vector3 spawnPos = targetPos - center;
-							spawnPos.y = 0;
-
-							// update actor position
-							for (auto id : syncIds)
-							{
-								phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
-								if (!sync || !sync->node)
-									continue;
-
-								sync->node->m_transform.pos += spawnPos;
-								if (sync->actor)
-									sync->actor->SetGlobalPose(sync->node->m_transform);
-							}
-
-							// selection
 							g_global->m_mode = eEditMode::Normal;
 							g_global->m_gizmo.SetControlNode(nullptr);
 							g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
@@ -109,17 +92,8 @@ void cResourceView::OnRender(const float deltaSeconds)
 
 							for (auto id : syncIds)
 								g_global->SelectObject(id);
-
-							// unlock actor
-							if (!g_global->m_isSpawnLock)
-							{
-								for (auto id : syncIds)
-									if (phys::sSyncInfo *sync = g_global->FindSyncInfo(id))
-										if (sync->actor)
-											sync->actor->SetKinematic(false);
-							}
-
 						}//~syncIds.empty()
+
 					}//~IsDoubleClicked
 				}//~IsItemClicked
 				ImGui::NextColumn();

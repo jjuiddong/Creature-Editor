@@ -25,8 +25,8 @@ namespace evc
 	public:
 		int m_id;
 		phys::cRigidActor *m_actor; // reference
-		vector<phys::cJoint*> m_joints; // reference
-		vector<cJointRenderer*> m_jointRenderers; // reference
+		//vector<phys::cJoint*> m_joints; // reference
+		//vector<cJointRenderer*> m_jointRenderers; // reference
 		graphic::cNode *m_node; // render object, reference
 		vector<cPNode*> m_children;
 	};

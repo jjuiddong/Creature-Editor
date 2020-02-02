@@ -12,6 +12,8 @@ class cEditorView;
 class cResourceView;
 class cSimulationView;
 
+namespace evc { class cCreature; }
+
 class cGlobal
 {
 public:
@@ -23,6 +25,9 @@ public:
 	// mode change
 	void ChangeEditMode(const eEditMode state);
 	eEditMode GetEditMode();
+
+	// creature
+	bool AddCreature(evc::cCreature *creature);
 
 	// selection
 	bool SelectObject(const int syncId, const bool isToggle = false);
@@ -85,4 +90,7 @@ public:
 	bool m_fixJointSelection;
 	int m_pairSyncId0; // joint edit mode, actor0
 	int m_pairSyncId1; // joint edit mode, actor1
+
+	// creatures
+	vector<evc::cCreature*> m_creatures;
 };

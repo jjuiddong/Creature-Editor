@@ -29,7 +29,7 @@ public:
 	{
 		int id; // sync id
 		bool kinematic;
-		Transform transform;
+		Transform transform; // rigidbody transform
 	};
 	vector<sPose> m_poseSaved;
 	vector<int> m_unLockIds; // sync id

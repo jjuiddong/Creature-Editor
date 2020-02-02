@@ -1,0 +1,13 @@
+
+body( box, vec3(1,1,1), material(red), mass(1))
+
+
+main( box, vec3(1,1,1), material(yellow), mass(1)
+	
+	, joint( revolute, vec3(1,1,1), pivot(1,1,1), pivot(1,1,1)
+		, transform(vec3(1,1,1), quat(0,0,0,1))
+		, angularlimit(yangle(1), zangle(1)
+		, drive(velicity(1), period(1))
+		, body )
+
+	)
