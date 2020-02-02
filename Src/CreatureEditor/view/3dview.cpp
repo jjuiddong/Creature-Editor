@@ -634,6 +634,26 @@ void c3DView::RenderPopupMenu()
 	}
 	else if (ImGui::BeginPopup("Spawn PopupMenu"))
 	{
+		if (ImGui::BeginMenu("Spawn"))
+		{
+			if (ImGui::MenuItem("Box"))
+			{
+
+			}
+			if (ImGui::MenuItem("Sphere"))
+			{
+
+			}
+			if (ImGui::MenuItem("Capsule"))
+			{
+
+			}
+			if (ImGui::MenuItem("Cylinder"))
+			{
+
+			}
+			ImGui::EndMenu();
+		}
 		if (ImGui::MenuItem("Locate SpawnPos"))
 		{
 			g_global->m_spawnTransform.pos.x = m_tempSpawnPos.x;
@@ -1464,13 +1484,13 @@ void c3DView::OnEventProc(const sf::Event &evt)
 
 		if (sf::Event::MouseButtonPressed == evt.type)
 		{
-			if (viewRect.IsIn((float)curPos.x, (float)curPos.y))
+			if (viewRect.IsIn((float)pos.x, (float)pos.y))
 				OnMouseDown(evt.mouseButton.button, pos);
 		}
 		else
 		{
 			// 화면밖에 마우스가 있더라도 Capture 상태일 경우 Up 이벤트는 받게한다.
-			if (viewRect.IsIn((float)curPos.x, (float)curPos.y)
+			if (viewRect.IsIn((float)pos.x, (float)pos.y)
 				|| (this == GetCapture()))
 				OnMouseUp(evt.mouseButton.button, pos);
 		}

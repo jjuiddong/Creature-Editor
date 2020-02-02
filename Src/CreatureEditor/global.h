@@ -11,6 +11,7 @@ class c3DView;
 class cEditorView;
 class cResourceView;
 class cSimulationView;
+class cGenoView;
 
 namespace evc { class cCreature; }
 
@@ -63,6 +64,7 @@ public:
 	cEditorView *m_editorView;
 	cResourceView *m_resourceView;
 	cSimulationView *m_simView;
+	cGenoView *m_genoView;
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 

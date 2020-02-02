@@ -169,6 +169,7 @@
     </ClCompile>
     <ClCompile Include="view\3dview.cpp" />
     <ClCompile Include="view\editorview.cpp" />
+    <ClCompile Include="view\genoview.cpp" />
     <ClCompile Include="view\resourceview.cpp" />
     <ClCompile Include="view\simulationview.cpp" />
   </ItemGroup>
@@ -184,6 +185,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h" />
     <ClInclude Include="view\editorview.h" />
+    <ClInclude Include="view\genoview.h" />
     <ClInclude Include="view\resourceview.h" />
     <ClInclude Include="view\simulationview.h" />
   </ItemGroup>

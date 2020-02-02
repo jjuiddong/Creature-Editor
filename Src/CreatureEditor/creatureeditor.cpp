@@ -6,6 +6,7 @@
 #include "view/editorview.h"
 #include "view/resourceview.h"
 #include "view/simulationview.h"
+#include "view/genoview.h"
 
 cGlobal *g_global = nullptr;
 
@@ -70,6 +71,11 @@ bool cViewer::OnInit()
 	bool result = p3dView->Init(m_renderer);
 	assert(result);
 
+	cGenoView *genoView = new cGenoView("GenoType");
+	genoView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, p3dView);
+	result = genoView->Init(m_renderer);
+	assert(result);
+
 	cEditorView *editView = new cEditorView("Editor");
 	editView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, p3dView, 0.25f
 		, framework::eDockSizingOption::PIXEL);
@@ -85,6 +91,7 @@ bool cViewer::OnInit()
 	g_global->m_editorView = editView;
 	g_global->m_resourceView = resourceView;
 	g_global->m_simView = simView;
+	g_global->m_genoView = genoView;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

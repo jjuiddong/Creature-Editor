@@ -37,6 +37,9 @@
     <ClCompile Include="creature\genotype\GenotypeScanner.cpp">
       <Filter>creature\genotype</Filter>
     </ClCompile>
+    <ClCompile Include="view\genoview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -73,6 +76,9 @@
     </ClInclude>
     <ClInclude Include="creature\genotype\GenotypeScanner.h">
       <Filter>creature\genotype</Filter>
+    </ClInclude>
+    <ClInclude Include="view\genoview.h">
+      <Filter>view</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
