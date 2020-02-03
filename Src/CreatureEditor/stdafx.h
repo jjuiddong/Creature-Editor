@@ -10,7 +10,14 @@ using namespace common;
 #include "lib/jointrenderer.h"
 #include "creature/evc.h"
 #include "creature/generator.h"
+#include "creature/gnode.h"
+#include "creature/glink.h"
+#include "lib/phenotypemanager.h"
+#include "lib/genotypemanager.h"
 #include "global.h"
 
+
 extern cGlobal *g_global;
+extern cPhenoTypeManager *g_pheno;
+extern cGenoTypeManager *g_geno;
 extern framework::cGameMain2 *g_application;

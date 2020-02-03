@@ -72,11 +72,11 @@ void cResourceView::OnRender(const float deltaSeconds)
 						const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 
 						evc::cCreature *creature = new evc::cCreature();
-						creature->Read(g_global->GetRenderer(), fileName, Transform(targetPos));
-						g_global->AddCreature(creature);
+						creature->Read(g_pheno->GetRenderer(), fileName, Transform(targetPos));
+						g_pheno->AddCreature(creature);
 
 						// unlock actor
-						if (!g_global->m_isSpawnLock)
+						if (!g_pheno->m_isSpawnLock)
 							creature->SetKinematic(false);
 
 						// selection
@@ -84,14 +84,14 @@ void cResourceView::OnRender(const float deltaSeconds)
 						creature->GetSyncIds(syncIds);
 						if (!syncIds.empty())
 						{
-							g_global->m_mode = eEditMode::Normal;
-							g_global->m_gizmo.SetControlNode(nullptr);
-							g_global->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
-							g_global->m_selJoint = nullptr;
-							g_global->ClearSelection();
+							g_pheno->m_mode = ePhenoEditMode::Normal;
+							g_pheno->m_gizmo.SetControlNode(nullptr);
+							g_pheno->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+							g_pheno->m_selJoint = nullptr;
+							g_pheno->ClearSelection();
 
 							for (auto id : syncIds)
-								g_global->SelectObject(id);
+								g_pheno->SelectObject(id);
 						}//~syncIds.empty()
 
 					}//~IsDoubleClicked

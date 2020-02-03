@@ -5,13 +5,14 @@
 #pragma once
 
 
-enum class eEditMode {Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation};
-
 class c3DView;
-class cEditorView;
+class cPhenoEditorView;
+class cGenoEditorView;
 class cResourceView;
 class cSimulationView;
 class cGenoView;
+class cPhenoTypeManager;
+class cGenoTypeManager;
 
 namespace evc { class cCreature; }
 
@@ -23,76 +24,19 @@ public:
 
 	bool Init(graphic::cRenderer &renderer);
 
-	// mode change
-	void ChangeEditMode(const eEditMode state);
-	eEditMode GetEditMode();
-
-	// creature
-	bool AddCreature(evc::cCreature *creature);
-
-	// selection
-	bool SelectObject(const int syncId, const bool isToggle = false);
-	bool ClearSelection();
-
-	// transform edit function
-	bool ModifyRigidActorTransform(const int syncId, const Vector3 &dim);
-	bool GetModifyRigidActorTransform(const int syncId, OUT Vector3 &out);
-	bool RemoveModifyRigidActorTransform(const int syncId);
-
-	// utility function
-	cJointRenderer* FindJointRenderer(phys::cJoint *joint);
-	phys::sSyncInfo* FindSyncInfo(const int syncId);
-	phys::cRigidActor* FindRigidActorFromSyncId(const int syncId);
-	bool UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic);
-	bool SetAllConnectionActorKinematic(phys::cRigidActor *actor, const bool isKinematic);
-	bool SetAllConnectionActorSelect(phys::cRigidActor *actor);
-	bool UpdateAllConnectionActorDimension(phys::cRigidActor *actor, const bool isKinematic);
-	bool UpdateAllConnectionActorTransform(phys::cRigidActor *actor, const Transform &transform);	
-	bool RefreshResourceView();
-
 	graphic::cRenderer& GetRenderer();
 	void Clear();
 
 
-protected:
-	bool SetRigidActorColor(const int syncId, const graphic::cColor &color);
-
-
 public:
-	eEditMode m_mode;
-	c3DView *m_3dView;
-	cEditorView *m_editorView;
-	cResourceView *m_resourceView;
-	cSimulationView *m_simView;
-	cGenoView *m_genoView;
+	c3DView *m_3dView; // reference
+	cGenoView *m_genoView; // reference
+	cPhenoEditorView *m_peditorView; // reference
+	cGenoEditorView *m_geditorView; // reference
+	cResourceView *m_resourceView; // reference
+	cSimulationView *m_simView; // reference
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
-
-	// spawn control
-	bool m_isSpawnLock; // default: true
-	Transform m_spawnTransform;
-
-	// gizmo & selection
-	int m_groundGridPlaneId; // ground plane sync id
-	vector<int> m_selects; // select syncId array
-	set<int> m_highLights; // hilight syncId array
-	graphic::cNode m_multiSel; // multi selection moving transform
-	Quaternion m_multiSelRot; // multi selection rotation offset (prev rotation)
-	Vector3 m_multiSelPos; // multi selection position offset (prev position)
-
-	// manage Modify RigidActor information
-	graphic::cGizmo m_gizmo;
-	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
-
-	// joint
-	phys::cJoint *m_selJoint; // reference
-	bool m_showUIJoint;
-	phys::cJoint m_uiJoint; // joint edit mode ui
-	cJointRenderer m_uiJointRenderer; // joint edit mode ui
-	bool m_fixJointSelection;
-	int m_pairSyncId0; // joint edit mode, actor0
-	int m_pairSyncId1; // joint edit mode, actor1
-
-	// creatures
-	vector<evc::cCreature*> m_creatures;
+	cPhenoTypeManager *m_pheno; // reference
+	cGenoTypeManager *m_geno; // reference
 };

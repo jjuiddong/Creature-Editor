@@ -57,7 +57,7 @@ void cSimulationView::Play()
 {
 	for (int id : m_unLockIds)
 	{
-		if (phys::cRigidActor *actor = g_global->FindRigidActorFromSyncId(id))
+		if (phys::cRigidActor *actor = g_pheno->FindRigidActorFromSyncId(id))
 			actor->SetKinematic(false);
 	}
 }
@@ -75,7 +75,7 @@ void cSimulationView::RecoverySavedPose()
 	// set global pose to rigidactor
 	for (auto &pose : m_poseSaved)
 	{
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(pose.id);
+		phys::sSyncInfo *sync = g_pheno->FindSyncInfo(pose.id);
 		if (!sync)
 			continue;
 
@@ -94,7 +94,7 @@ void cSimulationView::RecoverySavedPose()
 	set<phys::cJoint*> joints;
 	for (auto &pose : m_poseSaved)
 	{
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(pose.id);
+		phys::sSyncInfo *sync = g_pheno->FindSyncInfo(pose.id);
 		if (!sync || !sync->actor)
 			continue;
 		for (auto *j : sync->actor->m_joints)
@@ -106,13 +106,13 @@ void cSimulationView::RecoverySavedPose()
 	{
 		j->m_actor0->SetGlobalPose(j->m_actorLocal0);
 		j->m_actor1->SetGlobalPose(j->m_actorLocal1);
-		j->ReconnectBreakJoint(g_global->m_physics);
+		j->ReconnectBreakJoint(*g_pheno->m_physics);
 	}
 
 	// move to global pose
 	for (auto &pose : m_poseSaved)
 	{
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(pose.id);
+		phys::sSyncInfo *sync = g_pheno->FindSyncInfo(pose.id);
 		if (!sync)
 			continue;
 
@@ -127,9 +127,9 @@ void cSimulationView::SavePoseCurrentSelection()
 {
 	m_poseSaved.clear();
 
-	for (int id : g_global->m_selects)
+	for (int id : g_pheno->m_selects)
 	{
-		phys::sSyncInfo *sync = g_global->FindSyncInfo(id);
+		phys::sSyncInfo *sync = g_pheno->FindSyncInfo(id);
 		if (!sync)
 			continue;
 
@@ -144,7 +144,7 @@ void cSimulationView::SavePoseCurrentSelection()
 
 void cSimulationView::SaveKinematicStateCurrentSelection()
 {
-	m_unLockIds = g_global->m_selects;
+	m_unLockIds = g_pheno->m_selects;
 }
 
 

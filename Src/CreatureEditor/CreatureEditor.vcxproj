@@ -158,17 +158,22 @@
     <ClCompile Include="creature\creature.cpp" />
     <ClCompile Include="creature\evc.cpp" />
     <ClCompile Include="creature\generator.cpp" />
-    <ClCompile Include="creature\genotype\GenotypeParser.cpp" />
-    <ClCompile Include="creature\genotype\GenotypeScanner.cpp" />
+    <ClCompile Include="creature\glink.cpp" />
+    <ClCompile Include="creature\gnode.cpp" />
+    <ClCompile Include="creature\parser\GenotypeParser.cpp" />
+    <ClCompile Include="creature\parser\GenotypeScanner.cpp" />
     <ClCompile Include="creature\pnode.cpp" />
     <ClCompile Include="global.cpp" />
+    <ClCompile Include="lib\genotypemanager.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp" />
+    <ClCompile Include="lib\phenotypemanager.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="view\3dview.cpp" />
-    <ClCompile Include="view\editorview.cpp" />
+    <ClCompile Include="view\phenoeditorview.cpp" />
+    <ClCompile Include="view\genoeditorview.cpp" />
     <ClCompile Include="view\genoview.cpp" />
     <ClCompile Include="view\resourceview.cpp" />
     <ClCompile Include="view\simulationview.cpp" />
@@ -177,14 +182,19 @@
     <ClInclude Include="creature\creature.h" />
     <ClInclude Include="creature\evc.h" />
     <ClInclude Include="creature\generator.h" />
-    <ClInclude Include="creature\genotype\GenotypeParser.h" />
-    <ClInclude Include="creature\genotype\GenotypeScanner.h" />
+    <ClInclude Include="creature\glink.h" />
+    <ClInclude Include="creature\gnode.h" />
+    <ClInclude Include="creature\parser\GenotypeParser.h" />
+    <ClInclude Include="creature\parser\GenotypeScanner.h" />
     <ClInclude Include="creature\pnode.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="lib\genotypemanager.h" />
     <ClInclude Include="lib\jointrenderer.h" />
+    <ClInclude Include="lib\phenotypemanager.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h" />
-    <ClInclude Include="view\editorview.h" />
+    <ClInclude Include="view\phenoeditorview.h" />
+    <ClInclude Include="view\genoeditorview.h" />
     <ClInclude Include="view\genoview.h" />
     <ClInclude Include="view\resourceview.h" />
     <ClInclude Include="view\simulationview.h" />

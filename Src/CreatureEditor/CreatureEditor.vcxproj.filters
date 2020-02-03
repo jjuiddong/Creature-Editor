@@ -6,9 +6,6 @@
     <ClCompile Include="view\3dview.cpp">
       <Filter>view</Filter>
     </ClCompile>
-    <ClCompile Include="view\editorview.cpp">
-      <Filter>view</Filter>
-    </ClCompile>
     <ClCompile Include="global.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp">
       <Filter>lib</Filter>
@@ -31,22 +28,37 @@
     <ClCompile Include="view\simulationview.cpp">
       <Filter>view</Filter>
     </ClCompile>
-    <ClCompile Include="creature\genotype\GenotypeParser.cpp">
-      <Filter>creature\genotype</Filter>
-    </ClCompile>
-    <ClCompile Include="creature\genotype\GenotypeScanner.cpp">
-      <Filter>creature\genotype</Filter>
-    </ClCompile>
     <ClCompile Include="view\genoview.cpp">
       <Filter>view</Filter>
+    </ClCompile>
+    <ClCompile Include="view\genoeditorview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
+    <ClCompile Include="view\phenoeditorview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\phenotypemanager.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\genotypemanager.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\gnode.cpp">
+      <Filter>creature</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\parser\GenotypeParser.cpp">
+      <Filter>creature\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\parser\GenotypeScanner.cpp">
+      <Filter>creature\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="creature\glink.cpp">
+      <Filter>creature</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h">
-      <Filter>view</Filter>
-    </ClInclude>
-    <ClInclude Include="view\editorview.h">
       <Filter>view</Filter>
     </ClInclude>
     <ClInclude Include="global.h" />
@@ -71,14 +83,32 @@
     <ClInclude Include="view\simulationview.h">
       <Filter>view</Filter>
     </ClInclude>
-    <ClInclude Include="creature\genotype\GenotypeParser.h">
-      <Filter>creature\genotype</Filter>
-    </ClInclude>
-    <ClInclude Include="creature\genotype\GenotypeScanner.h">
-      <Filter>creature\genotype</Filter>
-    </ClInclude>
     <ClInclude Include="view\genoview.h">
       <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="view\genoeditorview.h">
+      <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="view\phenoeditorview.h">
+      <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\phenotypemanager.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\genotypemanager.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\gnode.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\parser\GenotypeParser.h">
+      <Filter>creature\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\parser\GenotypeScanner.h">
+      <Filter>creature\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\glink.h">
+      <Filter>creature</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -91,7 +121,7 @@
     <Filter Include="creature">
       <UniqueIdentifier>{151fd2b2-b7d5-477b-a0af-ea30ed31a495}</UniqueIdentifier>
     </Filter>
-    <Filter Include="creature\genotype">
+    <Filter Include="creature\parser">
       <UniqueIdentifier>{407b2618-24ab-494b-81c1-093fcb6639cf}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

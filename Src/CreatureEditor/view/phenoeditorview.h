@@ -1,6 +1,6 @@
 //
 // 2020-01-19, jjuiddong
-// Editor View
+// PhenoType Editor View
 //
 #pragma once
 
@@ -8,11 +8,11 @@ namespace phys {
 	struct sSyncInfo;
 }
 
-class cEditorView : public framework::cDockWindow
+class cPhenoEditorView : public framework::cDockWindow
 {
 public:
-	cEditorView(const StrId &name);
-	virtual ~cEditorView();
+	cPhenoEditorView(const StrId &name);
+	virtual ~cPhenoEditorView();
 
 	virtual void OnUpdate(const float deltaSeconds) override;
 	virtual void OnRender(const float deltaSeconds) override;

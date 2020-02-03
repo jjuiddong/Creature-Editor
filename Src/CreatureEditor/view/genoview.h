@@ -21,6 +21,23 @@ public:
 
 
 protected:
+	void RenderScene(graphic::cRenderer &renderer
+		, const StrId &techiniqName
+		, const bool isBuildShadowMap
+		, const XMMATRIX &parentTm = graphic::XMIdentity
+	);
+	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
+		, const XMMATRIX &tm);
+	void RenderPopupMenu();
+
+	void UpdateSelectModelTransform(const bool isGizmoEdit);
+	void UpdateSelectModelTransform_GNode();
+	void UpdateSelectModelTransform_MultiObject();
+	void UpdateSelectModelTransform_Joint();
+	bool PickingProcess(const POINT &mousePos);
+	int PickingNode(const int pickType, const POINT &mousePos
+		, OUT float *outDistance = nullptr);
+
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
 	void OnMouseMove(const POINT mousePt);
@@ -30,11 +47,19 @@ protected:
 
 public:
 	graphic::cRenderTarget m_renderTarget;
+	graphic::cDepthBuffer m_depthBuff;
 	graphic::cGrid m_grid;
 	graphic::cGridLine m_gridLine;
 	graphic::cSkyBoxCube m_skybox;
 
 	bool m_showGrid;
+
+	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
+	int m_popupMenuType; // 0: genotype menu
+
+	bool m_isOrbitMove;
+	Vector3 m_orbitTarget;
+	Vector3 m_tempSpawnPos;
 
 	// MouseMove Variable
 	POINT m_viewPos;
