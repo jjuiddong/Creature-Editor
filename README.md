@@ -33,3 +33,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/simulationview.jpg?raw=true)
 - GenoType Edit View
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/genotypeview.jpg?raw=true)
+- GenoType Edit View2
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/genotype%20edito1.jpg?raw=true)
