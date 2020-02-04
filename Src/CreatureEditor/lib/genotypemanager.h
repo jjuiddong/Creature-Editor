@@ -38,11 +38,17 @@ public:
 
 	evc::cGNode* FindGNode(const int id);
 	evc::cGLink* FindGLink(const int id);
+	bool AddGLink(evc::cGLink *glink);
+	bool RemoveGLink(evc::cGLink *glink);
 
 	// selection
 	void SetSelection(const int id);
 	bool SelectObject(const int id, const bool isToggle = false);
 	bool ClearSelection();
+
+	// utility function
+	bool SetAllLinkedNodeSelect(evc::cGNode *gnode);
+	bool UpdateAllLinkedNodeTransform(evc::cGNode *gnode, const Transform &transform);
 
 	graphic::cRenderer& GetRenderer();
 	void Clear();

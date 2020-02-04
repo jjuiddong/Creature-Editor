@@ -32,6 +32,7 @@ bool cGenoTypeManager::Init(graphic::cRenderer &renderer
 
 	m_gizmo.Create(renderer);
 
+	m_uiLink.m_autoDelete = false;
 	return true;
 }
 
@@ -154,6 +155,29 @@ evc::cGLink* cGenoTypeManager::FindGLink(const int id)
 }
 
 
+bool cGenoTypeManager::AddGLink(evc::cGLink *glink)
+{
+	if (m_glinks.end() != find(m_glinks.begin(), m_glinks.end(), glink))
+		return false; // already exist
+	m_glinks.push_back(glink);
+	return true;
+}
+
+
+bool cGenoTypeManager::RemoveGLink(evc::cGLink *glink)
+{
+	RETV(!glink, false);
+
+	glink->m_gnode0->RemoveLink(glink);
+	glink->m_gnode1->RemoveLink(glink);
+
+	common::removevector(m_glinks, glink);
+	if (glink->m_autoDelete)
+		delete glink;
+	return true;
+}
+
+
 // clear select and then select id
 void cGenoTypeManager::SetSelection(const int id)
 {
@@ -222,6 +246,62 @@ bool cGenoTypeManager::ClearSelection()
 }
 
 
+// traverse all linked genotype node
+template<typename Fn>
+bool TraverseAllLinkedNode(evc::cGNode *gnode, Fn fn)
+{
+	set<evc::cGNode*> visit;
+	queue<evc::cGNode*> q;
+	q.push(gnode);
+	while (!q.empty())
+	{
+		evc::cGNode *n = q.front();
+		q.pop();
+
+		if (visit.end() != std::find(visit.begin(), visit.end(), n))
+			continue; // already visit
+
+		if (!fn(n))
+			continue;
+
+		visit.insert(n);
+
+		for (auto &p : n->m_links)
+		{
+			q.push(p->m_gnode0);
+			q.push(p->m_gnode1);
+		}
+	}
+	return true;
+}
+
+
+bool cGenoTypeManager::SetAllLinkedNodeSelect(evc::cGNode *gnode)
+{
+	ClearSelection();
+	TraverseAllLinkedNode(gnode,
+		[&](evc::cGNode *p) 
+		{
+			SelectObject(p->m_id); 
+			return true;
+		}
+	);
+	return true;
+}
+
+
+bool cGenoTypeManager::UpdateAllLinkedNodeTransform(evc::cGNode *gnode, const Transform &transform)
+{
+	TraverseAllLinkedNode(gnode,
+		[&](evc::cGNode *p) 
+		{
+			p->m_transform.pos += transform.pos;
+			return true;
+		}
+	);
+	return true;
+}
+
 
 graphic::cRenderer& cGenoTypeManager::GetRenderer()
 {
@@ -235,11 +315,12 @@ void cGenoTypeManager::Clear()
 		delete p;
 	m_creatures.clear();
 
+	for (auto &p : m_glinks)
+		if (p->m_autoDelete)
+			delete p;
+	m_glinks.clear();
+
 	for (auto &p : m_gnodes)
 		delete p;
 	m_gnodes.clear();
-
-	for (auto &p : m_glinks)
-		delete p;
-	m_glinks.clear();
 }

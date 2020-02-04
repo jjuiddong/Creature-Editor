@@ -13,6 +13,7 @@ cGenoView::cGenoView(const string &name)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
 	, m_isOrbitMove(false)
+	, m_showSaveDialog(false)
 {
 }
 
@@ -68,7 +69,6 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 {
 	cRenderer &renderer = GetRenderer();
 	cAutoCam cam(&m_camera);
-
 	renderer.UnbindShaderAll();
 	renderer.UnbindTextureAll();
 	GetMainCamera().Bind(renderer);
@@ -127,6 +127,7 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 		renderer.RenderAxis2();
 	}
 	m_renderTarget.End(renderer);
+	renderer.UnbindTextureAll();
 
 	UpdateSelectModelTransform(isGizmoEdit);
 }
@@ -140,6 +141,12 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 )
 {
 	for (auto &p : g_geno->m_gnodes)
+	{
+		p->SetTechnique(techiniqName.c_str());
+		p->Render(renderer);
+	}
+
+	for (auto &p : g_geno->m_glinks)
 	{
 		p->SetTechnique(techiniqName.c_str());
 		p->Render(renderer);
@@ -165,18 +172,18 @@ void cGenoView::RenderSelectModel(graphic::cRenderer &renderer, const bool build
 		{
 			node->SetTechnique("DepthTech");
 			Matrix44 parentTm = node->GetParentWorldMatrix();
-			node->Render(renderer, parentTm.GetMatrixXM());
+			node->Render(renderer, parentTm.GetMatrixXM(), eRenderFlag::OUTLINE);
 		}
 		else
 		{
 			renderer.BindTexture(m_depthBuff, 7);
 			node->SetTechnique("Outline");
 			Matrix44 parentTm = node->GetParentWorldMatrix();
-			node->Render(renderer, parentTm.GetMatrixXM());
+			node->Render(renderer, parentTm.GetMatrixXM(), eRenderFlag::OUTLINE);
 		}
 	};
 
-	if (!buildOutline)
+	if (!buildOutline) // render outline? -> depthnone
 		renderer.GetDevContext()->OMSetDepthStencilState(renderer.m_renderState.DepthNone(), 0);
 	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(1.f, 0.2f, 0, 1).GetVectorXM();
 	for (auto id : g_geno->m_selects)
@@ -224,6 +231,7 @@ void cGenoView::OnRender(const float deltaSeconds)
 	ImGui::PopStyleColor();
 
 	RenderPopupMenu();
+	RenderSaveDialog();
 }
 
 
@@ -240,12 +248,50 @@ void cGenoView::RenderPopupMenu()
 		m_popupMenuState = 2;
 	}
 
-	if (ImGui::BeginPopup("New PopupMenu"))
+	if (ImGui::BeginPopup("Genotype PopupMenu"))
 	{
-		//if (ImGui::MenuItem("Spawn Node"))
-		//{
-		//	//m_popupMenuState = 0;
-		//}
+		if ((m_popupMenuState == 3) || g_geno->m_selects.empty())
+		{
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+			return;
+		}
+
+		evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+		if (!gnode)
+		{
+			ImGui::EndPopup();
+			return;
+		}
+
+		if (ImGui::MenuItem("Save GenoType"))
+		{
+			m_showSaveDialog = true;
+			m_popupMenuState = 0;
+		}
+		if (ImGui::MenuItem("Select All", "A"))
+		{
+			g_geno->SetAllLinkedNodeSelect(gnode);
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::MenuItem("Remove All Link", "J", false, true))
+		{
+			// remove all link
+			set<evc::cGLink*> rms;
+			for (auto id : g_geno->m_selects)
+				if (evc::cGNode *gnode = g_geno->FindGNode(id))
+					for (auto &p : gnode->m_links)
+						rms.insert(p);
+
+			for (auto *p : rms)
+				g_geno->RemoveGLink(p);
+		}
+		ImGui::EndPopup();
+	}
+	else if (ImGui::BeginPopup("New PopupMenu"))
+	{
 		if (ImGui::BeginMenu("New"))
 		{
 			if (ImGui::MenuItem("Box"))
@@ -273,6 +319,85 @@ void cGenoView::RenderPopupMenu()
 	{
 		m_popupMenuState = 0;
 	}
+}
+
+
+void cGenoView::RenderSaveDialog()
+{
+	if (!m_showSaveDialog)
+		return;
+
+	bool isOpen = true;
+	const sf::Vector2u psize((uint)m_rect.Width(), (uint)m_rect.Height());
+	const ImVec2 size(300, 115);
+	const ImVec2 pos(psize.x / 2.f - size.x / 2.f + m_rect.left
+		, psize.y / 2.f - size.y / 2.f + m_rect.top);
+	ImGui::SetNextWindowPos(pos);
+	ImGui::SetNextWindowSize(size);
+	ImGui::SetNextWindowBgAlpha(0.9f);
+
+	if (ImGui::Begin("Save GenoType", &isOpen, 0))
+	{
+		ImGui::Spacing();
+		ImGui::Text("FileName : ");
+		ImGui::SameLine();
+
+		static StrPath fileName("filename.gnt");
+
+		bool isSave = false;
+		const int flags = ImGuiInputTextFlags_AutoSelectAll
+			| ImGuiInputTextFlags_EnterReturnsTrue;
+		if (ImGui::InputText("##fileName", fileName.m_str, fileName.SIZE, flags))
+		{
+			isSave = true;
+		}
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		ImGui::Spacing();
+		const bool isSaveBtnClick = ImGui::Button("Save");
+		if (isSaveBtnClick || isSave)
+		{
+			const StrPath filePath = StrPath("./media/creature/") + fileName;
+			if (!g_geno->m_selects.empty())
+			{
+				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+				bool isSave = true;
+				if (filePath.IsFileExist()) // file already exist?
+				{
+					isSave = false;
+
+					Str128 text;
+					text.Format("[ %s ] File Already Exist\nOverWrite?"
+						, filePath.c_str());
+					if (IDYES == ::MessageBoxA(m_owner->getSystemHandle(), text.c_str()
+						, "Confirm", MB_YESNO | MB_ICONWARNING))
+					{
+						isSave = true;
+					}
+				}
+
+				if (isSave)
+				{
+					evc::WriteGenoTypeFileFrom_Node(filePath, gnode);
+				}
+			}
+
+			m_showSaveDialog = false;
+		} //~save operation
+
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+		{
+			m_showSaveDialog = false;
+		}
+	}
+	ImGui::End();
+
+	if (!isOpen)
+		m_showSaveDialog = false;
 }
 
 
@@ -565,6 +690,9 @@ void cGenoView::UpdateLookAt()
 // 카메라 앞에 박스가 있다면, 박스 정면에서 멈춘다.
 void cGenoView::OnWheelMove(const float delta, const POINT mousePt)
 {
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
 	UpdateLookAt();
 
 	float len = 0;
@@ -587,7 +715,7 @@ void cGenoView::OnMouseMove(const POINT mousePt)
 	m_mousePos = mousePt;
 	if (g_geno->m_gizmo.IsKeepEditMode())
 		return;
-	if ((m_popupMenuState > 0))
+	if (m_showSaveDialog || (m_popupMenuState > 0))
 		return;
 
 	if (m_mouseDown[0])
@@ -630,6 +758,12 @@ void cGenoView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt
 	const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
 	m_rotateLen = ray.orig.y * 0.9f;// (target - ray.orig).Length();
 
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
+	// active genotype editor view
+	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_geditorView);
+
 	switch (button)
 	{
 	case sf::Mouse::Left:
@@ -659,6 +793,9 @@ void cGenoView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	m_mousePos = mousePt;
 	ReleaseCapture();
 
+	if (m_showSaveDialog || (m_popupMenuState > 0))
+		return;
+
 	switch (button)
 	{
 	case sf::Mouse::Left:
@@ -676,9 +813,35 @@ void cGenoView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 		if (sqrt(dx*dx + dy * dy) > 10)
 			break; // move long distance, do not show popup menu
 
-		m_popupMenuState = 1; // open popup menu
-		m_popupMenuType = 1; // genotype menu
+		// check show menu to joint connection
+		if ((eGenoEditMode::Pivot0 == g_geno->GetEditMode())
+			|| (eGenoEditMode::Pivot1 == g_geno->GetEditMode())
+			|| (eGenoEditMode::Revolute == g_geno->GetEditMode())
+			|| (eGenoEditMode::SpawnLocation == g_geno->GetEditMode()))
+			break;
 
+		const int id = PickingNode(0, mousePt);
+		if (id >= 0)
+		{
+			m_popupMenuState = 1; // open popup menu
+			m_popupMenuType = 0; // node menu
+			//m_saveFileSyncId = syncId;
+			g_geno->SelectObject(id);
+			if (evc::cGNode *node = g_geno->FindGNode(id))
+				g_geno->m_gizmo.m_type = eGizmoEditType::None;
+		}
+		else
+		{
+			// spawn pos popupmenu
+			// picking ground?
+			const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+			const Plane groundPlane(Vector3(0, 1, 0), 0);
+			const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
+
+			m_popupMenuState = 1; // open popup menu
+			m_popupMenuType = 1; // new node menu
+			m_tempSpawnPos = target;
+		}
 	}
 	break;
 
@@ -715,19 +878,81 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::F5:break;
 
 		case sf::Keyboard::Escape:
+			m_isOrbitMove = false;
+
+			if (m_popupMenuState > 0)
+			{
+				m_popupMenuState = 0;
+			}
+			else if (m_showSaveDialog)
+			{
+				m_showSaveDialog = false;
+			}
+			else if (g_geno->GetEditMode() == eGenoEditMode::Revolute)
+			{
+				// recovery actor selection
+				g_geno->ChangeEditMode(eGenoEditMode::JointEdit);
+				g_geno->ClearSelection();
+				g_geno->SelectObject(g_geno->m_pairId0);
+				g_geno->SelectObject(g_geno->m_pairId1);
+			}
+			else
+			{
+				// clear selection
+				g_geno->ChangeEditMode(eGenoEditMode::Normal);
+				g_geno->m_gizmo.SetControlNode(nullptr);
+				g_geno->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+				g_geno->m_selLink = nullptr;
+				g_geno->m_fixJointSelection = false;
+				g_geno->ClearSelection();
+			}
 			break;
 		case sf::Keyboard::C: // copy
 			break;
 		case sf::Keyboard::V: // paste
 			break;
+		
 		case sf::Keyboard::A: // popup menu shortcut, select
-			break;
+		{
+			if ((m_popupMenuState == 2) && (m_popupMenuType == 0))
+			{
+				for (auto id : g_geno->m_selects)
+				{
+					if (evc::cGNode *gnode = g_geno->FindGNode(id))
+					{
+						g_geno->SetAllLinkedNodeSelect(gnode);
+						break;
+					}
+				}
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
 		case sf::Keyboard::U: // popup menu shortcut, unlock
 			break;
 		case sf::Keyboard::L: // popup menu shortcut, lock
 			break;
+
 		case sf::Keyboard::J: // popup menu shortcut, joint remove
-			break;
+		{
+			if (m_popupMenuState == 2)
+			{
+				// remove all link
+				set<evc::cGLink*> rms;
+				for (auto id : g_geno->m_selects)
+					if (evc::cGNode *gnode = g_geno->FindGNode(id))
+						for (auto &p : gnode->m_links)
+							rms.insert(p);
+
+				for (auto *p : rms)
+					g_geno->RemoveGLink(p);
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
 		}
 		break;
 

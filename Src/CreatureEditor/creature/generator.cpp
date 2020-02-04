@@ -830,3 +830,15 @@ bool evc::Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint)
 
 	return true;
 }
+
+
+// write genotype file from Genotype node
+bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
+	, cGNode *gnode)
+{
+
+
+
+
+	return true;
+}

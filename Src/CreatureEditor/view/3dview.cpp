@@ -191,6 +191,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 		renderer.RenderAxis2();
 	}
 	m_renderTarget.End(renderer);
+	renderer.UnbindTextureAll();
 
 	// Modify rigid actor transform by Gizmo
 	// process before g_global->m_physics.PostUpdate()
@@ -794,10 +795,9 @@ void c3DView::RenderSaveDialog()
 
 void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
 {
-	m_reflectMap.SetRenderTarget(renderer);
 	// clear gray.dds color
-	renderer.ClearScene(false, Vector4(128.f / 255.f, 128.f / 255.f, 128.f / 255.f, 1));
-	renderer.BeginScene();
+	m_reflectMap.Begin(renderer
+		, Vector4(128.f / 255.f, 128.f / 255.f, 128.f / 255.f, 1));
 
 	// lighting direction mirror
 	GetMainLight().m_direction.y *= -1.f;
@@ -825,8 +825,7 @@ void c3DView::RenderReflectionMap(graphic::cRenderer &renderer)
 	RenderScene(renderer, "ShadowMap", false, groundPlaneW.GetReflectMatrix().GetMatrixXM());
 	m_groundPlane->SetRenderFlag(eRenderFlag::VISIBLE, true);
 
-	renderer.EndScene();
-	m_reflectMap.RecoveryRenderTarget(renderer);
+	m_reflectMap.End(renderer);
 
 	renderer.GetDevContext()->RSSetState(states.CullCounterClockwise());
 	//renderer.GetDevContext()->OMSetDepthStencilState(states.DepthDefault(), 0);
@@ -1112,6 +1111,9 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 
 	if (m_showSaveDialog || (m_popupMenuState > 0))
 		return;
+
+	// active genotype editor view
+	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_peditorView);
 
 	switch (button)
 	{

@@ -22,6 +22,7 @@ bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 	graphic::cCube *cube = new graphic::cCube();
 	cube->Create(renderer);
 	cube->SetCube(Transform());
+	cube->SetRenderFlag(eRenderFlag::OUTLINE, true);
 	AddChild(cube);
 
 	m_shape = phys::eShapeType::Box;
@@ -35,6 +36,7 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 {
 	graphic::cSphere *sphere = new graphic::cSphere();
 	sphere->Create(renderer, 1.f, 10, 10);
+	sphere->SetRenderFlag(eRenderFlag::OUTLINE, true);
 	AddChild(sphere);
 
 	m_shape = phys::eShapeType::Sphere;
@@ -49,6 +51,7 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 {
 	graphic::cCapsule *capsule = new graphic::cCapsule();
 	capsule->Create(renderer, radius, halfHeight, 16, 8);
+	capsule->SetRenderFlag(eRenderFlag::OUTLINE, true);
 	AddChild(capsule);
 
 	m_shape = phys::eShapeType::Capsule;
@@ -62,6 +65,7 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 {
 	graphic::cCylinder *cylinder = new graphic::cCylinder();
 	cylinder->Create(renderer, 1.f, 2.f, 8);
+	cylinder->SetRenderFlag(eRenderFlag::OUTLINE, true);
 	AddChild(cylinder);
 
 	m_shape = phys::eShapeType::Cylinder;
@@ -78,36 +82,54 @@ bool cGNode::Render(graphic::cRenderer &renderer
 {
 	__super::Render(renderer, parentTm, flags);
 
-	// y-axis line
-	renderer.m_dbgLine.m_isSolid = true;
-	renderer.m_dbgLine.SetColor(cColor::WHITE);
-	renderer.m_dbgLine.SetLine(m_transform.pos
-		, m_transform.pos + Vector3(0, -m_transform.pos.y, 0), 0.01f);
-	renderer.m_dbgLine.Render(renderer);
+	if (!(flags & graphic::eRenderFlag::OUTLINE))
+	{
+		// y-axis line
+		renderer.m_dbgLine.m_isSolid = true;
+		renderer.m_dbgLine.SetColor(cColor::BLACK);
+		renderer.m_dbgLine.SetLine(m_transform.pos
+			, m_transform.pos + Vector3(0, -m_transform.pos.y, 0), 0.01f);
+		renderer.m_dbgLine.Render(renderer);
+	}
 
 	return true;
 }
 
 
-// add genotype link
+// add genotype link referenece
 bool cGNode::AddLink(cGLink *glink)
 {
-
-	return true;
+	if (m_links.end() == std::find(m_links.begin(), m_links.end(), glink))
+	{
+		m_links.push_back(glink);
+		return true;
+	}
+	return false;
 }
 
 
-// remove genotype link from link ptr
+// remove genotype link reference from link ptr
 bool cGNode::RemoveLink(cGLink *glink)
 {
-
-	return true;
+	if (m_links.end() != std::find(m_links.begin(), m_links.end(), glink))
+	{
+		common::removevector(m_links, glink);
+		return true;
+	}
+	return false;
 }
 
 
 // remove genotype link from link id
 bool cGNode::RemoveLink(const int linkId)
 {
+	auto it = std::find_if(m_links.begin(), m_links.end()
+		, [&](const auto &a) { return a->m_id == linkId;});
+	if (m_links.end() != it)
+	{
+		m_links.erase(it);
+		return true;
+	}
 
 	return true;
 }

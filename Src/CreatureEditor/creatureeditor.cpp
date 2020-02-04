@@ -84,16 +84,16 @@ bool cViewer::OnInit()
 	bool result = p3dView->Init(m_renderer);
 	assert(result);
 
-	cGenoView *genoView = new cGenoView("GenoType");
+	cGenoView *genoView = new cGenoView("GenoType View");
 	genoView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, p3dView);
 	result = genoView->Init(m_renderer);
 	assert(result);
 
-	cPhenoEditorView *peditView = new cPhenoEditorView("P-Editor");
+	cPhenoEditorView *peditView = new cPhenoEditorView("Pheno Type");
 	peditView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, p3dView, 0.25f
 		, framework::eDockSizingOption::PIXEL);
 
-	cGenoEditorView *geditView = new cGenoEditorView("G-Editor");
+	cGenoEditorView *geditView = new cGenoEditorView("Geno Type");
 	geditView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, peditView, 0.5f);
 
 	cResourceView *resourceView = new cResourceView("Resource");

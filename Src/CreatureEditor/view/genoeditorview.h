@@ -26,14 +26,14 @@ protected:
 	void RenderDistanceJoint();
 	void RenderD6Joint();
 	void RenderSelectNodeLinkInfo(const int id);
-	void RenderSphericalJointSetting(phys::cJoint *joint);
-	void RenderRevoluteJointSetting(phys::cJoint *joint);
-	void RenderPrismaticJointSetting(phys::cJoint *joint);
-	void RenderDistanceJointSetting(phys::cJoint *joint);
-	void RenderD6JointSetting(phys::cJoint *joint);
+	void RenderSphericalJointSetting(evc::cGLink *link);
+	void RenderRevoluteJointSetting(evc::cGLink *link);
+	void RenderPrismaticJointSetting(evc::cGLink *link);
+	void RenderDistanceJointSetting(evc::cGLink *link);
+	void RenderD6JointSetting(evc::cGLink *link);
 	bool CheckCancelUIJoint();
 	void CheckChangeSelection();
-	void UpdateUIJoint(evc::cGNode *gnode0, evc::cGNode *gnode1
+	void UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 		, const bool editAxis, const Vector3 &revoluteAxis);
 
 

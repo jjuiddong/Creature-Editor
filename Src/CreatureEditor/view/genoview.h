@@ -29,6 +29,7 @@ protected:
 	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 		, const XMMATRIX &tm);
 	void RenderPopupMenu();
+	void RenderSaveDialog();
 
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	void UpdateSelectModelTransform_GNode();
@@ -54,6 +55,7 @@ public:
 
 	bool m_showGrid;
 
+	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
 	int m_popupMenuType; // 0: genotype menu
 
