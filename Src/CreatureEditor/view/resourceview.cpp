@@ -110,7 +110,8 @@ void cResourceView::UpdateResourceFiles()
 	m_fileList.clear();
 
 	list<string> exts;
-	exts.push_back(".pnt"); exts.push_back(".PNT");
+	exts.push_back(".pnt");
+	exts.push_back(".gnt");
 	const StrPath dir = StrPath("./media/creature/").GetFullFileName();
 	common::CollectFiles2(exts, dir.c_str(), dir.c_str(), m_fileList);
 }

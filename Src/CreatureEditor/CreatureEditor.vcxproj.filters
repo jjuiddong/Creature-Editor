@@ -110,6 +110,9 @@
     <ClInclude Include="creature\glink.h">
       <Filter>creature</Filter>
     </ClInclude>
+    <ClInclude Include="creature\limit.h">
+      <Filter>creature</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="view">

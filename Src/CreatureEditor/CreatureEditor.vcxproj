@@ -184,6 +184,7 @@
     <ClInclude Include="creature\generator.h" />
     <ClInclude Include="creature\glink.h" />
     <ClInclude Include="creature\gnode.h" />
+    <ClInclude Include="creature\limit.h" />
     <ClInclude Include="creature\parser\GenotypeParser.h" />
     <ClInclude Include="creature\parser\GenotypeScanner.h" />
     <ClInclude Include="creature\pnode.h" />

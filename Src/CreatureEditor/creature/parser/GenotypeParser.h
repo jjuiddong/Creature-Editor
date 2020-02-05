@@ -18,7 +18,7 @@ namespace evc { namespace genotype_parser {
 	public:
 		cParser();
 		virtual ~cParser();
-		sExpr* Parse( const string &fileName, bool isTrace=false);
+		bool Parse( const string &fileName, bool isTrace=false);
 		bool IsError() { return m_isErrorOccur; }
 		void Clear();
 
@@ -29,8 +29,8 @@ namespace evc { namespace genotype_parser {
 		//start -> expression_list;
 		sExprList* program();
 
-		//expression -> id ( id, vec3, material, [randshape,] connection-list )
-		//	| id;
+		//expression -> id ( string, id, vec3, material, [randshape,] connection-list )
+		//	| string;
 		sExpr* expression();
 
 		//expression-list -> [ expression {, expression } ];
@@ -66,6 +66,9 @@ namespace evc { namespace genotype_parser {
 		// swing limit -> swinglimit(num, num)
 		Vector3 swinglimit();
 
+		// density -> density(num)
+		float density();
+
 		// mass -> mass(num)
 		float mass();
 
@@ -97,6 +100,7 @@ namespace evc { namespace genotype_parser {
 		string number();
 		int num();
 		string id();
+		string str();
 		//////////////////////////////////////////////////////////////////////////////////////
 
 		bool Match( Tokentype t );
@@ -105,7 +109,7 @@ namespace evc { namespace genotype_parser {
 		void RemoveNoVisitExpression();
 
 
-	private:
+	public:
 		string m_fileName;
 		cScanner *m_scan;
 		Tokentype m_token;

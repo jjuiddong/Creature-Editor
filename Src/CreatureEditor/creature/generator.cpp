@@ -4,12 +4,25 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include "parser/GenotypeParser.h"
+
 
 namespace evc
 {
 	Vector4 ParseVector4(const string &str);
 	Vector3 ParseVector3(const string &str);
 	Vector2 ParseVector2(const string &str);
+	string Vector2ToStr(const Vector2 &vec);
+	string Vector3ToStr(const Vector3 &vec);
+	string Vector3ToStr(const string &name, const Vector3 &vec);
+	string Vector4ToStr(const Vector4 &vec);
+	string QuaternionToStr(const Quaternion &q);
+	string TransformToStr(const Transform &tfm);
+	string ConeLimitToStr(const sConeLimit &limit);
+	string AngularLimitToStr(const sAngularLimit &limit);
+	string LinearLimitToStr(const sLinearLimit &limit);
+	string DistanceLimitToStr(const sDistanceLimit &limit);
+	string DriveInfoToStr(const sDriveInfo &drive);
 
 	bool Put_RigidActor(boost::property_tree::ptree &parent, phys::cRigidActor *actor);
 	bool Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint);
@@ -632,6 +645,97 @@ Vector2 evc::ParseVector2(const string &str)
 }
 
 
+string evc::Vector2ToStr(const Vector2 &vec)
+{
+	stringstream ss;
+	ss << "vec2(" << vec.x << "," << vec.y << ")";
+	return ss.str();
+}
+
+
+string evc::Vector3ToStr(const Vector3 &vec)
+{
+	return Vector3ToStr("vec3", vec);
+}
+
+
+string evc::Vector3ToStr(const string &name, const Vector3 &vec)
+{
+	stringstream ss;
+	ss << name << "(" << vec.x << "," << vec.y << "," << vec.z << ")";
+	return ss.str();
+}
+
+
+string evc::Vector4ToStr(const Vector4 &vec)
+{
+	stringstream ss;
+	ss << "vec4(" << vec.x << "," << vec.y << "," << vec.z << "," << vec.w << ")";
+	return ss.str();
+}
+
+
+string evc::QuaternionToStr(const Quaternion &q)
+{
+	stringstream ss;
+	ss << "quat(" << q.x << "," << q.y << "," << q.z << "," << q.w << ")";
+	return ss.str();
+}
+
+
+string evc::TransformToStr(const Transform &tfm)
+{
+	stringstream ss;
+	ss << "transform(" << Vector3ToStr(tfm.pos)
+		<< "," << QuaternionToStr(tfm.rot) << ")";
+	return ss.str();
+}
+
+
+string evc::ConeLimitToStr(const sConeLimit &limit)
+{
+	stringstream ss;
+	ss << "conelimit(" << limit.yAngle << "," << limit.zAngle << ")";
+	return ss.str();
+}
+
+
+string evc::AngularLimitToStr(const sAngularLimit &limit)
+{
+	stringstream ss;
+	ss << "angularlimit(" << limit.lower << "," << limit.upper << ")";
+	return ss.str();
+}
+
+
+string evc::LinearLimitToStr(const sLinearLimit &limit)
+{
+	stringstream ss;
+	ss << "linearlimit(" << limit.lower << "," << limit.upper 
+		<< "," << limit.stiffness << "," << limit.damping << ")";
+	return ss.str();
+}
+
+
+string evc::DistanceLimitToStr(const sDistanceLimit &limit)
+{
+	stringstream ss;
+	ss << "distancelimit(" << limit.minDistance << "," << limit.maxDistance << ")";
+	return ss.str();
+}
+
+
+string evc::DriveInfoToStr(const sDriveInfo &drive)
+{
+	stringstream ss;
+	ss << "drive("
+		<< "velocity(" << drive.velocity << ")"
+		<< ",period(" << drive.period << ")"
+		<< ")";
+	return ss.str();
+}
+
+
 // put rigid actor property to parent ptree
 bool evc::Put_RigidActor(boost::property_tree::ptree &parent, phys::cRigidActor *actor)
 {
@@ -833,12 +937,104 @@ bool evc::Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint)
 
 
 // write genotype file from Genotype node
+//
+// sample script
+//
+// shape("Box-1001", box, vec3(1, 1, 1), material(red), density(1))
+//
+// shape("Main-1002", box, vec3(1, 1, 1), material(yellow), density(1)
+//
+//	, joint(revolute, vec3(1, 1, 1), pivot(1, 1, 1), pivot(1, 1, 1)
+//		, transform(vec3(1, 1, 1), quat(0, 0, 0, 1))
+//		, angularlimit(yangle(1), zangle(1)
+//			, drive(velicity(1), period(1))
+//			, "Box-1001")
+//	)
+//
 bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
 	, cGNode *gnode)
 {
+	// collect gnode, link
+	set<cGNode*> gnodes;
+	set<cGLink*> glinks;
+	queue<cGNode*> q;
+	q.push(gnode);
+	while (!q.empty())
+	{
+		cGNode *node = q.front();
+		q.pop();
+		if (!node)
+			continue;
+		if (gnodes.end() != std::find(gnodes.begin(), gnodes.end(), node))
+			continue; // already exist
 
+		gnodes.insert(node);
+		for (auto *link : node->m_links)
+		{
+			q.push(link->m_gnode0);
+			q.push(link->m_gnode1);
+			glinks.insert(link);
+		}
+	}
 
+	using namespace std;
+	ofstream ofs(fileName.c_str());
+	if (!ofs.is_open())
+		return false;
 
+	Str128 text;
+	for (auto &node : gnodes)
+	{
+		if (node->m_cloneId >= 0)
+			continue; // ignore iterator node
+
+		ofs << "shape(";
+		ofs << "\"" << node->m_name.c_str() << "-" << node->m_id << "\"";
+		ofs << "," << phys::eShapeType::ToString(node->m_shape);
+		const Vector3 dim = node->m_transform.scale;
+		ofs << "," << Vector3ToStr(dim);
+		ofs << ",material(white)";
+		ofs << ",density(" << node->m_density << ")";
+
+		for (auto &link : node->m_links)
+		{
+			if (link->m_gnode0 != node)
+				continue; // write only parent node
+
+			ofs << endl;
+			ofs << "\t,link(" << phys::eJointType::ToString(link->m_type);
+			ofs << "," << Vector3ToStr(link->m_origPos);
+			ofs << "," << Vector3ToStr(link->m_revoluteAxis);
+			ofs << "," << Vector3ToStr("pivot", link->GetPivotPos(0));
+			ofs << "," << Vector3ToStr("pivot", link->GetPivotPos(1));
+			ofs << "," << TransformToStr(link->m_nodeLocal0);
+			ofs << "," << TransformToStr(link->m_nodeLocal1);
+
+			switch (link->m_type)
+			{
+			case phys::eJointType::Fixed: break; // no limit
+			case phys::eJointType::Spherical: ofs << "," << ConeLimitToStr(link->m_limit.cone); break;
+			case phys::eJointType::Revolute: 
+				ofs << "," << AngularLimitToStr(link->m_limit.angular); 
+				ofs << "," << DriveInfoToStr(link->m_drive);
+				break;
+			case phys::eJointType::Prismatic: ofs << "," << LinearLimitToStr(link->m_limit.linear); break;
+			case phys::eJointType::Distance: ofs << "," << DistanceLimitToStr(link->m_limit.distance); break;
+
+			case phys::eJointType::D6: 
+				// todo: d6 joint
+				break;
+			default: assert(0); break;
+			}
+
+			ofs << ",\"" << link->m_gnode1->m_name.c_str() << "-" << link->m_gnode1->m_id << "\"";
+
+			ofs << ")"; //~link
+		}
+
+		ofs << ")" << endl; //~shape
+	}
 
 	return true;
 }
+

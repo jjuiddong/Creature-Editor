@@ -49,6 +49,17 @@ namespace evc
 
 
 	public:
+		struct sPivot {
+			Vector3 dir; // pivot direction(local space), actor -> pivot
+			float len; // pivot length
+		};
+		union sLimit {
+			sConeLimit cone;
+			sAngularLimit angular;
+			sLinearLimit linear;
+			sDistanceLimit distance;
+		};
+
 		bool m_autoDelete; // default: true
 		phys::eJointType::Enum m_type;
 		cGNode *m_gnode0;
@@ -70,11 +81,9 @@ namespace evc
 		Transform m_nodeLocal0; // actor0 local transform (local space)
 		Transform m_nodeLocal1; // actor1 local transform (local space)
 
-		struct sPivot {
-			Vector3 dir; // pivot direction(local space), actor -> pivot
-			float len; // pivot length
-		};
 		sPivot m_pivots[2]; // actor0,1
+		sLimit m_limit;
+		sDriveInfo m_drive;
 	};
 
 }

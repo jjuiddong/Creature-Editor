@@ -123,6 +123,15 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 			renderer.m_dbgCube.Render(renderer);
 		}
 
+		// add link mode
+		if (g_geno->m_mode == eGenoEditMode::SelfLoop)
+		{
+			//evc::cGLink *gnode0 = g_geno->FindGLink(g_geno->m_pairId0);
+			//evc::cGLink *gnode1 = g_geno->FindGLink(g_geno->m_pairId1);
+
+			
+		}
+
 		m_gridLine.Render(renderer);
 		renderer.RenderAxis2();
 	}
@@ -269,6 +278,28 @@ void cGenoView::RenderPopupMenu()
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
 		}
+		if (ImGui::MenuItem("Iterator", "I"))
+		{
+			evc::cGNode *clone = nullptr;
+			if (gnode->m_cloneId >= 0)
+			{
+				// find original genotype node
+				if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
+					clone = p->Clone(GetRenderer());
+			}
+			else
+			{
+				clone = gnode->Clone(GetRenderer());
+			}
+
+			if (clone)
+			{
+				g_geno->AddGNode(clone);
+				g_geno->ClearSelection();
+				g_geno->SelectObject(clone->m_id);
+				g_geno->m_gizmo.SetControlNode(clone);
+			}
+		}
 		if (ImGui::MenuItem("Select All", "A"))
 		{
 			g_geno->SetAllLinkedNodeSelect(gnode);
@@ -276,7 +307,7 @@ void cGenoView::RenderPopupMenu()
 
 		ImGui::Separator();
 
-		if (ImGui::MenuItem("Remove All Link", "J", false, true))
+		if (ImGui::MenuItem("Delete All Link", "J", false, true))
 		{
 			// remove all link
 			set<evc::cGLink*> rms;
@@ -288,6 +319,17 @@ void cGenoView::RenderPopupMenu()
 			for (auto *p : rms)
 				g_geno->RemoveGLink(p);
 		}
+		if (ImGui::MenuItem("Delete", "D"))
+		{
+			// remove all node
+			for (auto id : g_geno->m_selects)
+				if (evc::cGNode *gnode = g_geno->FindGNode(id))
+					g_geno->RemoveGNode(gnode);
+
+			g_geno->ClearSelection();
+			g_geno->m_gizmo.SetControlNode(nullptr);
+		}
+
 		ImGui::EndPopup();
 	}
 	else if (ImGui::BeginPopup("New PopupMenu"))
@@ -825,6 +867,7 @@ void cGenoView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 		{
 			m_popupMenuState = 1; // open popup menu
 			m_popupMenuType = 0; // node menu
+			m_clickedId = id;
 			//m_saveFileSyncId = syncId;
 			g_geno->SelectObject(id);
 			if (evc::cGNode *node = g_geno->FindGNode(id))

@@ -5,7 +5,7 @@
 //
 #pragma once
 
-enum class eGenoEditMode { Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation };
+enum class eGenoEditMode { Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation, SelfLoop };
 
 namespace evc {
 	class cGNode;
@@ -38,6 +38,8 @@ public:
 
 	evc::cGNode* FindGNode(const int id);
 	evc::cGLink* FindGLink(const int id);
+	bool AddGNode(evc::cGNode *gnode);
+	bool RemoveGNode(evc::cGNode *gnode);
 	bool AddGLink(evc::cGLink *glink);
 	bool RemoveGLink(evc::cGLink *glink);
 
@@ -79,7 +81,6 @@ public:
 	bool m_fixJointSelection;
 	int m_pairId0; // link edit mode, gnode0
 	int m_pairId1; // link edit mode, gnode1
-
 
 	// genotype node, link 
 	vector<evc::cGNode*> m_gnodes;

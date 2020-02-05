@@ -10,6 +10,8 @@ namespace evc
 {
 
 	class cPNode;
+	class cGNode;
+	class cGLink;
 
 	class cCreature
 	{
@@ -28,10 +30,21 @@ namespace evc
 		void Clear();
 
 
+	protected:
+		bool ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName);
+		void LoadFromGenoType();
+
+
 	public:
 		int m_id;
 		StrId m_name;
+
+		// phenotype
 		vector<cPNode*> m_nodes;
+
+		// DNA, genotype
+		vector<cGNode*> m_gnodes;
+		vector<cGLink*> m_glinks;
 	};
 
 }

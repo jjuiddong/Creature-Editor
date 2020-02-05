@@ -131,6 +131,11 @@ void cGenoEditorView::RenderSelectionInfo()
 			m_eulerAngle = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
 		}
 
+		ImGui::TextUnformatted("ID            ");
+		ImGui::SameLine();
+		if (ImGui::InputText("##id", gnode->m_name.m_str, gnode->m_name.SIZE))
+			gnode->m_wname = gnode->m_name.wstr();
+
 		// edit position
 		ImGui::TextUnformatted("Pos            ");
 		ImGui::SameLine();

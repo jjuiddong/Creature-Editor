@@ -40,12 +40,18 @@ namespace evc
 		void SetCylinderDimension(const float radius, const float height);
 		Vector2 GetCylinderDimension();
 
+		cGNode* Clone(graphic::cRenderer &renderer);
 		void Clear();
 
 
 	public:
+		WStrId m_wname;
 		phys::eShapeType::Enum m_shape;
+		float m_density;
+		Vector3 m_dimension;
+		graphic::cColor m_color;
 		vector<cGLink*> m_links; // reference
+		int m_cloneId; // original gnode id, if clone (iterator type)
 	};
 
 }

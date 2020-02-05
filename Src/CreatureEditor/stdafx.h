@@ -9,6 +9,7 @@ using namespace common;
 
 #include "lib/jointrenderer.h"
 #include "creature/evc.h"
+#include "creature/limit.h"
 #include "creature/generator.h"
 #include "creature/gnode.h"
 #include "creature/glink.h"

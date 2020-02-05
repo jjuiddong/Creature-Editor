@@ -19,12 +19,12 @@ cParser::~cParser()
 }
 
 
-genotype_parser::sExpr* cParser::Parse( const string &fileName
+bool cParser::Parse( const string &fileName
 	, bool isTrace //=false
 )
 {
 	if (!m_scan->LoadFile(fileName.c_str(), isTrace))
-		return nullptr;
+		return false;
 
 	m_fileName = fileName;
 
@@ -32,7 +32,7 @@ genotype_parser::sExpr* cParser::Parse( const string &fileName
 	if (ENDFILE == m_token)
 	{
 		m_scan->Clear();
-		return nullptr;
+		return false;
 	}
 
 	{
@@ -41,7 +41,7 @@ genotype_parser::sExpr* cParser::Parse( const string &fileName
 		{
 			sExprList *tmp = root;
 			root = root->next;
-			SAFE_DELETE(tmp);		
+			SAFE_DELETE(tmp);
 		}
 	}
 
@@ -49,27 +49,41 @@ genotype_parser::sExpr* cParser::Parse( const string &fileName
 	{
 		SyntaxError( " code ends before file " );
 		m_scan->Clear();
-		return nullptr;
+		return false;
 	}
 
 	if (m_isErrorOccur)
-		return nullptr;
+		return false;
 
-	if (m_symTable.find("main") == m_symTable.end())
+	//if (m_symTable.find("main") == m_symTable.end())
+	//{
+	//	SyntaxError( " Not Exist 'main' node" );
+	//	m_scan->Clear();
+	//	RemoveNoVisitExpression();
+	//	return nullptr;
+	//}
+	//sExpr *mainExpr = m_symTable[ "main"];
+	//m_visit.clear();
+	//Build(mainExpr);
+	//RemoveNoVisitExpression();
+	//return mainExpr;
+
+	// update expression ptr
+	for (auto &kv : m_symTable)
 	{
-		SyntaxError( " Not Exist 'main' node" );
-		m_scan->Clear();
-		RemoveNoVisitExpression();
-		return nullptr;
+		sExpr *expr = kv.second;
+		sConnectionList *con = expr->connection;
+		while (con)
+		{
+			auto it = m_symTable.find(con->connect->exprName);
+			if (m_symTable.end() == it)
+				return false; // not found expression id
+			con->connect->expr = it->second;
+			con = con->next;
+		}
 	}
 
-	sExpr *mainExpr = m_symTable[ "main"];
-
-	m_visit.clear();
-	Build(mainExpr);
-	RemoveNoVisitExpression();
-
-	return mainExpr;
+	return true;
 }
 
 
@@ -81,8 +95,8 @@ sExprList* cParser::program()
 
 
 //
-// expression -> id ( id, vec3, material, mass, [randshape,] [connection-list] )
-// 	| id;
+// expression -> id ( string, id, vec3, material, density, [randshape,] [connection-list] )
+// 	| string;
 sExpr* cParser::expression()
 {
 	sExpr *pexpr = nullptr;
@@ -92,15 +106,17 @@ sExpr* cParser::expression()
 		pexpr->refCount = 0;
 		pexpr->connection = nullptr;
 
-		pexpr->id = id();
+		pexpr->id = id(); // shape
 		Match(LPAREN);
+		pexpr->id = str(); // overwrite
+		Match(COMMA);
 		pexpr->shape = id();
 		Match(COMMA);
 		pexpr->dimension = vec3();
 		Match(COMMA);
 		pexpr->material = material();
 		Match(COMMA);
-		pexpr->mass = mass();
+		pexpr->density = density();
 
 		if (m_symTable.find(pexpr->id) == m_symTable.end())
 		{
@@ -121,18 +137,18 @@ sExpr* cParser::expression()
 
 		Match(RPAREN);
 	}
-	else if (ID == m_token)
-	{
-		const string Id = id();
-		if (m_symTable.find(Id) == m_symTable.end())
-		{
-			SyntaxError( "not found expression = '%s' ", Id.c_str() );
-		}
-		else
-		{
-			pexpr = m_symTable[ Id];
-		}
-	}
+	//else if (STRING == m_token)
+	//{
+	//	const string Id = str();
+	//	if (m_symTable.find(Id) == m_symTable.end())
+	//	{
+	//		SyntaxError( "not found expression = '%s' ", Id.c_str() );
+	//	}
+	//	else
+	//	{
+	//		pexpr = m_symTable[ Id];
+	//	}
+	//}
 	return pexpr;
 }
 
@@ -154,7 +170,7 @@ sExprList* cParser::expression_list()
 }
 
 
-// connection -> connection( id, vec3, vec3, vec3, transform, drive, limit, 
+// connection -> connection( id, vec3, vec3, vec3, vec3, transform, drive, limit, 
 //					[twist limit,] [swing limit,] [terminalonly,] expression )
 sConnection* cParser::connection()
 {
@@ -163,7 +179,7 @@ sConnection* cParser::connection()
 		return nullptr;
 
 	const string tok = m_scan->GetTokenStringQ(0);
-	if ((tok != "joint") && (tok != "sensor"))
+	if ((tok != "link") && (tok != "sensor"))
 	{
 		SyntaxError( "must declare %s -> 'joint / sensor' ", tok.c_str() );
 		return nullptr;
@@ -178,14 +194,22 @@ sConnection* cParser::connection()
 	Match(COMMA);
 	con->jointPos = vec3();
 	Match(COMMA);
+	con->jointAxis = vec3();
+	Match(COMMA);
 	con->pivot0 = pivot();
 	Match(COMMA);
 	con->pivot1 = pivot();
 	Match(COMMA);
-	con->conTfm = transform();
+	con->conTfm0 = transform();
 	Match(COMMA);
+	con->conTfm1 = transform();
+
+	if (COMMA == m_token)
+		Match(COMMA);
 	con->drive = drive();
-	Match(COMMA);
+
+	if (COMMA == m_token)
+		Match(COMMA);
 	con->limit = limit();
 
 	if (COMMA == m_token)
@@ -202,7 +226,8 @@ sConnection* cParser::connection()
 
 	if (COMMA == m_token)
 		Match(COMMA);
-	con->expr = expression();
+	//con->expr = expression();
+	con->exprName = str();
 
 	Match(RPAREN);
 	return con;
@@ -377,10 +402,7 @@ Vector2 cParser::drive()
 	Vector2 v;
 
 	if (ID != m_token)
-	{
-		SyntaxError("drive type need drive \n");
 		return v;
-	}
 
 	const string tok = m_scan->GetTokenStringQ(0);
 	if (tok == "drive")
@@ -394,10 +416,6 @@ Vector2 cParser::drive()
 			v.y = period();
 		}
 		Match(RPAREN);
-	}
-	else
-	{
-		SyntaxError("undeclare token %s, must declare 'drive'\n", m_scan->GetTokenStringQ(0).c_str());
 	}
 
 	return v;
@@ -414,10 +432,7 @@ Vector4 cParser::limit()
 	Vector4 v;
 
 	if (ID != m_token)
-	{
-		SyntaxError( "limit type need limit \n" );
 		return v;
-	}
 
 	const string tok = m_scan->GetTokenStringQ(0);
 	if ((tok == "conelimit") || (tok == "angularlimit") || (tok == "distancelimit"))
@@ -444,7 +459,7 @@ Vector4 cParser::limit()
 	}
 	else
 	{
-		SyntaxError( "undeclare token %s, must declare 'limit'\n", m_scan->GetTokenStringQ(0).c_str() );
+		//SyntaxError( "undeclare token %s, must declare 'limit'\n", m_scan->GetTokenStringQ(0).c_str() );
 	}
 
 	return v;
@@ -601,6 +616,30 @@ float cParser::mass()
 	else
 	{
 		SyntaxError( "undeclare token %s, must declare 'mass'\n", m_scan->GetTokenStringQ(0).c_str() );
+	}
+
+	return ret;
+}
+
+
+// density -> density(num)
+float cParser::density()
+{
+	if (ID != m_token)
+		return 0.f;
+
+	float ret = 0.f;
+	const string tok = m_scan->GetTokenStringQ(0);
+	if (tok == "density")
+	{
+		Match(ID);
+		Match(LPAREN);
+		ret = (float)atof(number().c_str());
+		Match(RPAREN);
+	}
+	else
+	{
+		SyntaxError("undeclare token %s, must declare 'density'\n", m_scan->GetTokenStringQ(0).c_str());
 	}
 
 	return ret;
@@ -804,7 +843,15 @@ int cParser::num()
 string cParser::id()
 {
 	string str = m_scan->GetTokenStringQ(0);
-	Match( ID );
+	Match(ID);
+	return str;
+}
+
+
+string cParser::str()
+{
+	string str = m_scan->GetTokenStringQ(0);
+	Match(STRING);
 	return str;
 }
 
@@ -884,4 +931,8 @@ void cParser::RemoveNoVisitExpression()
 void cParser::Clear()
 {
 	SAFE_DELETE(m_scan);
+
+	for (auto &kv : m_symTable)
+		RemoveExpressoin_OnlyExpr(kv.second);
+	m_symTable.clear();
 }

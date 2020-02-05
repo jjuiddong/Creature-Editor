@@ -8,6 +8,9 @@ using namespace graphic;
 
 cGNode::cGNode()
 	: graphic::cNode(common::GenerateId(), "gnode")
+	, m_wname(L"gnode")
+	, m_cloneId(-1)
+	, m_density(1.f)
 {
 }
 
@@ -27,6 +30,8 @@ bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 
 	m_shape = phys::eShapeType::Box;
 	m_transform = tfm;
+	m_name = "Box";
+	m_wname = m_name.wstr();
 	return true;
 }
 
@@ -42,6 +47,8 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 	m_shape = phys::eShapeType::Sphere;
 	m_transform = tfm;
 	m_transform.scale = Vector3::Ones * radius;
+	m_name = "Sphere";
+	m_wname = m_name.wstr();
 	return true;
 }
 
@@ -56,6 +63,8 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 
 	m_shape = phys::eShapeType::Capsule;
 	m_transform.pos = tfm.pos;
+	m_name = "Capsule";
+	m_wname = m_name.wstr();
 	return true;
 }
 
@@ -71,6 +80,8 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 	m_shape = phys::eShapeType::Cylinder;
 	m_transform = tfm;
 	m_transform.scale = Vector3(height/2.f, radius, radius);
+	m_name = "Cylinder";
+	m_wname = m_name.wstr();
 	return true;
 }
 
@@ -84,6 +95,13 @@ bool cGNode::Render(graphic::cRenderer &renderer
 
 	if (!(flags & graphic::eRenderFlag::OUTLINE))
 	{
+		Transform tfm;
+		tfm.pos = m_transform.pos + Vector3(0, 0.2f,0);
+		tfm.scale = Vector3::Ones * 0.2f;
+		renderer.m_textMgr.AddTextRender(renderer
+			, m_id, m_wname.c_str(), cColor::WHITE, cColor::BLACK
+			, BILLBOARD_TYPE::ALL_AXIS, tfm, true);
+
 		// y-axis line
 		renderer.m_dbgLine.m_isSolid = true;
 		renderer.m_dbgLine.SetColor(cColor::BLACK);
@@ -182,6 +200,38 @@ Vector2 cGNode::GetCylinderDimension()
 	if (m_shape != phys::eShapeType::Cylinder)
 		return Vector2(0,0);
 	return Vector2(m_transform.scale.y, m_transform.scale.x * 2.f);
+}
+
+
+cGNode* cGNode::Clone(graphic::cRenderer &renderer)
+{
+	cGNode *gnode = new cGNode();
+	
+	switch (m_shape)
+	{
+	case phys::eShapeType::Box:
+		gnode->CreateBox(renderer, m_transform);
+		break;
+	case phys::eShapeType::Sphere:
+		gnode->CreateSphere(renderer, m_transform, m_transform.scale.x);
+		break;
+	case phys::eShapeType::Capsule:
+		gnode->CreateCapsule(renderer, m_transform
+			, m_transform.scale.y, m_transform.scale.x);
+		break;
+	case phys::eShapeType::Cylinder:
+		gnode->CreateCylinder(renderer, m_transform
+			, m_transform.scale.y, m_transform.scale.x);
+		break;
+	default: assert(0); break;
+	}
+
+	gnode->m_name = m_name + " iter";
+	gnode->m_wname = m_wname + L" iter";
+	const Vector3 scale = gnode->m_transform.scale * 2.f;
+	gnode->m_transform.pos += Vector3(scale.x, 0, scale.z);
+	gnode->m_cloneId = m_id;
+	return gnode;
 }
 
 

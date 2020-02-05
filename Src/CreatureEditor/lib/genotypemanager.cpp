@@ -155,6 +155,36 @@ evc::cGLink* cGenoTypeManager::FindGLink(const int id)
 }
 
 
+bool cGenoTypeManager::AddGNode(evc::cGNode *gnode)
+{
+	if (m_gnodes.end() != find(m_gnodes.begin(), m_gnodes.end(), gnode))
+		return false; // already exist
+	m_gnodes.push_back(gnode);
+	return true;
+}
+
+
+bool cGenoTypeManager::RemoveGNode(evc::cGNode *gnode)
+{
+	// if has iterator? remove all iterator gnode
+	set<evc::cGNode*> rms;
+	for (auto &p : m_gnodes)
+		if (p->m_cloneId == gnode->m_id)
+			rms.insert(p);
+	rms.insert(gnode);
+
+	for (auto &p : rms)
+	{
+		for (auto &link : p->m_links)
+			RemoveGLink(link);
+		common::removevector(m_gnodes, p);
+		delete p;
+	}
+
+	return true;
+}
+
+
 bool cGenoTypeManager::AddGLink(evc::cGLink *glink)
 {
 	if (m_glinks.end() != find(m_glinks.begin(), m_glinks.end(), glink))

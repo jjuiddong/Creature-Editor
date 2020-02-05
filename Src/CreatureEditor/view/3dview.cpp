@@ -609,7 +609,7 @@ void c3DView::RenderPopupMenu()
 		
 		ImGui::Separator();
 
-		if (ImGui::MenuItem("Remove All Joint", "J", false, true))
+		if (ImGui::MenuItem("Delete All Joint", "J", false, true))
 		{
 			// remove connection joint
 			set<phys::cJoint*> rms;

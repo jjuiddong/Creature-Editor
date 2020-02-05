@@ -62,6 +62,7 @@ public:
 	bool m_isOrbitMove;
 	Vector3 m_orbitTarget;
 	Vector3 m_tempSpawnPos;
+	int m_clickedId;
 
 	// MouseMove Variable
 	POINT m_viewPos;

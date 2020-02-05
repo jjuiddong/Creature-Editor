@@ -1,13 +1,3 @@
-
-body( box, vec3(1,1,1), material(red), mass(1))
-
-
-main( box, vec3(1,1,1), material(yellow), mass(1)
-	
-	, joint( revolute, vec3(1,1,1), pivot(1,1,1), pivot(1,1,1)
-		, transform(vec3(1,1,1), quat(0,0,0,1))
-		, angularlimit(yangle(1), zangle(1)
-		, drive(velicity(1), period(1))
-		, body )
-
-	)
+shape("Box-10066",Box,vec3(0.5,0.5,0.5),material(white),density(1))
+shape("Sphere-10070",Sphere,vec3(0.5,0.5,0.5),material(white),density(1)
+	,link(Fixed,vec3(-3.31929,3,1.64761),vec3(1,0,0),pivot(-4.76836,3,1.64761),pivot(-1.87023,3,1.64761),transform(vec3(-4.76836,3,1.78869),quat(0,0,0,1)),transform(vec3(-1.87023,3,1.64761),quat(0,0,0,1)),"Box-10066"))

@@ -34,7 +34,8 @@ namespace evc { namespace genotype_parser {
 		Vector3 jointPos;
 		Vector3 pivot0;
 		Vector3 pivot1;
-		Transform conTfm; // connection rigidbody transform
+		Transform conTfm0; // connection rigidbody transform
+		Transform conTfm1; // connection rigidbody transform
 		Quaternion rotate;
 		Vector2 drive; // velocity, period
 		Vector4 limit; // cone limit (yAngle, zAngle)
@@ -44,6 +45,7 @@ namespace evc { namespace genotype_parser {
 		Vector3 twistLimit;
 		Vector3 swingLimit;
 		bool terminalOnly;
+		string exprName;
 		sExpr *expr;
 
 		sConnection() {
@@ -82,13 +84,13 @@ namespace evc { namespace genotype_parser {
 		string shape;
 		Vector3 dimension;
 		Vector3 material;
-		float mass;
+		float density;
 		sConnectionList *connection;
 		int refCount;
 		bool isSensor; // internal used
 
 		sExpr() {
-			mass = 1.f;
+			density = 1.f;
 			material = Vector3(0,0.75f,0);
 			connection = NULL;
 			isSensor = false;
@@ -101,7 +103,7 @@ namespace evc { namespace genotype_parser {
 				shape = rhs.shape;
 				dimension = rhs.dimension;
 				material = rhs.material;
-				mass = rhs.mass;
+				density = rhs.density;
 				isSensor = rhs.isSensor;
 			}
 			return *this;
