@@ -519,17 +519,18 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 		break;
 		case phys::eShapeType::Capsule:
 		{
-			const Vector3 scale = gnode->m_transform.scale;
+			const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale;
 			float radius = 1.f;
 			switch (g_geno->m_gizmo.m_axisType)
 			{
-			case eGizmoEditAxis::X: radius = scale.y; break;
-			case eGizmoEditAxis::Y: radius = scale.y; break;
-			case eGizmoEditAxis::Z: radius = scale.z; break;
+			case eGizmoEditAxis::X: radius = delta.y; break;
+			case eGizmoEditAxis::Y: radius = delta.y; break;
+			case eGizmoEditAxis::Z: radius = delta.z; break;
 			}
-			const float halfHeight = scale.x - radius;
-
-			gnode->SetCapsuleDimension(radius, halfHeight); // update capsule transform
+			Vector2 dim = gnode->GetCapsuleDimension();
+			dim.x = max(0.f, dim.x + radius);
+			dim.y = max(0.f, dim.y + delta.x);
+			gnode->SetCapsuleDimension(dim.x, dim.y); // update capsule transform
 			g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
 		}
 		break;
@@ -544,7 +545,7 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 			case eGizmoEditAxis::Z: radius = scale.z; break;
 			}
 			const float height = scale.x * 2.f;
-			gnode->SetCylinderDimension(radius, height); // update capsule transform
+			gnode->SetCylinderDimension(radius, height); // update cylinder transform
 			g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
 		}
 		break;

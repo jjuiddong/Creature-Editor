@@ -49,6 +49,7 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.scale = Vector3::Ones * radius;
 	m_name = "Sphere";
 	m_wname = m_name.wstr();
+	SetSphereRadius(radius);
 	return true;
 }
 
@@ -65,6 +66,7 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.pos = tfm.pos;
 	m_name = "Capsule";
 	m_wname = m_name.wstr();
+	SetCapsuleDimension(radius, halfHeight);
 	return true;
 }
 
@@ -82,6 +84,7 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.scale = Vector3(height/2.f, radius, radius);
 	m_name = "Cylinder";
 	m_wname = m_name.wstr();
+	SetCylinderDimension(radius, height);
 	return true;
 }
 
@@ -173,7 +176,9 @@ void cGNode::SetCapsuleDimension(const float radius, const float halfHeight)
 {
 	if (m_shape != phys::eShapeType::Capsule)
 		return;
-	m_transform.scale = Vector3(halfHeight + radius, radius, radius);
+	if (cCapsule *p = (cCapsule*)dynamic_cast<cCapsule*>(m_children[0]))
+		p->SetDimension(radius, halfHeight);
+	m_transform.scale = Vector3::Ones;
 }
 
 
@@ -182,7 +187,9 @@ Vector2 cGNode::GetCapsuleDimension()
 {
 	if (m_shape != phys::eShapeType::Capsule)
 		return Vector2(0,0);
-	return Vector2(m_transform.scale.y, m_transform.scale.x - m_transform.scale.y);
+	if (cCapsule *p = (cCapsule*)dynamic_cast<cCapsule*>(m_children[0]))
+		return Vector2(p->m_radius, p->m_halfHeight);
+	return Vector2();
 }
 
 

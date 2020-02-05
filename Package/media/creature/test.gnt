@@ -1,3 +1,92 @@
-shape("Box-10066",Box,vec3(0.5,0.5,0.5),material(white),density(1))
-shape("Sphere-10070",Sphere,vec3(0.5,0.5,0.5),material(white),density(1)
-	,link(Fixed,vec3(-3.31929,3,1.64761),vec3(1,0,0),pivot(-4.76836,3,1.64761),pivot(-1.87023,3,1.64761),transform(vec3(-4.76836,3,1.78869),quat(0,0,0,1)),transform(vec3(-1.87023,3,1.64761),quat(0,0,0,1)),"Box-10066"))
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Capsule",
+                "id": "10074",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "1.081113 3.000000 2.214745",
+                "dim": "1.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "Capsule",
+                "id": "10070",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "-3.862895 3.000000 2.196811",
+                "dim": "1.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10066",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-1.402066 3.000000 2.101431",
+                "dim": "0.500000 0.169495 1.595881",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10066",
+                "shape id1": "10074",
+                "jointpos": "-0.160476 3.000000 2.214745",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 1.000000",
+                "pivot len0": "0.113313675",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "false",
+                "drive velocity": "0",
+                "cycle": "false",
+                "cycle period": "0",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "0.000000 0.000000 0.010000"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10066",
+                "shape id1": "10070",
+                "jointpos": "-2.632481 3.000000 2.196811",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 1.000000",
+                "pivot len0": "0.0953803062",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "false",
+                "drive velocity": "0",
+                "cycle": "false",
+                "cycle period": "0",
+                "cycle accel": "0",
+                "cone limit": "false",
+                "cone limit config": "0.000000 0.000000 0.010000",
+                "angular limit": "false",
+                "angular limit config": "0.000000 0.000000 0.010000"
+            }
+        }
+    }
+}

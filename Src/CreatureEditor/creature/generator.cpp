@@ -26,6 +26,8 @@ namespace evc
 
 	bool Put_RigidActor(boost::property_tree::ptree &parent, phys::cRigidActor *actor);
 	bool Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint);
+	bool Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode);
+	bool Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink);
 }
 
 using namespace evc;
@@ -178,7 +180,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 		{
 			// check exist actor?
 			auto it0 = std::find(actors.begin(), actors.end(), j->m_actor0);
-			auto it1 = std::find(actors.begin(), actors.end(), j->m_actor0);
+			auto it1 = std::find(actors.begin(), actors.end(), j->m_actor1);
 			if ((actors.end() == it0) || (actors.end() == it1))
 				continue; // ignore joint, if not exist actor
 			Put_Joint(jts, j);
@@ -239,7 +241,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					const string rotStr = vt0.second.get<string>("rot", "0 0 0 1");
 					const Vector4 rot = ParseVector4(rotStr);
 					const Quaternion q(rot.x, rot.y, rot.z, rot.w);
-					const float mass = vt0.second.get<float>("mass", 1.f);
+					const float mass = vt0.second.get<float>("mass", 0.f);
 					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
 					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
 					const bool kinematic = vt0.second.get<bool >("kinematic", true);
@@ -289,7 +291,8 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 					if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
 					{
-						sync->actor->SetMass(mass);
+						if (mass != 0.f)
+							sync->actor->SetMass(mass);
 						syncs[id] = sync;
 					}
 				}//~for shapes
@@ -936,21 +939,208 @@ bool evc::Put_Joint(boost::property_tree::ptree &parent, phys::cJoint *joint)
 }
 
 
+// put gnode properties
+bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
+{
+	using boost::property_tree::ptree;
+	Vector3 v;
+	Quaternion q;
+	common::Str128 text;
+
+	ptree shape;
+
+	shape.put("name", gnode->m_name.c_str());
+	shape.put<int>("id", gnode->m_id);
+	shape.put<string>("type", "Dynamic");
+	shape.put<string>("shape", phys::eShapeType::ToString(gnode->m_shape));
+
+	// find local transform from joint
+	Transform tfm = gnode->m_transform;
+	switch (gnode->m_shape)
+	{
+	case phys::eShapeType::Box: break;
+	case phys::eShapeType::Sphere: break;
+	case phys::eShapeType::Capsule:
+	{
+		const Vector2 dim = gnode->GetCapsuleDimension();
+		tfm.scale = Vector3(dim.x + dim.y, dim.x, dim.x);
+	}
+	break;
+	case phys::eShapeType::Cylinder:
+	{
+		const Vector2 dim = gnode->GetCylinderDimension();
+		tfm.scale = Vector3(dim.y, dim.x, dim.x);
+	}
+	break;
+	default: assert(0); break;
+	}
+
+	v = tfm.pos;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	shape.put("pos", text.c_str());
+
+	v = tfm.scale;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	shape.put("dim", text.c_str());
+
+	q = tfm.rot;
+	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
+	shape.put("rot", text.c_str());
+
+	shape.put<float>("mass", 0.f);
+	shape.put<float>("density", gnode->m_density);
+	shape.put<float>("angular damping", 0.5f);
+	shape.put<float>("linear damping", 0.5f);
+	shape.put<bool>("kinematic", false);
+
+	parent.add_child("shape", shape);
+
+	return true;
+}
+
+
+// put genotype link property to parent ptree
+bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
+{
+	using boost::property_tree::ptree;
+	Vector3 v;
+	Quaternion q;
+	common::Str128 text;
+
+	ptree j;
+
+	j.put("type", phys::eJointType::ToString(glink->m_type));
+	j.put("shape id0", glink->m_gnode0->m_id);
+	j.put("shape id1", glink->m_gnode1->m_id);
+
+	v = glink->m_origPos;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("jointpos", text.c_str());
+
+	q = glink->m_rotRevolute;
+	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
+	j.put("revolute rot", text.c_str());
+
+	v = glink->m_pivots[0].dir;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("pivot dir0", text.c_str());
+	j.put("pivot len0", glink->m_pivots[0].len);
+
+	v = glink->m_pivots[1].dir;
+	text.Format("%f %f %f", v.x, v.y, v.z);
+	j.put("pivot dir1", text.c_str());
+	j.put("pivot len1", glink->m_pivots[1].len);
+
+	switch (glink->m_type)
+	{
+	case phys::eJointType::Fixed: break;
+	case phys::eJointType::Spherical:
+	{
+		j.put<bool>("cone limit", glink->m_limit.cone.yAngle != 0.f);
+		const sConeLimit coneLimit = glink->m_limit.cone;
+		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
+		j.put<string>("cone limit config", text.c_str());
+	}
+	break;
+	case phys::eJointType::Revolute:
+	{
+		j.put<bool>("drive", glink->m_drive.velocity != 0.f);
+		j.put("drive velocity", glink->m_drive.velocity);
+
+		j.put<bool>("cycle", glink->m_drive.period != 0.f);
+		j.put("cycle period", glink->m_drive.period);
+		j.put("cycle accel", glink->m_drive.driveAccel);
+
+		j.put<bool>("cone limit", glink->m_limit.cone.yAngle != 0.f);
+		const sConeLimit coneLimit = glink->m_limit.cone;
+		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
+		j.put<string>("cone limit config", text.c_str());
+
+		j.put<bool>("angular limit", glink->m_limit.angular.lower != 0.f);
+		const sAngularLimit angularLimit = glink->m_limit.angular;
+		text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
+		j.put<string>("angular limit config", text.c_str());
+	}
+	break;
+
+	case phys::eJointType::Prismatic:
+	{
+		j.put<bool>("linear limit", glink->m_limit.linear.stiffness != 0.f);
+		const sLinearLimit linearLimit = glink->m_limit.linear;
+		text.Format("%f %f %f", linearLimit.lower, linearLimit.upper
+			, linearLimit.stiffness);
+		j.put<string>("linear limit config 1", text.c_str());
+		text.Format("%f %f %f", linearLimit.damping, linearLimit.contactDistance
+			, linearLimit.bounceThreshold);
+		j.put<string>("linear limit config 2", text.c_str());
+	}
+	break;
+
+	case phys::eJointType::Distance:
+	{
+		j.put<bool>("distance limit", glink->m_limit.distance.maxDistance != 0.f);
+		const sDistanceLimit dist = glink->m_limit.distance;
+		j.put<float>("min distance", dist.minDistance);
+		j.put<float>("max distance", dist.maxDistance);
+	}
+	break;
+
+	case phys::eJointType::D6:
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+	//		const physx::PxD6Motion::Enum motion = joint->GetMotion((physx::PxD6Axis::Enum)i);
+	//		text.Format("d6 motion %d", i);
+	//		j.put<int>(text.c_str(), (int)motion);
+		}
+
+		for (int i = 0; i < 6; ++i)
+		{
+	//		const physx::PxD6JointDrive drive = joint->GetD6Drive((physx::PxD6Drive::Enum)i);
+	//		text.Format("d6 drive %d stiffness", i);
+	//		j.put<float>(text.c_str(), drive.stiffness);
+	//		text.Format("d6 drive %d damping", i);
+	//		j.put<float>(text.c_str(), drive.damping);
+	//		text.Format("d6 drive %d forcelimit", i);
+	//		j.put<float>(text.c_str(), drive.forceLimit);
+	//		const bool accel = drive.flags.isSet(physx::PxD6JointDriveFlag::eACCELERATION);
+	//		text.Format("d6 drive %d accel", i);
+	//		j.put<bool>(text.c_str(), accel);
+		}
+
+	//	const physx::PxJointLinearLimit linearLimit = joint->GetD6LinearLimit();
+	//	j.put<float>("linear extent", linearLimit.value);
+	//	j.put<float>("linear stiffness", linearLimit.stiffness);
+	//	j.put<float>("linear damping", linearLimit.damping);
+
+	//	const physx::PxJointAngularLimitPair angularLimit = joint->GetD6TwistLimit();
+	//	j.put<float>("angular lower", angularLimit.lower);
+	//	j.put<float>("angular upper", angularLimit.upper);
+
+	//	const physx::PxJointLimitCone coneLimit = joint->GetD6SwingLimit();
+	//	j.put<float>("cone yAngle", coneLimit.yAngle);
+	//	j.put<float>("cone zAngle", coneLimit.zAngle);
+
+	//	const std::pair<Vector3, Vector3> driveVelocity =
+	//		joint->GetD6DriveVelocity();
+
+	//	const Vector3 linearVel = std::get<0>(driveVelocity);
+	//	const Vector3 angularVel = std::get<1>(driveVelocity);
+	//	text.Format("%f %f %f", linearVel.x, linearVel.y, linearVel.z);
+	//	j.put<string>("linear drive velocity", text.c_str());
+	//	text.Format("%f %f %f", angularVel.x, angularVel.y, angularVel.z);
+	//	j.put<string>("angular drive velocity", text.c_str());
+	}
+	break;
+	}
+
+	parent.add_child("joint", j);
+
+	return true;
+}
+
+
 // write genotype file from Genotype node
-//
-// sample script
-//
-// shape("Box-1001", box, vec3(1, 1, 1), material(red), density(1))
-//
-// shape("Main-1002", box, vec3(1, 1, 1), material(yellow), density(1)
-//
-//	, joint(revolute, vec3(1, 1, 1), pivot(1, 1, 1), pivot(1, 1, 1)
-//		, transform(vec3(1, 1, 1), quat(0, 0, 0, 1))
-//		, angularlimit(yangle(1), zangle(1)
-//			, drive(velicity(1), period(1))
-//			, "Box-1001")
-//	)
-//
 bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
 	, cGNode *gnode)
 {
@@ -977,62 +1167,48 @@ bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
 		}
 	}
 
-	using namespace std;
-	ofstream ofs(fileName.c_str());
-	if (!ofs.is_open())
-		return false;
-
-	Str128 text;
-	for (auto &node : gnodes)
+	// make ptree
+	try
 	{
-		if (node->m_cloneId >= 0)
-			continue; // ignore iterator node
+		using boost::property_tree::ptree;
+		ptree props;
+		ptree creature;
+		common::Str128 text;
+		Vector3 v;
+		Quaternion q;
 
-		ofs << "shape(";
-		ofs << "\"" << node->m_name.c_str() << "-" << node->m_id << "\"";
-		ofs << "," << phys::eShapeType::ToString(node->m_shape);
-		const Vector3 dim = node->m_transform.scale;
-		ofs << "," << Vector3ToStr(dim);
-		ofs << ",material(white)";
-		ofs << ",density(" << node->m_density << ")";
+		creature.put("version", "1.01");
+		creature.put("name", "creature genotype");
 
-		for (auto &link : node->m_links)
+		// make shape
+		ptree shapes;
+		for (auto &p : gnodes)
+			Put_GNode(shapes, p);
+
+		// make joint
+		ptree jts;
+		for (auto &p : glinks)
 		{
-			if (link->m_gnode0 != node)
-				continue; // write only parent node
-
-			ofs << endl;
-			ofs << "\t,link(" << phys::eJointType::ToString(link->m_type);
-			ofs << "," << Vector3ToStr(link->m_origPos);
-			ofs << "," << Vector3ToStr(link->m_revoluteAxis);
-			ofs << "," << Vector3ToStr("pivot", link->GetPivotPos(0));
-			ofs << "," << Vector3ToStr("pivot", link->GetPivotPos(1));
-			ofs << "," << TransformToStr(link->m_nodeLocal0);
-			ofs << "," << TransformToStr(link->m_nodeLocal1);
-
-			switch (link->m_type)
-			{
-			case phys::eJointType::Fixed: break; // no limit
-			case phys::eJointType::Spherical: ofs << "," << ConeLimitToStr(link->m_limit.cone); break;
-			case phys::eJointType::Revolute: 
-				ofs << "," << AngularLimitToStr(link->m_limit.angular); 
-				ofs << "," << DriveInfoToStr(link->m_drive);
-				break;
-			case phys::eJointType::Prismatic: ofs << "," << LinearLimitToStr(link->m_limit.linear); break;
-			case phys::eJointType::Distance: ofs << "," << DistanceLimitToStr(link->m_limit.distance); break;
-
-			case phys::eJointType::D6: 
-				// todo: d6 joint
-				break;
-			default: assert(0); break;
-			}
-
-			ofs << ",\"" << link->m_gnode1->m_name.c_str() << "-" << link->m_gnode1->m_id << "\"";
-
-			ofs << ")"; //~link
+			// check exist actor?
+			auto it0 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode0);
+			auto it1 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode1);
+			if ((gnodes.end() == it0) || (gnodes.end() == it1))
+				continue; // ignore joint, if not exist actor
+			Put_GLink(jts, p);
 		}
 
-		ofs << ")" << endl; //~shape
+		creature.add_child("shapes", shapes);
+		creature.add_child("joints", jts);
+		props.add_child("creature", creature);
+		boost::property_tree::write_json(fileName.c_str(), props);
+	}
+	catch (std::exception &e)
+	{
+		common::Str128 msg;
+		msg.Format("Write Error2!!, File [ %s ]\n%s"
+			, fileName.c_str(), e.what());
+		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
+		return false;
 	}
 
 	return true;

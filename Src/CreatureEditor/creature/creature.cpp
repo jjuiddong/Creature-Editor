@@ -113,83 +113,102 @@ bool cCreature::GetSyncIds(OUT vector<int> &out)
 // read genotype file
 bool cCreature::ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName)
 {
-	genotype_parser::cParser parser;
-	if (!parser.Parse(fileName.c_str()))
-		return false;
+	vector<int> syncIds;
+	evc::ReadPhenoTypeFile(renderer, fileName, &syncIds);
 
-	// create genotype node
-	for (auto &kv : parser.m_symTable)
+	if (syncIds.empty())
+		return false; // error occurred
+
+	m_nodes.reserve(syncIds.size());
+	for (auto &id : syncIds)
 	{
-		genotype_parser::sExpr *expr = kv.second;
+		phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(id);
+		if (!sync)
+			continue;
 
-		cGNode *gnode = new cGNode();
-		gnode->m_name = expr->id;
-		gnode->m_wname = StrId(expr->id).wstr();
-		gnode->m_shape = phys::eShapeType::FromString(expr->shape);
-		gnode->m_density = expr->density;
-		gnode->m_dimension = expr->dimension;
-		gnode->m_color = graphic::cColor(expr->material);
-		m_gnodes.push_back(gnode);
+		cPNode *node = new cPNode();
+		node->m_actor = sync->actor;
+		node->m_node = sync->node;
+		m_nodes.push_back(node);
 	}
 
-	// create genotype link
-	for (auto &kv : parser.m_symTable)
-	{
-		genotype_parser::sExpr *expr = kv.second;
+	//genotype_parser::cParser parser;
+	//if (!parser.Parse(fileName.c_str()))
+	//	return false;
 
-		auto it0 = std::find_if(m_gnodes.begin(), m_gnodes.end()
-			, [&](const auto &a) { return a->m_name == expr->id; });
-		if (m_gnodes.end() == it0)
-			continue; // error occurred
+	//// create genotype node
+	//for (auto &kv : parser.m_symTable)
+	//{
+	//	genotype_parser::sExpr *expr = kv.second;
 
-		cGNode *gnode0 = *it0;
+	//	cGNode *gnode = new cGNode();
+	//	gnode->m_name = expr->id;
+	//	gnode->m_wname = StrId(expr->id).wstr();
+	//	gnode->m_shape = phys::eShapeType::FromString(expr->shape);
+	//	gnode->m_density = expr->density;
+	//	gnode->m_dimension = expr->dimension;
+	//	gnode->m_color = graphic::cColor(expr->material);
+	//	m_gnodes.push_back(gnode);
+	//}
 
-		// create link connection
-		genotype_parser::sConnectionList *con = expr->connection;
-		while (con)
-		{
-			genotype_parser::sConnection *connect = con->connect;
-			const phys::eJointType::Enum jointType = phys::eJointType::FromString(connect->type);
+	//// create genotype link
+	//for (auto &kv : parser.m_symTable)
+	//{
+	//	genotype_parser::sExpr *expr = kv.second;
 
-			auto it1 = std::find_if(m_gnodes.begin(), m_gnodes.end()
-				, [&](const auto &a) { return a->m_name == connect->exprName; });
-			if (m_gnodes.end() == it0)
-				break; // error occurred!!
+	//	auto it0 = std::find_if(m_gnodes.begin(), m_gnodes.end()
+	//		, [&](const auto &a) { return a->m_name == expr->id; });
+	//	if (m_gnodes.end() == it0)
+	//		continue; // error occurred
 
-			cGNode *gnode1 = *it1;
+	//	cGNode *gnode0 = *it0;
 
-			// update transform
-			gnode0->m_transform = connect->conTfm0;
-			gnode1->m_transform = connect->conTfm1;
+	//	// create link connection
+	//	genotype_parser::sConnectionList *con = expr->connection;
+	//	while (con)
+	//	{
+	//		genotype_parser::sConnection *connect = con->connect;
+	//		const phys::eJointType::Enum jointType = phys::eJointType::FromString(connect->type);
 
-			cGLink *link = new cGLink();
-			switch (jointType)
-			{
-			case phys::eJointType::Fixed:
-				link->CreateFixed(gnode0, connect->pivot0, gnode1, connect->pivot1);
-				break;
-			case phys::eJointType::Spherical:
-				link->CreateSpherical(gnode0, connect->pivot0, gnode1, connect->pivot1);
-				break;
-			case phys::eJointType::Revolute:
-				link->CreateRevolute(gnode0, connect->pivot0, gnode1, connect->pivot1
-					, connect->jointAxis);
-				break;
-			case phys::eJointType::Prismatic:
-				link->CreatePrismatic(gnode0, connect->pivot0, gnode1, connect->pivot1
-					, connect->jointAxis);
-				break;
-			case phys::eJointType::Distance:
-				link->CreateDistance(gnode0, connect->pivot0, gnode1, connect->pivot1);
-				break;
-			case phys::eJointType::D6:
-				link->CreateD6(gnode0, connect->pivot0, gnode1, connect->pivot1);
-				break;
-			}
-			m_glinks.push_back(link);
-			con = con->next;
-		}
-	}
+	//		auto it1 = std::find_if(m_gnodes.begin(), m_gnodes.end()
+	//			, [&](const auto &a) { return a->m_name == connect->exprName; });
+	//		if (m_gnodes.end() == it0)
+	//			break; // error occurred!!
+
+	//		cGNode *gnode1 = *it1;
+
+	//		// update transform
+	//		gnode0->m_transform = connect->conTfm0;
+	//		gnode1->m_transform = connect->conTfm1;
+
+	//		cGLink *link = new cGLink();
+	//		switch (jointType)
+	//		{
+	//		case phys::eJointType::Fixed:
+	//			link->CreateFixed(gnode0, connect->pivot0, gnode1, connect->pivot1);
+	//			break;
+	//		case phys::eJointType::Spherical:
+	//			link->CreateSpherical(gnode0, connect->pivot0, gnode1, connect->pivot1);
+	//			break;
+	//		case phys::eJointType::Revolute:
+	//			link->CreateRevolute(gnode0, connect->pivot0, gnode1, connect->pivot1
+	//				, connect->jointAxis);
+	//			break;
+	//		case phys::eJointType::Prismatic:
+	//			link->CreatePrismatic(gnode0, connect->pivot0, gnode1, connect->pivot1
+	//				, connect->jointAxis);
+	//			break;
+	//		case phys::eJointType::Distance:
+	//			link->CreateDistance(gnode0, connect->pivot0, gnode1, connect->pivot1);
+	//			break;
+	//		case phys::eJointType::D6:
+	//			link->CreateD6(gnode0, connect->pivot0, gnode1, connect->pivot1);
+	//			break;
+	//		}
+	//		m_glinks.push_back(link);
+	//		con = con->next;
+	//	}
+	//}
 	return true;
 }
 

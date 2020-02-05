@@ -29,6 +29,8 @@ namespace evc
 		float upper;
 		float stiffness;
 		float damping;
+		float contactDistance;
+		float bounceThreshold;
 	};
 
 	// joint distance limit info
@@ -43,6 +45,7 @@ namespace evc
 	{
 		float velocity;
 		float period;
+		float driveAccel;
 	};
 
 }
