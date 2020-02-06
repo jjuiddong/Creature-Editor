@@ -1,0 +1,113 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Cylinder",
+                "id": "10070",
+                "type": "Dynamic",
+                "shape": "Cylinder",
+                "pos": "-2.194409 3.000000 1.590066",
+                "dim": "0.393582 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10066",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-3.076725 3.000000 2.163296",
+                "dim": "0.500000 0.114795 1.208921",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "Capsule",
+                "id": "10075",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "-5.227197 3.000000 1.274734",
+                "dim": "1.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            },
+            "shape": {
+                "name": "Sphere",
+                "id": "10080",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "-4.483281 3.000000 3.098262",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10066",
+                "shape id1": "10070",
+                "jointpos": "-2.635567 3.000000 1.590066",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.573230267",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "true",
+                "drive velocity": "3",
+                "cycle": "true",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "false",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Spherical",
+                "shape id0": "10066",
+                "shape id1": "10075",
+                "jointpos": "-4.151961 3.000000 1.274734",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.888562441",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "cone limit": "false",
+                "cone limit config": "1.570796 0.523599 0.010000"
+            },
+            "joint": {
+                "type": "Distance",
+                "shape id0": "10066",
+                "shape id1": "10080",
+                "jointpos": "-3.780003 3.000000 3.098262",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 1.000000",
+                "pivot len0": "0.934965849",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "distance limit": "true",
+                "min distance": "0",
+                "max distance": "4"
+            }
+        }
+    }
+}

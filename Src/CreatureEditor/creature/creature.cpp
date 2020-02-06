@@ -113,118 +113,48 @@ bool cCreature::GetSyncIds(OUT vector<int> &out)
 // read genotype file
 bool cCreature::ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName)
 {
-	vector<int> syncIds;
-	evc::ReadPhenoTypeFile(renderer, fileName, &syncIds);
+	Clear();
 
-	if (syncIds.empty())
-		return false; // error occurred
+	vector<evc::sGenotypeNode*> gnodes;
+	vector<evc::sGenotypeLink*> glinks;
+	map<int, evc::sGenotypeNode*> gnodeMap;
+	if (!evc::ReadGenoTypeFile(fileName, gnodes, glinks, gnodeMap))
+		return false;
 
-	m_nodes.reserve(syncIds.size());
-	for (auto &id : syncIds)
-	{
-		phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(id);
-		if (!sync)
-			continue;
-
-		cPNode *node = new cPNode();
-		node->m_actor = sync->actor;
-		node->m_node = sync->node;
-		m_nodes.push_back(node);
-	}
-
-	//genotype_parser::cParser parser;
-	//if (!parser.Parse(fileName.c_str()))
-	//	return false;
-
-	//// create genotype node
-	//for (auto &kv : parser.m_symTable)
-	//{
-	//	genotype_parser::sExpr *expr = kv.second;
-
-	//	cGNode *gnode = new cGNode();
-	//	gnode->m_name = expr->id;
-	//	gnode->m_wname = StrId(expr->id).wstr();
-	//	gnode->m_shape = phys::eShapeType::FromString(expr->shape);
-	//	gnode->m_density = expr->density;
-	//	gnode->m_dimension = expr->dimension;
-	//	gnode->m_color = graphic::cColor(expr->material);
-	//	m_gnodes.push_back(gnode);
-	//}
-
-	//// create genotype link
-	//for (auto &kv : parser.m_symTable)
-	//{
-	//	genotype_parser::sExpr *expr = kv.second;
-
-	//	auto it0 = std::find_if(m_gnodes.begin(), m_gnodes.end()
-	//		, [&](const auto &a) { return a->m_name == expr->id; });
-	//	if (m_gnodes.end() == it0)
-	//		continue; // error occurred
-
-	//	cGNode *gnode0 = *it0;
-
-	//	// create link connection
-	//	genotype_parser::sConnectionList *con = expr->connection;
-	//	while (con)
-	//	{
-	//		genotype_parser::sConnection *connect = con->connect;
-	//		const phys::eJointType::Enum jointType = phys::eJointType::FromString(connect->type);
-
-	//		auto it1 = std::find_if(m_gnodes.begin(), m_gnodes.end()
-	//			, [&](const auto &a) { return a->m_name == connect->exprName; });
-	//		if (m_gnodes.end() == it0)
-	//			break; // error occurred!!
-
-	//		cGNode *gnode1 = *it1;
-
-	//		// update transform
-	//		gnode0->m_transform = connect->conTfm0;
-	//		gnode1->m_transform = connect->conTfm1;
-
-	//		cGLink *link = new cGLink();
-	//		switch (jointType)
-	//		{
-	//		case phys::eJointType::Fixed:
-	//			link->CreateFixed(gnode0, connect->pivot0, gnode1, connect->pivot1);
-	//			break;
-	//		case phys::eJointType::Spherical:
-	//			link->CreateSpherical(gnode0, connect->pivot0, gnode1, connect->pivot1);
-	//			break;
-	//		case phys::eJointType::Revolute:
-	//			link->CreateRevolute(gnode0, connect->pivot0, gnode1, connect->pivot1
-	//				, connect->jointAxis);
-	//			break;
-	//		case phys::eJointType::Prismatic:
-	//			link->CreatePrismatic(gnode0, connect->pivot0, gnode1, connect->pivot1
-	//				, connect->jointAxis);
-	//			break;
-	//		case phys::eJointType::Distance:
-	//			link->CreateDistance(gnode0, connect->pivot0, gnode1, connect->pivot1);
-	//			break;
-	//		case phys::eJointType::D6:
-	//			link->CreateD6(gnode0, connect->pivot0, gnode1, connect->pivot1);
-	//			break;
-	//		}
-	//		m_glinks.push_back(link);
-	//		con = con->next;
-	//	}
-	//}
+	m_gnodes = gnodes;
+	m_glinks = glinks;
+	LoadFromGenoType(renderer);
 	return true;
 }
 
 
-void cCreature::LoadFromGenoType()
+// create phenotype node from genotype node
+void cCreature::LoadFromGenoType(graphic::cRenderer &renderer)
 {
 	// clear phenotype node
 	for (auto &p : m_nodes)
 		delete p;
 	m_nodes.clear();
 
+	map<int, cPNode*> nodeMap;
+	for (auto &p : m_gnodes)
+	{
+		cPNode *pnode = evc::CreatePhenoTypeNode(renderer, *p);
+		if (!pnode)
+			continue;
+		m_nodes.push_back(pnode);
+		nodeMap[p->id] = pnode;
+	}
 
+	for (auto &p : m_glinks)
+	{
+		cPNode *pnode0 = nodeMap[p->gnode0->id];
+		cPNode *pnode1 = nodeMap[p->gnode1->id];
+		if (!pnode0 || !pnode1)
+			continue;
 
-
-
-
+		evc::CreatePhenoTypeJoint(*p, pnode0, pnode1);
+	}
 }
 
 

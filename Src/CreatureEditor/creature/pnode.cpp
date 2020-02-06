@@ -6,6 +6,7 @@ using namespace evc;
 
 
 cPNode::cPNode()
+	: m_id(common::GenerateId())
 {
 }
 
@@ -14,6 +15,19 @@ cPNode::~cPNode()
 	Clear();
 }
 
+
+// create from genotype node struct
+bool cPNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
+{
+
+
+
+
+
+
+
+	return true;
+}
 
 
 void cPNode::Clear()

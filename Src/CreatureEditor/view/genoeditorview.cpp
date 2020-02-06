@@ -427,13 +427,12 @@ void cGenoEditorView::RenderSphericalJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	static Vector2 limit(PxPi / 2.f, PxPi / 6.f);
-	static bool isLimit;
+	static evc::sConeLimit limit = { false, PxPi / 2.f, PxPi / 6.f };
 	ImGui::Text("Limit Cone (Radian)");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Y Limit Angle", &limit.x, 0.001f);
-	ImGui::DragFloat("Z Limit Angle", &limit.y, 0.001f);
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::DragFloat("Y Limit Angle", &limit.yAngle, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &limit.zAngle, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
@@ -460,13 +459,7 @@ void cGenoEditorView::RenderSphericalJoint()
 		evc::cGLink *link = new evc::cGLink();
 		link->CreateSpherical(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
-
-		//if (isLimit)
-		//{
-		//	joint->SetConeLimit(PxJointLimitCone(limit.x, limit.y, 0.01f));
-		//	joint->SetSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
-		//}
-
+		link->m_limit.cone = limit;
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -484,31 +477,29 @@ void cGenoEditorView::RenderRevoluteJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	static Vector2 limit(-PxPi / 2.f, PxPi / 2.f);
-	static bool isDrive = false;
-	static float velocity = 1.f;
+	static evc::sAngularLimit limit = { false, -PxPi / 2.f, PxPi / 2.f };
+	static evc::sDriveInfo drive = { false, 1.f, 1.f, 1.f };
 	static bool isCycleDrive = false;
 	static float cycleDrivePeriod = 3.f;
 	static float cycleDriveVelocityAccel = 1.0f;
-	static bool isLimit = false;
 
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Lower Limit Angle", &limit.x, 0.001f);
-	ImGui::DragFloat("Upper Limit Angle", &limit.y, 0.001f);
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::DragFloat("Lower Limit Angle", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Limit Angle", &limit.upper, 0.001f);
 
 	ImGui::TextUnformatted("Drive");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Drive", &isDrive);
-	ImGui::DragFloat("Velocity", &velocity, 0.001f);
+	ImGui::Checkbox("##Drive", &drive.isDrive);
+	ImGui::DragFloat("Velocity", &drive.velocity, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 
-	if (!isDrive)
+	if (!drive.isDrive)
 		isCycleDrive = false;
 
 	ImGui::TextUnformatted("Cycle");
@@ -541,21 +532,12 @@ void cGenoEditorView::RenderRevoluteJoint()
 		link->CreateRevolute(gnode0, pivot0.pos, gnode1, pivot1.pos, axis[axisIdx]);
 		g_geno->AddGLink(link);
 
-		//joint->EnableAngularLimit(isLimit);
-
-		//if (isLimit)
-		//	joint->SetAngularLimit(PxJointAngularLimitPair(limit.x, limit.y, 0.01f));
-		//else
-		//	joint->SetAngularLimit(PxJointAngularLimitPair(-PxPi * 2.f, PxPi*2.f, 0.01f));
-		////joint->SetAngularLimit(PxJointAngularLimitPair(FLT_MIN, FLT_MAX));
-
-		//joint->EnableDrive(isDrive);
-		//if (isDrive)
-		//	joint->SetDriveVelocity(velocity);
-
-		//joint->EnableCycleDrive(isDrive && isCycleDrive);
-		//if (isDrive && isCycleDrive)
-		//	joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
+		link->m_limit.angular = limit;
+		link->m_drive = drive;
+		link->m_isCycleDrive = isCycleDrive;
+		link->m_cyclePeriod = cycleDrivePeriod;
+		link->m_cycleDriveAccel = cycleDriveVelocityAccel;
+		link->m_maxDriveVelocity = drive.velocity;
 
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
@@ -621,23 +603,34 @@ void cGenoEditorView::RenderPrismaticJoint()
 		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos, axis[axisIdx]);
 		g_geno->AddGLink(link);
 
-		//joint->EnableLinearLimit(isLimit);
+		evc::sLinearLimit linear;
+		if (isSpring)
+		{
+			PxJointLinearLimitPair limit(limit1.x, limit1.y
+				, physx::PxSpring(limit2.x, limit2.y));
 
-		//if (isLimit)
-		//{
-		//	if (isSpring)
-		//	{
-		//		joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
-		//			, physx::PxSpring(limit2.x, limit2.y)));
-		//	}
-		//	else
-		//	{
-		//		PxTolerancesScale scale;
-		//		scale.length = limit3.x;
-		//		joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
-		//	}
-		//}
+			linear.lower = limit.lower;
+			linear.upper = limit.upper;
+			linear.stiffness = limit.stiffness;
+			linear.damping = limit.damping;
+			linear.contactDistance = limit.contactDistance;
+			linear.bounceThreshold = limit.bounceThreshold;
+		}
+		else
+		{
+			PxTolerancesScale scale;
+			scale.length = limit3.x;
+			PxJointLinearLimitPair limit(scale, limit1.x, limit1.y);
 
+			linear.lower = limit.lower;
+			linear.upper = limit.upper;
+			linear.stiffness = limit.stiffness;
+			linear.damping = limit.damping;
+			linear.contactDistance = limit.contactDistance;
+			linear.bounceThreshold = limit.bounceThreshold;
+		}
+
+		link->m_limit.linear = linear;
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -655,14 +648,13 @@ void cGenoEditorView::RenderDistanceJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	static Vector2 limit(0.f, 2.f);
-	static bool isLimit = false;
+	static evc::sDistanceLimit limit = { false, 0.f, 2.f };
 
 	ImGui::Text("Distance Limit");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("min distance", &limit.x, 0.001f);
-	ImGui::DragFloat("max distance", &limit.y, 0.001f);
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::DragFloat("min distance", &limit.minDistance, 0.001f);
+	ImGui::DragFloat("max distance", &limit.maxDistance, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
@@ -692,13 +684,7 @@ void cGenoEditorView::RenderDistanceJoint()
 		evc::cGLink *link = new evc::cGLink();
 		link->CreateDistance(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
-
-		//if (isLimit)
-		//{
-		//	joint->EnableDistanceLimit(isLimit);
-		//	joint->SetDistanceLimit(limit.x, limit.y);
-		//}
-
+		link->m_limit.distance = limit;
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -901,29 +887,33 @@ void cGenoEditorView::RenderD6Joint()
 		link->CreateD6(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 
-		//for (int i = 0; i < 6; ++i)
-		//	joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
+		for (int i = 0; i < 6; ++i)
+			link->m_limit.d6.motion[i] = motionVal[i];
 
-		//for (int i = 0; i < 6; ++i)
-		//{
-		//	if (driveVal[i])
-		//	{
-		//		joint->SetD6Drive((PxD6Drive::Enum)i
-		//			, physx::PxD6JointDrive(driveConfigs[i].stiffness
-		//				, driveConfigs[i].damping
-		//				, driveConfigs[i].forceLimit
-		//				, driveConfigs[i].accel));
-		//	}
-		//}
+		for (int i = 0; i < 6; ++i)
+		{
+			link->m_limit.d6.drive[i].isDrive = driveVal[i];
+			link->m_limit.d6.drive[i].stiffness = driveConfigs[i].stiffness;
+			link->m_limit.d6.drive[i].damping = driveConfigs[i].damping;
+			link->m_limit.d6.drive[i].forceLimit = driveConfigs[i].forceLimit;
+			link->m_limit.d6.drive[i].accel = driveConfigs[i].accel;
+		}
 
-		//if (isLinearLimit)
-		//	joint->SetD6LinearLimit(linearLimit);
-		//if (isTwistLimit)
-		//	joint->SetD6TwistLimit(twistLimit);
-		//if (isSwingLimit)
-		//	joint->SetD6SwingLimit(swingLimit);
+		link->m_limit.d6.linear.isLimit = isLinearLimit;
+		link->m_limit.d6.linear.value = linearLimit.value;
+		link->m_limit.d6.linear.stiffness = linearLimit.stiffness;
+		link->m_limit.d6.linear.damping = linearLimit.damping;
 
-		//joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
+		link->m_limit.d6.twist.isLimit = isTwistLimit;
+		link->m_limit.d6.twist.lower = twistLimit.lower;
+		link->m_limit.d6.twist.upper = twistLimit.upper;
+
+		link->m_limit.d6.swing.isLimit = isSwingLimit;
+		link->m_limit.d6.swing.yAngle = swingLimit.yAngle;
+		link->m_limit.d6.swing.zAngle = swingLimit.zAngle;
+
+		*(Vector3*)link->m_limit.d6.linearVelocity = linearDriveVelocity;
+		*(Vector3*)link->m_limit.d6.angularVelocity = angularDriveVelocity;
 
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}

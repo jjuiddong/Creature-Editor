@@ -1,0 +1,95 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Sphere",
+                "id": "10110",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "-1.509520 3.000000 4.072570",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10106",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-1.515317 3.000000 2.283781",
+                "dim": "1.214810 0.184902 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Sphere",
+                "id": "10128",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "-1.667012 3.000000 0.788776",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10106",
+                "shape id1": "10110",
+                "jointpos": "-1.509520 3.000000 3.178175",
+                "revolute rot": "0.000000 -0.707107 0.000000 0.707107",
+                "pivot dir0": "1.000000 0.000000 0.000000",
+                "pivot len0": "0.00579738617",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "true",
+                "drive velocity": "3",
+                "cycle": "false",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "false",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10106",
+                "shape id1": "10128",
+                "jointpos": "-1.667012 3.000000 1.536278",
+                "revolute rot": "0.000000 -0.707107 0.000000 0.707107",
+                "pivot dir0": "-1.000000 0.000000 0.000000",
+                "pivot len0": "0.151694775",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "true",
+                "drive velocity": "3",
+                "cycle": "false",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "false",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            }
+        }
+    }
+}

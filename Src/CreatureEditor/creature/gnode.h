@@ -18,6 +18,7 @@ namespace evc
 		cGNode();
 		virtual ~cGNode();
 
+		bool Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode);
 		bool CreateBox(graphic::cRenderer &renderer, const Transform &tfm);
 		bool CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 			, const float radius);
@@ -48,7 +49,6 @@ namespace evc
 		WStrId m_wname;
 		phys::eShapeType::Enum m_shape;
 		float m_density;
-		Vector3 m_dimension;
 		graphic::cColor m_color;
 		vector<cGLink*> m_links; // reference
 		int m_cloneId; // original gnode id, if clone (iterator type)

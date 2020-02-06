@@ -10,24 +10,24 @@
 namespace evc
 {
 
-	class cJointRenderer;
-
 	class cPNode
 	{
 	public:
 		cPNode();
 		virtual ~cPNode();
 
+		bool Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode);
 
 		void Clear();
 
 
 	public:
 		int m_id;
+		int m_gid; // genotype node id
+		StrId m_name;
 		phys::cRigidActor *m_actor; // reference
-		//vector<phys::cJoint*> m_joints; // reference
-		//vector<cJointRenderer*> m_jointRenderers; // reference
-		graphic::cNode *m_node; // render object, reference
+		graphic::cNode *m_node; // reference
+		
 		vector<cPNode*> m_children;
 	};
 

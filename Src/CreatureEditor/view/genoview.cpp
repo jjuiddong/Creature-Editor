@@ -123,15 +123,6 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 			renderer.m_dbgCube.Render(renderer);
 		}
 
-		// add link mode
-		if (g_geno->m_mode == eGenoEditMode::SelfLoop)
-		{
-			//evc::cGLink *gnode0 = g_geno->FindGLink(g_geno->m_pairId0);
-			//evc::cGLink *gnode1 = g_geno->FindGLink(g_geno->m_pairId1);
-
-			
-		}
-
 		m_gridLine.Render(renderer);
 		renderer.RenderAxis2();
 	}
@@ -166,6 +157,16 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 		m_gridLine.Render(renderer);
 		RenderSelectModel(renderer, false, parentTm);
 	}
+
+	// joint edit mode?
+	// hight revolute axis when mouse hovering
+	if ((g_geno->GetEditMode() == eGenoEditMode::Revolute)
+		|| (g_geno->GetEditMode() == eGenoEditMode::JointEdit))
+	{
+		const Ray ray = GetMainCamera().GetRay((int)m_mousePos.x, (int)m_mousePos.y);
+		g_geno->m_uiLink.m_highlightRevoluteAxis = g_geno->m_uiLink.Picking(ray, eNodeType::MODEL);
+	}
+
 }
 
 
@@ -309,6 +310,9 @@ void cGenoView::RenderPopupMenu()
 
 		if (ImGui::MenuItem("Delete All Link", "J", false, true))
 		{
+			// remove ui joint
+			g_geno->RemoveGLink(&g_geno->m_uiLink);
+
 			// remove all link
 			set<evc::cGLink*> rms;
 			for (auto id : g_geno->m_selects)
@@ -328,6 +332,8 @@ void cGenoView::RenderPopupMenu()
 
 			g_geno->ClearSelection();
 			g_geno->m_gizmo.SetControlNode(nullptr);
+			g_geno->m_showUILink = false;
+			g_geno->m_selLink = nullptr;
 		}
 
 		ImGui::EndPopup();
@@ -470,7 +476,7 @@ void cGenoView::UpdateSelectModelTransform(const bool isGizmoEdit)
 		if (gnode)
 			UpdateSelectModelTransform_GNode();
 		else if (glink)
-			UpdateSelectModelTransform_Joint();
+			UpdateSelectModelTransform_Link();
 	}
 	else if (g_geno->m_selects.size() > 1)
 	{
@@ -583,29 +589,23 @@ void cGenoView::UpdateSelectModelTransform_MultiObject()
 
 
 // Modify rigid actor transform by Gizmo, joint
-void cGenoView::UpdateSelectModelTransform_Joint()
+void cGenoView::UpdateSelectModelTransform_Link()
 {
-	//using namespace physx;
-	//phys::cPhysicsSync *physSync = g_geno->m_physSync;
+	const int selectId = (g_geno->m_selects.size() == 1) ? *g_geno->m_selects.begin() : -1;
+	evc::cGLink *link = g_geno->FindGLink(selectId);
+	if (!link)
+		return; // error occurred
 
-	//const int selectSyncId = (g_geno->m_selects.size() == 1) ? *g_geno->m_selects.begin() : -1;
-	//phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
-
-	//cJointRenderer *jointRenderer = dynamic_cast<cJointRenderer*>(sync->node);
-	//if (!jointRenderer)
-	//	return; // error occurred
-
-	////g_geno->m_gizmo;
-	//switch (g_geno->m_gizmo.m_type)
-	//{
-	//case eGizmoEditType::TRANSLATE:
-	//	jointRenderer->SetRevoluteAxisPos(jointRenderer->m_transform.pos);
-	//	break;
-	//case eGizmoEditType::SCALE:
-	//	break;
-	//case eGizmoEditType::ROTATE:
-	//	break;
-	//}
+	switch (g_geno->m_gizmo.m_type)
+	{
+	case eGizmoEditType::TRANSLATE:
+		link->SetRevoluteAxisPos(link->m_transform.pos);
+		break;
+	case eGizmoEditType::SCALE:
+		break;
+	case eGizmoEditType::ROTATE:
+		break;
+	}
 }
 
 
@@ -613,7 +613,12 @@ void cGenoView::UpdateSelectModelTransform_Joint()
 bool cGenoView::PickingProcess(const POINT &mousePos)
 {
 	// if pivot mode? ignore selection
-	if (g_geno->m_gizmo.IsKeepEditMode())
+	if ((eGenoEditMode::Pivot0 == g_geno->GetEditMode())
+		|| (eGenoEditMode::Pivot1 == g_geno->GetEditMode())
+		|| (eGenoEditMode::Revolute == g_geno->GetEditMode())
+		|| (eGenoEditMode::SpawnLocation == g_geno->GetEditMode())
+		|| g_geno->m_gizmo.IsKeepEditMode()
+		)
 		return false;
 
 	// picking gnode, glink
@@ -647,6 +652,22 @@ bool cGenoView::PickingProcess(const POINT &mousePos)
 		}
 	}
 
+	// link picking
+	if (glink)
+	{
+		g_geno->ClearSelection();
+		g_geno->SelectObject(glink->m_id);
+
+		g_geno->m_highLights.clear();
+		if (glink->m_gnode0)
+			g_geno->m_highLights.insert(glink->m_gnode0->m_id);
+		if (glink->m_gnode1)
+			g_geno->m_highLights.insert(glink->m_gnode1->m_id);
+
+		g_geno->ChangeEditMode(eGenoEditMode::Revolute);
+		g_geno->m_gizmo.SetControlNode(glink);
+		g_geno->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
+	}
 
 
 	if (!gnode && !glink) // no selection?
@@ -695,6 +716,21 @@ int cGenoView::PickingNode(const int pickType, const POINT &mousePos
 			if (distance < minDist)
 			{
 				minId = gnode->m_id;
+				minDist = distance;
+				if (outDistance)
+					*outDistance = distance;
+			}
+		}
+	}
+
+	if (g_geno->m_showUILink)
+	{
+		float distance = FLT_MAX;
+		if (g_geno->m_uiLink.Picking(ray, eNodeType::MODEL, false, &distance))
+		{
+			if (distance < minDist)
+			{
+				minId = g_geno->m_uiLink.m_id;
 				minDist = distance;
 				if (outDistance)
 					*outDistance = distance;
@@ -761,6 +797,26 @@ void cGenoView::OnMouseMove(const POINT mousePt)
 	if (m_showSaveDialog || (m_popupMenuState > 0))
 		return;
 
+	// joint pivot setting mode
+	if ((eGenoEditMode::Pivot0 == g_geno->GetEditMode())
+		|| (eGenoEditMode::Pivot1 == g_geno->GetEditMode())
+		&& !g_geno->m_selects.empty()
+		&& g_geno->m_selLink)
+	{
+		for (int selId : g_geno->m_selects)
+		{
+			// picking all genotype node
+			float distance = 0.f;
+			const int id = PickingNode(0, mousePt, &distance);
+			evc::cGNode *gnode = g_geno->FindGNode(id);
+			if (gnode && (id == selId))
+			{
+				const Ray ray = GetMainCamera().GetRay(mousePt.x, mousePt.y);
+				m_pivotPos = ray.dir * distance + ray.orig;
+			}
+		}
+	}
+
 	if (m_mouseDown[0])
 	{
 		Vector3 dir = GetMainCamera().GetDirection();
@@ -812,6 +868,46 @@ void cGenoView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt
 	case sf::Mouse::Left:
 	{
 		m_mouseDown[0] = true;
+
+		// joint pivot setting mode
+		if (((eGenoEditMode::Pivot0 == g_geno->GetEditMode())
+			|| (eGenoEditMode::Pivot1 == g_geno->GetEditMode()))
+			&& !g_geno->m_selects.empty()
+			&& g_geno->m_selLink)
+		{
+			evc::cGLink *selLink = g_geno->m_selLink;
+			for (int selId : g_geno->m_selects)
+			{
+				// picking all rigidbody
+				float distance = 0.f;
+				const int id = PickingNode(0, mousePt, &distance);
+				evc::cGNode *gnode = g_geno->FindGNode(id);
+				if (gnode && (selId == id))
+				{
+					const Vector3 pivotPos = ray.dir * distance + ray.orig;
+					m_pivotPos = pivotPos;
+
+					// update pivot position
+					if (selLink)
+					{
+						// find sync0 or sync1 picking
+						if (gnode == selLink->m_gnode0)
+						{
+							selLink->SetPivotPos(0, pivotPos);
+						}
+						else if (gnode == selLink->m_gnode1)
+						{
+							selLink->SetPivotPos(1, pivotPos);
+						}
+						else
+						{
+							assert(0);
+						}
+					}
+				}//~sync
+			}//~selects
+		} //~joint pivot setting mode
+
 	}//~case
 	break;
 
@@ -915,10 +1011,10 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 			//m_camera.SetCamera(Vector3(30, 20, -30), Vector3(0, 0, 0), Vector3(0, 1, 0));
 			break;
 
-		case sf::Keyboard::R: g_geno->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
-		case sf::Keyboard::T: g_geno->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
-		case sf::Keyboard::S: g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
-		case sf::Keyboard::H: g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
+		case sf::Keyboard::R: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
+		case sf::Keyboard::T: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
+		case sf::Keyboard::S: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
+		case sf::Keyboard::H: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
 		case sf::Keyboard::F5:break;
 
 		case sf::Keyboard::Escape:
@@ -951,10 +1047,94 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 				g_geno->ClearSelection();
 			}
 			break;
+
 		case sf::Keyboard::C: // copy
-			break;
+		{
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				if (!g_geno->m_selects.empty())
+				{
+					vector<evc::cGNode*> gnodes;
+					for (auto &id : g_geno->m_selects)
+						if (evc::cGNode *node = g_geno->FindGNode(id))
+							gnodes.push_back(node);
+					evc::WriteGenoTypeFileFrom_Node("tmp.gnt", gnodes);
+				}
+			}
+		}
+		break;
+
 		case sf::Keyboard::V: // paste
-			break;
+		{
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				vector<evc::sGenotypeNode*> gnodes;
+				vector<evc::sGenotypeLink*> glinks;
+				map<int, evc::sGenotypeNode*> gnodeMap;
+				if (!evc::ReadGenoTypeFile("tmp.gnt", gnodes, glinks, gnodeMap))
+					break;
+
+				// create genotype node
+				map<int, evc::cGNode*> gmap;
+				for (auto &p : gnodes)
+				{
+					evc::cGNode *node = new evc::cGNode();
+					if (node->Create(GetRenderer(), *p))
+					{
+						g_geno->AddGNode(node);
+						gmap[p->id] = node;
+					}
+					else
+					{
+						delete node;
+					}
+				}
+
+				// create genotype link
+				for (auto &p : glinks)
+				{
+					evc::cGNode *node0 = gmap[p->gnode0->id];
+					evc::cGNode *node1 = gmap[p->gnode1->id];
+					evc::cGLink *link = new evc::cGLink();
+					if (link->Create(*p, node0, node1))
+					{
+						g_geno->AddGLink(link);
+					}
+					else
+					{
+						delete link;
+					}
+				}
+
+				for (auto &p : gnodes)
+					delete p;
+				gnodes.clear();
+				for (auto &p : glinks)
+					delete p;
+				glinks.clear();
+
+				// moving actor position to camera center
+				if (!gmap.empty())
+				{
+					const Ray ray = m_camera.GetRay((int)m_camera.m_width / 2
+						, (int)m_camera.m_height / 2 + (int)m_camera.m_height / 5);
+					const Plane ground(Vector3(0, 1, 0), 0);
+					const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+					Vector3 spawnPos = targetPos - gmap.begin()->second->m_transform.pos;
+					spawnPos.y = 0;
+
+					g_geno->ClearSelection();
+
+					for (auto &kv : gmap)
+					{
+						evc::cGNode *gnode = kv.second;
+						gnode->m_transform.pos += spawnPos;
+						g_geno->SelectObject(gnode->m_id);
+					}
+				}//~gmap.empty()
+			}//~VK_CONTROL
+		}
+		break;
 		
 		case sf::Keyboard::A: // popup menu shortcut, select
 		{
@@ -992,6 +1172,61 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 
 				for (auto *p : rms)
 					g_geno->RemoveGLink(p);
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
+		case sf::Keyboard::D:
+		{
+			if (m_popupMenuState == 2)
+			{
+				// remove ui joint
+				g_geno->RemoveGLink(&g_geno->m_uiLink);
+
+				// remove all node
+				for (auto id : g_geno->m_selects)
+					if (evc::cGNode *gnode = g_geno->FindGNode(id))
+						g_geno->RemoveGNode(gnode);
+
+				g_geno->ClearSelection();
+				g_geno->m_gizmo.SetControlNode(nullptr);
+				g_geno->m_showUILink = false;
+				g_geno->m_selLink = nullptr;
+
+				m_popupMenuState = 3; // close popup
+			}
+		}
+		break;
+
+		case sf::Keyboard::I:
+		{
+			if ((m_popupMenuState == 2) && !g_geno->m_selects.empty())
+			{
+				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+				if (!gnode)
+					break;
+
+				evc::cGNode *clone = nullptr;
+				if (gnode->m_cloneId >= 0)
+				{
+					// find original genotype node
+					if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
+						clone = p->Clone(GetRenderer());
+				}
+				else
+				{
+					clone = gnode->Clone(GetRenderer());
+				}
+
+				if (clone)
+				{
+					g_geno->AddGNode(clone);
+					g_geno->ClearSelection();
+					g_geno->SelectObject(clone->m_id);
+					g_geno->m_gizmo.SetControlNode(clone);
+				}
 
 				m_popupMenuState = 3; // close popup
 			}

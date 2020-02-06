@@ -145,7 +145,7 @@ bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
 
 
 bool evc::WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
-	, vector<phys::cRigidActor*> actors)
+	, const vector<phys::cRigidActor*> &actors)
 {
 	using namespace phys;
 
@@ -600,6 +600,267 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 }
 
 
+// create phenotype node from genotype node
+cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
+	, const sGenotypeNode &gnode)
+{
+	if (gnode.iteration >= 0)
+		return nullptr; // iteration node, skip creation
+
+	const Vector3 pos = gnode.transform.pos;
+	const Vector3 dim = gnode.transform.scale;
+	const Quaternion rot = gnode.transform.rot;;
+
+	int newId = -1;
+	switch (gnode.shape)
+	{
+	case phys::eShapeType::Plane: break;
+	case phys::eShapeType::Box:
+	{
+		const Transform tfm(pos, dim, rot);
+		newId = g_evc->m_sync->SpawnBox(renderer, tfm, gnode.density, true);
+	}
+	break;
+
+	case phys::eShapeType::Sphere:
+	{
+		const Transform tfm(pos, dim, rot);
+		newId = g_evc->m_sync->SpawnSphere(renderer, tfm, dim.x, gnode.density, true);
+	}
+	break;
+
+	case phys::eShapeType::Capsule:
+	{
+		const Transform tfm(pos, rot);
+		newId = g_evc->m_sync->SpawnCapsule(renderer, tfm, dim.y, dim.x - dim.y
+			, gnode.density, true);
+	}
+	break;
+
+	case phys::eShapeType::Cylinder:
+	{
+		const Transform tfm(pos, rot);
+		newId = g_evc->m_sync->SpawnCylinder(renderer, tfm, dim.y, dim.x, gnode.density, true);
+	}
+	break;
+
+	case phys::eShapeType::Convex:
+	default: 
+		assert(0);
+		return nullptr;
+	}
+
+	if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(newId))
+	{
+		if (gnode.mass != 0.f)
+			sync->actor->SetMass(gnode.mass);
+
+		cPNode *pnode = new cPNode();
+		pnode->m_gid = gnode.id;
+		pnode->m_name = gnode.name;
+		pnode->m_actor = sync->actor;
+		pnode->m_node = sync->node;
+		return pnode;
+	}
+
+	return nullptr;
+}
+
+
+// create joint from genotype link 
+phys::cJoint* evc::CreatePhenoTypeJoint(const sGenotypeLink &glink
+	, cPNode *pnode0, cPNode *pnode1)
+{
+	using namespace physx;
+
+	const Vector3 pivot0 = glink.pivots[0].dir * glink.nodeLocal0.rot * glink.pivots[0].len
+		+ glink.nodeLocal0.pos;
+	const Vector3 pivot1 = glink.pivots[1].dir * glink.nodeLocal1.rot * glink.pivots[1].len
+		+ glink.nodeLocal1.pos;
+	const Vector3 revoluteAxis = glink.revoluteAxis;
+
+	phys::cJoint *joint = nullptr;
+	switch (glink.type)
+	{
+	case phys::eJointType::Fixed:
+	{
+		joint = new phys::cJoint();
+		joint->CreateFixed(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1);
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	case phys::eJointType::Spherical:
+	{
+		joint = new phys::cJoint();
+		joint->CreateSpherical(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1);
+
+		if (glink.limit.cone.isLimit)
+		{
+			joint->EnableConeLimit(true);
+			joint->SetConeLimit(
+				PxJointLimitCone(glink.limit.cone.yAngle, glink.limit.cone.zAngle, 0.01f));
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	case phys::eJointType::Revolute:
+	{
+		joint = new phys::cJoint();
+		joint->CreateRevolute(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1
+			, revoluteAxis);
+
+		if (glink.limit.angular.isLimit)
+		{
+			joint->EnableAngularLimit(true);
+			joint->SetAngularLimit(
+				PxJointAngularLimitPair(glink.limit.angular.lower, glink.limit.angular.upper, 0.01f));
+		}
+
+		if (glink.drive.isDrive)
+		{
+			joint->EnableDrive(true);
+			joint->SetDriveVelocity(glink.drive.velocity);
+		}
+
+		if (glink.isCycleDrive)
+		{
+			joint->EnableCycleDrive(true);
+			joint->SetCycleDrivePeriod(glink.cyclePeriod, glink.cycleDriveAccel);
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+
+	case phys::eJointType::Prismatic:
+	{
+		joint = new phys::cJoint();
+		joint->CreatePrismatic(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1
+			, revoluteAxis);
+
+		if (glink.limit.linear.isLimit)
+		{
+			joint->EnableLinearLimit(true);
+			
+			physx::PxJointLinearLimitPair linearLimit(0, 0, physx::PxSpring(0, 0));
+			linearLimit.lower = glink.limit.linear.lower;
+			linearLimit.upper = glink.limit.linear.upper;
+			linearLimit.stiffness = glink.limit.linear.stiffness;
+			linearLimit.damping = glink.limit.linear.damping;
+			linearLimit.contactDistance = glink.limit.linear.contactDistance;
+			linearLimit.bounceThreshold = glink.limit.linear.bounceThreshold;
+			joint->SetLinearLimit(linearLimit);
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	case phys::eJointType::Distance:
+	{
+		joint = new phys::cJoint();
+		joint->CreateDistance(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1);
+
+		if (glink.limit.distance.isLimit)
+		{
+			joint->EnableDistanceLimit(true);
+			joint->SetDistanceLimit(glink.limit.distance.minDistance
+				, glink.limit.distance.maxDistance);
+		}
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	case phys::eJointType::D6:
+	{
+		joint = new phys::cJoint();
+		joint->CreateD6(*g_evc->m_phys
+			, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+			, pnode1->m_actor, pnode1->m_node->m_transform, pivot1);
+
+		for (int i = 0; i < 6; ++i)
+			joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)glink.limit.d6.motion[i]);
+
+		for (int i = 0; i < 6; ++i)
+		{
+			if (glink.limit.d6.drive[i].stiffness != 0.f)
+			{
+				joint->SetD6Drive((PxD6Drive::Enum)i
+					, physx::PxD6JointDrive(glink.limit.d6.drive[i].stiffness
+						, glink.limit.d6.drive[i].damping
+						, glink.limit.d6.drive[i].forceLimit
+						, glink.limit.d6.drive[i].accel));
+			}
+		}
+
+		if (glink.limit.d6.linear.isLimit)
+		{
+			physx::PxJointLinearLimit linearLimit(0.f, physx::PxSpring(0.f, 0.f));
+			linearLimit.value = glink.limit.d6.linear.value;
+			linearLimit.stiffness = glink.limit.d6.linear.stiffness;
+			linearLimit.damping = glink.limit.d6.linear.damping;
+			joint->SetD6LinearLimit(linearLimit);
+		}
+		if (glink.limit.d6.twist.isLimit)
+		{
+			PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
+			twistLimit.lower = glink.limit.d6.twist.lower;
+			twistLimit.upper = glink.limit.d6.twist.upper;
+			joint->SetD6TwistLimit(twistLimit);
+		}
+		if (glink.limit.d6.swing.isLimit)
+		{
+			PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
+			swingLimit.yAngle = glink.limit.d6.swing.yAngle;
+			swingLimit.zAngle = glink.limit.d6.swing.zAngle;
+			joint->SetD6SwingLimit(swingLimit);
+		}
+
+		joint->SetD6DriveVelocity(*(Vector3*)glink.limit.d6.linearVelocity
+			, *(Vector3*)glink.limit.d6.angularVelocity);
+
+		cJointRenderer *jointRenderer = new cJointRenderer();
+		jointRenderer->Create(*g_evc->m_sync, joint);
+		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	default:
+		assert(0);
+		return nullptr;
+	}
+
+	return joint;
+}
+
+
+
 // parse string to Vector4
 // string format : x y z w
 Vector4 evc::ParseVector4(const string &str)
@@ -992,6 +1253,7 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	shape.put<float>("angular damping", 0.5f);
 	shape.put<float>("linear damping", 0.5f);
 	shape.put<bool>("kinematic", false);
+	shape.put<int>("iteration", gnode->m_cloneId);
 
 	parent.add_child("shape", shape);
 
@@ -1036,7 +1298,7 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 	case phys::eJointType::Fixed: break;
 	case phys::eJointType::Spherical:
 	{
-		j.put<bool>("cone limit", glink->m_limit.cone.yAngle != 0.f);
+		j.put<bool>("cone limit", glink->m_limit.cone.isLimit);
 		const sConeLimit coneLimit = glink->m_limit.cone;
 		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
 		j.put<string>("cone limit config", text.c_str());
@@ -1044,19 +1306,19 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 	break;
 	case phys::eJointType::Revolute:
 	{
-		j.put<bool>("drive", glink->m_drive.velocity != 0.f);
+		j.put<bool>("drive", glink->m_drive.isDrive);
 		j.put("drive velocity", glink->m_drive.velocity);
 
-		j.put<bool>("cycle", glink->m_drive.period != 0.f);
+		j.put<bool>("cycle", glink->m_isCycleDrive);
 		j.put("cycle period", glink->m_drive.period);
 		j.put("cycle accel", glink->m_drive.driveAccel);
 
-		j.put<bool>("cone limit", glink->m_limit.cone.yAngle != 0.f);
+		j.put<bool>("cone limit", glink->m_limit.cone.isLimit);
 		const sConeLimit coneLimit = glink->m_limit.cone;
 		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
 		j.put<string>("cone limit config", text.c_str());
 
-		j.put<bool>("angular limit", glink->m_limit.angular.lower != 0.f);
+		j.put<bool>("angular limit", glink->m_limit.angular.isLimit);
 		const sAngularLimit angularLimit = glink->m_limit.angular;
 		text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
 		j.put<string>("angular limit config", text.c_str());
@@ -1065,7 +1327,7 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 
 	case phys::eJointType::Prismatic:
 	{
-		j.put<bool>("linear limit", glink->m_limit.linear.stiffness != 0.f);
+		j.put<bool>("linear limit", glink->m_limit.linear.isLimit);
 		const sLinearLimit linearLimit = glink->m_limit.linear;
 		text.Format("%f %f %f", linearLimit.lower, linearLimit.upper
 			, linearLimit.stiffness);
@@ -1078,7 +1340,7 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 
 	case phys::eJointType::Distance:
 	{
-		j.put<bool>("distance limit", glink->m_limit.distance.maxDistance != 0.f);
+		j.put<bool>("distance limit", glink->m_limit.distance.isLimit);
 		const sDistanceLimit dist = glink->m_limit.distance;
 		j.put<float>("min distance", dist.minDistance);
 		j.put<float>("max distance", dist.maxDistance);
@@ -1189,11 +1451,11 @@ bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
 		ptree jts;
 		for (auto &p : glinks)
 		{
-			// check exist actor?
+			// check exist gnode?
 			auto it0 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode0);
 			auto it1 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode1);
 			if ((gnodes.end() == it0) || (gnodes.end() == it1))
-				continue; // ignore joint, if not exist actor
+				continue; // ignore link, if not exist gnode
 			Put_GLink(jts, p);
 		}
 
@@ -1214,3 +1476,321 @@ bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
 	return true;
 }
 
+
+// write genotype file
+bool evc::WriteGenoTypeFileFrom_Node(const StrPath &fileName
+	, const vector<cGNode*> &gnodes)
+{
+	// collect gnode, link
+	set<cGLink*> glinks;
+	for (auto &p : gnodes)
+	{
+		for (auto *l : p->m_links)
+			glinks.insert(l);
+	}
+
+	// make ptree
+	try
+	{
+		using boost::property_tree::ptree;
+		ptree props;
+		ptree creature;
+		common::Str128 text;
+		Vector3 v;
+		Quaternion q;
+
+		creature.put("version", "1.01");
+		creature.put("name", "creature genotype");
+
+		// make shape
+		ptree shapes;
+		for (auto &p : gnodes)
+			Put_GNode(shapes, p);
+
+		// make joint
+		ptree jts;
+		for (auto &p : glinks)
+		{
+			// check exist gnode?
+			auto it0 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode0);
+			auto it1 = std::find(gnodes.begin(), gnodes.end(), p->m_gnode1);
+			if ((gnodes.end() == it0) || (gnodes.end() == it1))
+				continue; // ignore link, if not exist gnode
+			Put_GLink(jts, p);
+		}
+
+		creature.add_child("shapes", shapes);
+		creature.add_child("joints", jts);
+		props.add_child("creature", creature);
+		boost::property_tree::write_json(fileName.c_str(), props);
+	}
+	catch (std::exception &e)
+	{
+		common::Str128 msg;
+		msg.Format("Write Error2!!, File [ %s ]\n%s"
+			, fileName.c_str(), e.what());
+		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
+		return false;
+	}
+
+	return true;
+}
+
+
+// read genotype file
+// return cGNode, cGLink ptr array
+bool evc::ReadGenoTypeFile(const StrPath &fileName
+	, OUT vector<sGenotypeNode*> &outNode
+	, OUT vector<sGenotypeLink*> &outLink
+	, OUT map<int,sGenotypeNode*> &outMap)
+{
+	using boost::property_tree::ptree;
+
+	map<int, sGenotypeNode*> gnodes; //key: gnode id
+
+	try
+	{
+		ptree props;
+		boost::property_tree::read_json(fileName.c_str(), props);
+
+		// parse creature
+		ptree::assoc_iterator itor0 = props.find("creature");
+		if (props.not_found() != itor0)
+		{
+			if (props.not_found() != itor0->second.find("shapes"))
+			{
+				ptree &child_field0 = itor0->second.get_child("shapes");
+				for (ptree::value_type &vt0 : child_field0)
+				{
+					const string name = vt0.second.get<string>("name", "blank");
+					const int id = vt0.second.get<int>("id");
+					const phys::eRigidType::Enum type = phys::eRigidType::FromString(
+						vt0.second.get<string>("type", "Dynamic"));
+					const phys::eShapeType::Enum shape = phys::eShapeType::FromString(
+						vt0.second.get<string>("shape", "Box"));
+					const string posStr = vt0.second.get<string>("pos", "0 0 0");
+					const Vector3 pos = ParseVector3(posStr);
+					const string dimStr = vt0.second.get<string>("dim", "1 1 1");
+					const Vector3 dim = ParseVector3(dimStr);
+					const string rotStr = vt0.second.get<string>("rot", "0 0 0 1");
+					const Vector4 rot = ParseVector4(rotStr);
+					const Quaternion q(rot.x, rot.y, rot.z, rot.w);
+					const float mass = vt0.second.get<float>("mass", 0.f);
+					const float density = vt0.second.get<float>("density", 1.f);
+					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
+					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
+					const bool kinematic = vt0.second.get<bool>("kinematic", true);
+					const int iteration = vt0.second.get<int>("iteration", -1);
+
+					sGenotypeNode *gnode = new sGenotypeNode;
+					gnode->id = id;
+					gnode->name = name;
+					gnode->shape = shape;
+					gnode->transform = Transform(pos, dim, q);
+					gnode->density = density;
+					gnode->mass = mass;
+					gnode->linearDamping = linearDamping;
+					gnode->angularDamping = angularDamping;
+					gnode->iteration = iteration;
+					outNode.push_back(gnode);
+
+					gnodes[id] = gnode;
+
+				}//~for shapes
+			}//~shapes
+
+			if (props.not_found() != itor0->second.find("joints"))
+			{
+				ptree &child_field0 = itor0->second.get_child("joints");
+				for (ptree::value_type &vt0 : child_field0)
+				{
+					const phys::eJointType::Enum type = phys::eJointType::FromString(
+						vt0.second.get<string>("type", "Fixed"));
+					const int actorId0 = vt0.second.get<int>("shape id0");
+					const int actorId1 = vt0.second.get<int>("shape id1");
+					const string revoluteRotStr = vt0.second.get<string>("revolute rot", "0 0 0 1");
+					const Vector4 rot = ParseVector4(revoluteRotStr);
+					const Quaternion revoluteQ(rot.x, rot.y, rot.z, rot.w);
+					const string pivotDirStr0 = vt0.second.get<string>("pivot dir0", "1 0 0");
+					const string pivotDirStr1 = vt0.second.get<string>("pivot dir1", "1 0 0");
+					const Vector3 pivotDir0 = ParseVector3(pivotDirStr0);
+					const Vector3 pivotDir1 = ParseVector3(pivotDirStr1);
+					const float pivotLen0 = vt0.second.get<float>("pivot len0");
+					const float pivotLen1 = vt0.second.get<float>("pivot len1");
+
+					auto it0 = gnodes.find(actorId0);
+					auto it1 = gnodes.find(actorId1);
+					if ((gnodes.end() == it0) || (gnodes.end() == it1))
+						continue; // error but continue
+
+					sGenotypeNode *gnode0 = it0->second;
+					sGenotypeNode *gnode1 = it1->second;
+
+					// GetPivotWorldTransform
+					const Transform tfm0 = gnode0->transform;
+					const Transform tfm1 = gnode1->transform;
+					const Vector3 localPos0 = pivotDir0 * tfm0.rot * pivotLen0;
+					const Vector3 pivot0 = tfm0.pos + localPos0;
+					const Vector3 localPos1 = pivotDir1 * tfm1.rot * pivotLen1;
+					const Vector3 pivot1 = tfm1.pos + localPos1;
+					const Vector3 revoluteAxis = Vector3(1, 0, 0) * revoluteQ;
+
+					sGenotypeLink *glink = new sGenotypeLink;
+					glink->type = type;
+					glink->gnode0 = gnode0;
+					glink->gnode1 = gnode1;
+					glink->origPos = (pivot0 + pivot1) / 2.f;
+					glink->revoluteAxis = revoluteAxis;
+					glink->rotRevolute = revoluteQ;
+					glink->isCycleDrive = false;
+					glink->nodeLocal0 = gnode0->transform;
+					glink->nodeLocal1 = gnode1->transform;
+					glink->pivots[0].dir = (pivot0 - tfm0.pos).Normal() * tfm0.rot.Inverse();
+					glink->pivots[0].len = (pivot0 - tfm0.pos).Length();
+					glink->pivots[1].dir = (pivot1 - tfm1.pos).Normal() * tfm1.rot.Inverse();
+					glink->pivots[1].len = (pivot1 - tfm1.pos).Length();
+
+					switch (type)
+					{
+					case phys::eJointType::Fixed: break;
+
+					case phys::eJointType::Spherical:
+					{
+						const bool isConeLimit = vt0.second.get<bool>("cone limit", false);
+						const string coneLimitStr = vt0.second.get<string>("cone limit config", "0 0 0.01");
+						const Vector3 tconf0 = ParseVector3(coneLimitStr);
+						glink->limit.cone.isLimit = isConeLimit;
+						glink->limit.cone.yAngle = tconf0.x;
+						glink->limit.cone.zAngle = tconf0.y;
+					}
+					break;
+
+					case phys::eJointType::Revolute:
+					{
+						const bool isDrive = vt0.second.get<bool>("drive");
+						const float driveVelocity = vt0.second.get<float>("drive velocity");
+						const bool isCycle = vt0.second.get<bool>("cycle", false);
+						const float cyclePeriod = vt0.second.get<float>("cycle period", 0.f);
+						const float cycleAccel = vt0.second.get<float>("cycle accel", 0.f);
+
+						const bool isAngularLimit = vt0.second.get<bool>("angular limit", false);
+						const string angularLimitStr = vt0.second.get<string>("angular limit config", "0 0 0.01");
+						const Vector3 tconf1 = ParseVector3(angularLimitStr);
+
+						glink->drive.isDrive = isDrive;
+						glink->drive.velocity = driveVelocity;
+						glink->isCycleDrive = isCycle;
+						glink->cyclePeriod = cyclePeriod;
+						glink->cycleDriveAccel = cycleAccel;
+						glink->maxDriveVelocity = driveVelocity;
+
+						glink->limit.angular.isLimit = isAngularLimit;
+						glink->limit.angular.lower = tconf1.x;
+						glink->limit.angular.upper = tconf1.y;
+					}
+					break;
+
+
+					case phys::eJointType::Prismatic:
+					{
+						const bool isLinearLimit = vt0.second.get<bool>("linear limit");
+						const string linearLimitStr1 = vt0.second.get<string>("linear limit config 1"
+							, "0 0 0");
+						const string linearLimitStr2 = vt0.second.get<string>("linear limit config 2"
+							, "0 0 0");
+						const Vector3 tconf1 = ParseVector3(linearLimitStr1);
+						const Vector3 tconf2 = ParseVector3(linearLimitStr2);
+
+						glink->limit.linear.isLimit = isLinearLimit;
+						glink->limit.linear.lower = tconf1.x;
+						glink->limit.linear.upper = tconf1.y;
+						glink->limit.linear.stiffness = tconf1.z;
+						glink->limit.linear.damping = tconf2.x;
+						glink->limit.linear.contactDistance = tconf2.y;
+						glink->limit.linear.bounceThreshold = tconf2.z;
+					}
+					break;
+
+					case phys::eJointType::Distance:
+					{
+						const bool isDistanceLimit = vt0.second.get<bool>("distance limit");
+						const float minDist = vt0.second.get<float>("min distance", 0.f);
+						const float maxDist = vt0.second.get<float>("max distance", 0.f);
+
+						glink->limit.distance.isLimit = isDistanceLimit;
+						glink->limit.distance.minDistance = minDist;
+						glink->limit.distance.maxDistance = maxDist;
+					}
+					break;
+
+					case phys::eJointType::D6:
+					{
+						Str128 text;
+
+						for (int i = 0; i < 6; ++i)
+						{
+							text.Format("d6 motion %d", i);
+							glink->limit.d6.motion[i] = vt0.second.get<int>(text.c_str(), 0);
+						}
+
+						for (int i = 0; i < 6; ++i)
+						{
+							text.Format("d6 drive %d stiffness", i);
+							glink->limit.d6.drive[i].stiffness = vt0.second.get<float>(text.c_str(), 0.f);
+
+							text.Format("d6 drive %d damping", i);
+							glink->limit.d6.drive[i].damping = vt0.second.get<float>(text.c_str(), 0.f);
+
+							text.Format("d6 drive %d forcelimit", i);
+							glink->limit.d6.drive[i].forceLimit = vt0.second.get<float>(text.c_str(), 0.f);
+
+							text.Format("d6 drive %d accel", i);
+							glink->limit.d6.drive[i].accel = vt0.second.get<bool>(text.c_str(), false);
+						}
+
+						glink->limit.d6.linear.value = vt0.second.get<float>("linear extent", 0.f);
+						glink->limit.d6.linear.stiffness = vt0.second.get<float>("linear stiffness", 0.f);
+						glink->limit.d6.linear.damping = vt0.second.get<float>("linear damping", 0.f);
+						glink->limit.d6.linear.isLimit = glink->limit.d6.linear.stiffness != 0.f;
+
+						glink->limit.d6.twist.lower = vt0.second.get<float>("angular lower", 0.f);
+						glink->limit.d6.twist.upper = vt0.second.get<float>("angular upper", 0.f);
+						glink->limit.d6.twist.isLimit = glink->limit.d6.twist.lower != 0.f;
+
+						glink->limit.d6.swing.yAngle = vt0.second.get<float>("cone yAngle", 0.f);
+						glink->limit.d6.swing.zAngle = vt0.second.get<float>("cone zAngle", 0.f);
+						glink->limit.d6.swing.isLimit = glink->limit.d6.swing.yAngle != 0.f;
+
+						const string linearVelStr = vt0.second.get<string>("linear drive velocity", "0 0 0");
+						const Vector3 linearDriveVelocity = ParseVector3(linearVelStr);
+						const string angularVelStr = vt0.second.get<string>("angular drive velocity", "0 0 0");
+						const Vector3 angularDriveVelocity = ParseVector3(angularVelStr);
+
+						*(Vector3*)glink->limit.d6.linearVelocity = linearDriveVelocity;
+						*(Vector3*)glink->limit.d6.angularVelocity = angularDriveVelocity;
+					}
+					break;
+
+					default:
+						throw std::exception("joint type error");
+					}
+
+					outLink.push_back(glink);
+				}//~for joint
+			}//~joints
+		}
+
+	}
+	catch (std::exception &e)
+	{
+		common::Str128 msg;
+		msg.Format("Read Error!!, File [ %s ]\n%s"
+			, fileName.c_str(), e.what());
+		//MessageBoxA(NULL, msg.c_str(), "ERROR", MB_OK);
+		return false;
+	}
+
+	outMap = gnodes;
+
+	return true;
+}

@@ -32,7 +32,7 @@ namespace evc
 
 	protected:
 		bool ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName);
-		void LoadFromGenoType();
+		void LoadFromGenoType(graphic::cRenderer &renderer);
 
 
 	public:
@@ -43,8 +43,8 @@ namespace evc
 		vector<cPNode*> m_nodes;
 
 		// DNA, genotype
-		vector<cGNode*> m_gnodes;
-		vector<cGLink*> m_glinks;
+		vector<sGenotypeNode*> m_gnodes;
+		vector<sGenotypeLink*> m_glinks;
 	};
 
 }

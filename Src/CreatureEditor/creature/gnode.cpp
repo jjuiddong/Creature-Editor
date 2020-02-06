@@ -20,6 +20,47 @@ cGNode::~cGNode()
 }
 
 
+// create from sGenotypeNode struct
+bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
+{
+	bool result = false;
+	switch (gnode.shape)
+	{
+	case phys::eShapeType::Plane: break;
+	case phys::eShapeType::Box: 
+		result = CreateBox(renderer, gnode.transform);
+		break;
+	case phys::eShapeType::Sphere:
+		result = CreateSphere(renderer, gnode.transform, gnode.transform.scale.x);
+		break;
+	case phys::eShapeType::Capsule:
+	{
+		const float radius = gnode.transform.scale.y;
+		const float halfHeight = gnode.transform.scale.x - gnode.transform.scale.y;
+		result = CreateCapsule(renderer, gnode.transform, radius, halfHeight);
+	}
+	break;
+	case phys::eShapeType::Cylinder:
+	{
+		const float radius = gnode.transform.scale.y;
+		const float height = gnode.transform.scale.x;
+		result = CreateCylinder(renderer, gnode.transform, radius, height);
+	}
+	break;
+	default: assert(0); break;
+	}
+
+	if (!result)
+		return false;
+
+	m_name = gnode.name;
+	m_wname = gnode.name.wstr();
+	m_density = gnode.density;
+	m_color = gnode.color;
+	return true;
+}
+
+
 bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 {
 	graphic::cCube *cube = new graphic::cCube();
@@ -100,7 +141,7 @@ bool cGNode::Render(graphic::cRenderer &renderer
 	{
 		Transform tfm;
 		tfm.pos = m_transform.pos + Vector3(0, 0.2f,0);
-		tfm.scale = Vector3::Ones * 0.2f;
+		tfm.scale = Vector3::Ones * 0.15f;
 		renderer.m_textMgr.AddTextRender(renderer
 			, m_id, m_wname.c_str(), cColor::WHITE, cColor::BLACK
 			, BILLBOARD_TYPE::ALL_AXIS, tfm, true);

@@ -11,6 +11,8 @@ namespace evc
 
 	class cCreature;
 	class cGNode;
+	class cGLink;
+	class cPNode;
 	
 	cCreature* GenerateCreatureFrom_RigidActor(graphic::cRenderer &renderer
 		, phys::cRigidActor *actor);
@@ -22,16 +24,30 @@ namespace evc
 		, phys::cRigidActor *actor);
 
 	bool WritePhenoTypeFileFrom_RigidActor(const StrPath &fileName
-		, vector<phys::cRigidActor*> actors);
+		, const vector<phys::cRigidActor*> &actors);
 
 	cCreature* ReadPhenoTypeFile(graphic::cRenderer &renderer
 		, const StrPath &fileName
 		, OUT vector<int> *outSyncIds = nullptr);
+
+	cPNode* CreatePhenoTypeNode(graphic::cRenderer &renderer
+		, const sGenotypeNode &gnode);
+
+	phys::cJoint* CreatePhenoTypeJoint(const sGenotypeLink &glink
+		, cPNode *pnode0, cPNode *pnode1);
 
 
 	//----------------------------------------------------------------------------
 	// GenoType
 	bool WriteGenoTypeFileFrom_Node(const StrPath &fileName
 		, cGNode *gnode);
+
+	bool WriteGenoTypeFileFrom_Node(const StrPath &fileName
+		, const vector<cGNode*> &gnodes);
+
+	bool ReadGenoTypeFile(const StrPath &fileName
+		, OUT vector<sGenotypeNode*> &outNode
+		, OUT vector<sGenotypeLink*> &outLink
+		, OUT map<int, sGenotypeNode*> &outMap);
 
 }

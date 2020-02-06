@@ -198,12 +198,21 @@ bool cGenoTypeManager::RemoveGLink(evc::cGLink *glink)
 {
 	RETV(!glink, false);
 
-	glink->m_gnode0->RemoveLink(glink);
-	glink->m_gnode1->RemoveLink(glink);
+	if (glink->m_gnode0)
+		glink->m_gnode0->RemoveLink(glink);
+	if (glink->m_gnode1)
+		glink->m_gnode1->RemoveLink(glink);
 
 	common::removevector(m_glinks, glink);
 	if (glink->m_autoDelete)
+	{
 		delete glink;
+	}
+	else
+	{
+		glink->m_gnode0 = nullptr;
+		glink->m_gnode1 = nullptr;
+	}
 	return true;
 }
 

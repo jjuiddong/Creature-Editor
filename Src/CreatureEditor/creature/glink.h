@@ -16,6 +16,8 @@ namespace evc
 		cGLink();
 		virtual ~cGLink();
 
+		bool Create(const sGenotypeLink &glink, cGNode *gnode0, cGNode *gnode1);
+
 		bool CreateFixed(cGNode *gnode0, const Vector3 &pivot0
 			, cGNode *gnode1, const Vector3 &pivot1);
 
@@ -38,10 +40,15 @@ namespace evc
 			, const XMMATRIX &parentTm = graphic::XMIdentity
 			, const int flags = 1) override;
 
+		virtual graphic::cNode* Picking(const Ray &ray, const graphic::eNodeType::Enum type
+			, const bool isSpherePicking = true
+			, OUT float *dist = NULL) override;
+
 		void SetPivotPos(const int nodeIndex, const Vector3 &pos);
 		Transform GetPivotWorldTransform(const int nodeIndex);
 		Vector3 GetPivotPos(const int nodeIndex);
 		void SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
+		void SetRevoluteAxisPos(const Vector3 &pos);
 		bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 			, const Vector3 &axisPos = Vector3::Zeroes);
 
@@ -49,21 +56,11 @@ namespace evc
 
 
 	public:
-		struct sPivot {
-			Vector3 dir; // pivot direction(local space), actor -> pivot
-			float len; // pivot length
-		};
-		union sLimit {
-			sConeLimit cone;
-			sAngularLimit angular;
-			sLinearLimit linear;
-			sDistanceLimit distance;
-		};
-
 		bool m_autoDelete; // default: true
 		phys::eJointType::Enum m_type;
 		cGNode *m_gnode0;
 		cGNode *m_gnode1;
+		bool m_highlightRevoluteAxis;
 
 		// drive cycle period (revolute joint)
 		bool m_isCycleDrive;
@@ -78,12 +75,20 @@ namespace evc
 		Vector3 m_origPos; // joint origin pos (local space)
 		Quaternion m_rotRevolute; // Xaxis -> revoluteAxis rotation (local space)
 								  // revoluteAxis = normal(pivot1 - pivot0)
-		Transform m_nodeLocal0; // actor0 local transform (local space)
-		Transform m_nodeLocal1; // actor1 local transform (local space)
+		Transform m_nodeLocal0; // gnode0 local transform (local space)
+		Transform m_nodeLocal1; // gnode1 local transform (local space)
 
-		sPivot m_pivots[2]; // actor0,1
-		sLimit m_limit;
+		sPivot m_pivots[2]; // gnode0,1
 		sDriveInfo m_drive;
+
+		union sLimit {
+			sConeLimit cone;
+			sAngularLimit angular;
+			sLinearLimit linear;
+			sDistanceLimit distance;
+			sD6Limit d6;
+		};
+		sLimit m_limit;
 	};
 
 }

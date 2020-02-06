@@ -34,7 +34,7 @@ protected:
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	void UpdateSelectModelTransform_GNode();
 	void UpdateSelectModelTransform_MultiObject();
-	void UpdateSelectModelTransform_Joint();
+	void UpdateSelectModelTransform_Link();
 	bool PickingProcess(const POINT &mousePos);
 	int PickingNode(const int pickType, const POINT &mousePos
 		, OUT float *outDistance = nullptr);
@@ -62,6 +62,7 @@ public:
 	bool m_isOrbitMove;
 	Vector3 m_orbitTarget;
 	Vector3 m_tempSpawnPos;
+	Vector3 m_pivotPos;
 	int m_clickedId;
 
 	// MouseMove Variable

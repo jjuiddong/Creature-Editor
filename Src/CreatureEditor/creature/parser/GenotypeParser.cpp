@@ -55,19 +55,6 @@ bool cParser::Parse( const string &fileName
 	if (m_isErrorOccur)
 		return false;
 
-	//if (m_symTable.find("main") == m_symTable.end())
-	//{
-	//	SyntaxError( " Not Exist 'main' node" );
-	//	m_scan->Clear();
-	//	RemoveNoVisitExpression();
-	//	return nullptr;
-	//}
-	//sExpr *mainExpr = m_symTable[ "main"];
-	//m_visit.clear();
-	//Build(mainExpr);
-	//RemoveNoVisitExpression();
-	//return mainExpr;
-
 	// update expression ptr
 	for (auto &kv : m_symTable)
 	{

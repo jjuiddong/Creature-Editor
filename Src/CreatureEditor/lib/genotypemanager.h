@@ -5,7 +5,7 @@
 //
 #pragma once
 
-enum class eGenoEditMode { Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation, SelfLoop };
+enum class eGenoEditMode { Normal, JointEdit, Pivot0, Pivot1, Revolute, SpawnLocation };
 
 namespace evc {
 	class cGNode;

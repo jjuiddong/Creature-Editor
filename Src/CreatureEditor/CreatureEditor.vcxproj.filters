@@ -110,7 +110,7 @@
     <ClInclude Include="creature\glink.h">
       <Filter>creature</Filter>
     </ClInclude>
-    <ClInclude Include="creature\limit.h">
+    <ClInclude Include="creature\genotype.h">
       <Filter>creature</Filter>
     </ClInclude>
   </ItemGroup>
