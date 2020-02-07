@@ -77,6 +77,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 						}
 
 						// genotype view load
+						if (1)
 						{
 							const graphic::cCamera3D &camera = g_global->m_genoView->m_camera;
 							const Vector2 size(camera.m_width, camera.m_height);

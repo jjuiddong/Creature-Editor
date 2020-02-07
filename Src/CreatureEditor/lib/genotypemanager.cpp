@@ -349,6 +349,13 @@ bool cGenoTypeManager::SelectObject(const int id
 		m_gizmo.SetControlNode(&m_multiSel);
 	}
 
+	if (m_selects.size() == 1)
+	{
+		evc::cGNode *gnode = g_geno->FindGNode(m_selects[0]);
+		if (gnode)
+			m_gizmo.SetControlNode(gnode);
+	}
+
 	return true;
 }
 

@@ -478,10 +478,7 @@ void cGenoEditorView::RenderRevoluteJoint()
 		return;
 
 	static evc::sAngularLimit limit = { false, -PxPi / 2.f, PxPi / 2.f };
-	static evc::sDriveInfo drive = { false, 1.f, 1.f, 1.f };
-	static bool isCycleDrive = false;
-	static float cycleDrivePeriod = 3.f;
-	static float cycleDriveVelocityAccel = 1.0f;
+	static evc::sDriveInfo drive = { false, 1.f, false, 1.f, 1.f, 1.f};
 
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
@@ -500,13 +497,13 @@ void cGenoEditorView::RenderRevoluteJoint()
 	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 
 	if (!drive.isDrive)
-		isCycleDrive = false;
+		drive.isCycle = false;
 
 	ImGui::TextUnformatted("Cycle");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Cycle", &isCycleDrive);
-	ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
-	ImGui::DragFloat("Drive Accleration", &cycleDriveVelocityAccel, 0.001f);
+	ImGui::Checkbox("##Cycle", &drive.isCycle);
+	ImGui::DragFloat("Cycle Period", &drive.period, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &drive.driveAccel, 0.001f);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -534,10 +531,6 @@ void cGenoEditorView::RenderRevoluteJoint()
 
 		link->m_limit.angular = limit;
 		link->m_drive = drive;
-		link->m_isCycleDrive = isCycleDrive;
-		link->m_cyclePeriod = cycleDrivePeriod;
-		link->m_cycleDriveAccel = cycleDriveVelocityAccel;
-		link->m_maxDriveVelocity = drive.velocity;
 
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
@@ -1514,7 +1507,7 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 
 			float dist0 = 0, dist1 = 0;
 			gnode0->Picking(ray0, graphic::eNodeType::MODEL, false, &dist0);
-			gnode1->Picking(ray1, graphic::eNodeType::MODEL, false, &dist1);
+			gnode0->Picking(ray1, graphic::eNodeType::MODEL, false, &dist1);
 			if (dist0 != 0 || dist1 != 0) // find pivot pos
 			{
 				const Vector3 pivot0 = (dist0 != 0) ?

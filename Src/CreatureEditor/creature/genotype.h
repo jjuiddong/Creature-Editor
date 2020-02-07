@@ -71,8 +71,10 @@ namespace evc
 	{
 		bool isDrive;
 		float velocity;
+		bool isCycle;
 		float period;
 		float driveAccel;
+		float maxVelocity;
 	};
 
 	// pivot information
@@ -111,12 +113,6 @@ namespace evc
 		sGenotypeNode *gnode0; // parent reference
 		sGenotypeNode *gnode1; // child reference
 
-		// drive cycle period (revolute joint)
-		bool isCycleDrive;
-		float cyclePeriod; // period, seconds unit
-		float cycleDriveAccel; // drive velocity acceleration
-		float maxDriveVelocity; // maximum drive velocity
-
 		// joint property
 		Vector3 revoluteAxis; // local space
 		Vector3 origPos; // joint origin pos (local space)
@@ -133,9 +129,8 @@ namespace evc
 			sD6Limit d6;
 		};
 		sLimit limit;
-		sDriveInfo drive;
+		sDriveInfo drive; // revolute joint
 		sPivot pivots[2]; // gnode0,1
 	};
-
 
 }

@@ -62,12 +62,6 @@ namespace evc
 		cGNode *m_gnode1;
 		bool m_highlightRevoluteAxis;
 
-		// drive cycle period (revolute joint)
-		bool m_isCycleDrive;
-		float m_cyclePeriod; // period, seconds unit
-		float m_cycleDriveAccel; // drive velocity acceleration
-		float m_maxDriveVelocity; // maximum drive velocity
-
 		// joint property
 		const float m_breakForce;
 		float m_revoluteAxisLen; // revolute, prismatic joint axis
@@ -79,7 +73,7 @@ namespace evc
 		Transform m_nodeLocal1; // gnode1 local transform (local space)
 
 		sPivot m_pivots[2]; // gnode0,1
-		sDriveInfo m_drive;
+		sDriveInfo m_drive; // revolute joint
 
 		union sLimit {
 			sConeLimit cone;

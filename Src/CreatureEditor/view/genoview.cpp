@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "genoview.h"
+#include "3dview.h"
 #include "../creature/gnode.h"
 
 using namespace graphic;
@@ -274,10 +275,24 @@ void cGenoView::RenderPopupMenu()
 			return;
 		}
 
-		if (ImGui::MenuItem("Save GenoType"))
+		if (ImGui::MenuItem("Save GenoType", "S"))
 		{
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
+		}
+		if (ImGui::MenuItem("Spawn PhenoView", "P"))
+		{
+			evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
+
+			// phenotype view load
+			{
+				const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+				const Vector2 size(camera.m_width, camera.m_height);
+				const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+				const Plane ground(Vector3(0, 1, 0), 0);
+				const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+				g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
+			}
 		}
 		if (ImGui::MenuItem("Iterator", "I"))
 		{
@@ -1015,7 +1030,7 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::T: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
 		case sf::Keyboard::S: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
 		case sf::Keyboard::H: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
-		case sf::Keyboard::F5:break;
+		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
 			m_isOrbitMove = false;

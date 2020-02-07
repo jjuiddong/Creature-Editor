@@ -1130,6 +1130,9 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	static PxJointAngularLimitPair limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
 	static bool isDrive = false;
 	static float driveVelocity = 0.f;
+	static bool isCycleDrive = false;
+	static float cycleDrivePeriod = 3.f;
+	static float cycleDriveVelocityAccel = 1.0f;
 
 	if (m_isChangeSelection)
 	{
@@ -1137,6 +1140,10 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 		limit = joint->GetAngularLimit();
 		isDrive = joint->IsDrive();
 		driveVelocity = joint->GetDriveVelocity();
+		isCycleDrive = joint->IsCycleDrive();
+		const Vector2 period = joint->GetCycleDrivePeriod();
+		cycleDrivePeriod = period.x;
+		cycleDriveVelocityAccel = period.y;
 	}
 
 	ImGui::Text("Angular Limit (Radian)");
@@ -1163,6 +1170,19 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
+	if (!isDrive)
+		isCycleDrive = false;
+
+	ImGui::TextUnformatted("Cycle");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Cycle", &isCycleDrive);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &cycleDriveVelocityAccel, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
@@ -1175,6 +1195,10 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 		joint->EnableDrive(isDrive);
 		if (isDrive)
 			joint->SetDriveVelocity(driveVelocity);
+
+		joint->EnableCycleDrive(isDrive && isCycleDrive);
+		if (isDrive && isCycleDrive)
+			joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
 
 		joint->m_actor0->WakeUp();
 		joint->m_actor1->WakeUp();

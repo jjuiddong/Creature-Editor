@@ -736,10 +736,10 @@ phys::cJoint* evc::CreatePhenoTypeJoint(const sGenotypeLink &glink
 			joint->SetDriveVelocity(glink.drive.velocity);
 		}
 
-		if (glink.isCycleDrive)
+		if (glink.drive.isCycle)
 		{
 			joint->EnableCycleDrive(true);
-			joint->SetCycleDrivePeriod(glink.cyclePeriod, glink.cycleDriveAccel);
+			joint->SetCycleDrivePeriod(glink.drive.period, glink.drive.driveAccel);
 		}
 
 		cJointRenderer *jointRenderer = new cJointRenderer();
@@ -1309,7 +1309,7 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 		j.put<bool>("drive", glink->m_drive.isDrive);
 		j.put("drive velocity", glink->m_drive.velocity);
 
-		j.put<bool>("cycle", glink->m_isCycleDrive);
+		j.put<bool>("cycle", glink->m_drive.isCycle);
 		j.put("cycle period", glink->m_drive.period);
 		j.put("cycle accel", glink->m_drive.driveAccel);
 
@@ -1643,7 +1643,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					glink->origPos = (pivot0 + pivot1) / 2.f;
 					glink->revoluteAxis = revoluteAxis;
 					glink->rotRevolute = revoluteQ;
-					glink->isCycleDrive = false;
+					glink->drive.isCycle = false;
 					glink->nodeLocal0 = gnode0->transform;
 					glink->nodeLocal1 = gnode1->transform;
 					glink->pivots[0].dir = (pivot0 - tfm0.pos).Normal() * tfm0.rot.Inverse();
@@ -1680,10 +1680,10 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 
 						glink->drive.isDrive = isDrive;
 						glink->drive.velocity = driveVelocity;
-						glink->isCycleDrive = isCycle;
-						glink->cyclePeriod = cyclePeriod;
-						glink->cycleDriveAccel = cycleAccel;
-						glink->maxDriveVelocity = driveVelocity;
+						glink->drive.isCycle = isCycle;
+						glink->drive.period = cyclePeriod;
+						glink->drive.driveAccel = cycleAccel;
+						glink->drive.maxVelocity = driveVelocity;
 
 						glink->limit.angular.isLimit = isAngularLimit;
 						glink->limit.angular.lower = tconf1.x;

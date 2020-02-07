@@ -174,13 +174,14 @@ bool cCreature::GenerationGenoType(const uint generation)
 	// 2. add new genotype node where iteration node
 	// 3. add iteration node where new genotype node
 	// 4. decreament generation
-	set<sGenotypeNode*> visit;
+	set<sGenotypeNode*> iterNodes;
+	set<sGenotypeNode*> addNodes;
 	for (uint i=0; i < m_gnodes.size(); ++i)
 	{
 		sGenotypeNode *gnode = m_gnodes[i];
 		if (gnode->iteration < 0 || gnode->generation)
 			continue;
-		if (visit.end() != visit.find(gnode))
+		if (iterNodes.end() != iterNodes.find(gnode))
 			continue; // generated node, ignore
 		auto it = m_gmap.find(gnode->iteration);
 		if (m_gmap.end() == it)
@@ -203,8 +204,9 @@ bool cCreature::GenerationGenoType(const uint generation)
 		newIter->generation = false;
 		m_gnodes.push_back(newIter);
 		m_gmap[newIter->id] = newIter;
-		visit.insert(newIter);
+		iterNodes.insert(newIter);
 		gnode->generation = true;
+		addNodes.insert(gnode);
 
 		// new link, iter node - new node
 		sGenotypeLink *parentLink = nullptr;
@@ -227,9 +229,17 @@ bool cCreature::GenerationGenoType(const uint generation)
 		newLink->nodeLocal0 = gnode->transform;
 		newLink->nodeLocal1 = newIter->transform;
 		m_glinks.push_back(newLink);
+	}
+
+	for (sGenotypeNode *gnode : addNodes)
+	{
+		auto it = m_gmap.find(gnode->iteration);
+		if (m_gmap.end() == it)
+			continue;
 
 		// new genotype link
 		// find iteration link
+		sGenotypeNode *parent = it->second;
 		GenerationGenotypeLink(parent, gnode);
 	}
 
@@ -265,7 +275,8 @@ void cCreature::GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen)
 		*newNode = *glink->gnode1;
 		newNode->id = common::GenerateId();
 		newNode->transform.pos = nextPos;
-		newNode->generation = true;
+		if (glink->gnode1->iteration >= 0)
+			newNode->iteration = gen->id;
 		m_gnodes.push_back(newNode);
 		m_gmap[newNode->id] = newNode;
 

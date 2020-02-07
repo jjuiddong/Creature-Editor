@@ -261,6 +261,13 @@ bool cPhenoTypeManager::SelectObject(const int syncId
 		m_gizmo.SetControlNode(&m_multiSel);
 	}
 
+	if (m_selects.size() == 1)
+	{
+		phys::sSyncInfo *sync = FindSyncInfo(m_selects[0]);
+		if (sync && sync->node)
+			m_gizmo.SetControlNode(sync->node);
+	}
+
 	return true;
 }
 

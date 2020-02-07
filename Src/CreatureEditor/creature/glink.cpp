@@ -11,10 +11,10 @@ cGLink::cGLink()
 	, m_revoluteAxis(Vector3(1, 0, 0))
 	, m_breakForce(2000.f)
 	//, m_breakForce(0.f)
-	, m_isCycleDrive(false)
-	, m_cyclePeriod(3.f)
-	, m_maxDriveVelocity(0.f)
-	, m_cycleDriveAccel(0.f)
+	//, m_isCycleDrive(false)
+	//, m_cyclePeriod(3.f)
+	//, m_maxDriveVelocity(0.f)
+	//, m_cycleDriveAccel(0.f)
 	, m_gnode0(nullptr)
 	, m_gnode1(nullptr)
 	, m_highlightRevoluteAxis(false)
@@ -48,10 +48,7 @@ bool cGLink::Create(const sGenotypeLink &glink, cGNode *gnode0, cGNode *gnode1)
 	case phys::eJointType::Revolute:
 		result = CreateRevolute(gnode0, pivot0, gnode1, pivot1, glink.revoluteAxis);
 		m_limit.angular = glink.limit.angular;
-		m_isCycleDrive = glink.isCycleDrive;
-		m_cyclePeriod = glink.cyclePeriod;
-		m_cycleDriveAccel = glink.cycleDriveAccel;
-		m_maxDriveVelocity = glink.maxDriveVelocity;
+		m_drive = glink.drive;
 		break;
 	case phys::eJointType::Prismatic:
 		result = CreatePrismatic(gnode0, pivot0, gnode1, pivot1, glink.revoluteAxis);
