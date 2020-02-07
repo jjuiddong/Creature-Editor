@@ -40,3 +40,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/genotype%20procedural%20generation.jpg?raw=true)
 - Procedural Generation GenoType2
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/procedural%20generation1.jpg?raw=true)
+- Creature1
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/creature1.jpg?raw=true)
