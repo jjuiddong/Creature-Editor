@@ -35,6 +35,8 @@ public:
 
 	// creature
 	bool AddCreature(evc::cCreature *creature);
+	bool ReadGenoTypeNodeFile(const StrPath &fileName, const Vector3 &pos);
+	bool ReadCreatureFile(const StrPath &fileName, const Vector3 &pos);
 
 	evc::cGNode* FindGNode(const int id);
 	evc::cGLink* FindGLink(const int id);

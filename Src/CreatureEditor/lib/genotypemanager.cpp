@@ -58,6 +58,82 @@ bool cGenoTypeManager::AddCreature(evc::cCreature *creature)
 }
 
 
+// read genotype node file
+bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
+	, const Vector3 &pos)
+{
+	vector<evc::sGenotypeNode*> gnodes;
+	vector<evc::sGenotypeLink*> glinks;
+	map<int, evc::sGenotypeNode*> gnodeMap;
+	if (!evc::ReadGenoTypeFile(fileName, gnodes, glinks, gnodeMap))
+		return false;
+
+	// create genotype node
+	map<int, evc::cGNode*> gmap;
+	for (auto &p : gnodes)
+	{
+		evc::cGNode *node = new evc::cGNode();
+		if (node->Create(GetRenderer(), *p))
+		{
+			g_geno->AddGNode(node);
+			gmap[p->id] = node;
+		}
+		else
+		{
+			delete node;
+		}
+	}
+
+	// create genotype link
+	for (auto &p : glinks)
+	{
+		evc::cGNode *node0 = gmap[p->gnode0->id];
+		evc::cGNode *node1 = gmap[p->gnode1->id];
+		evc::cGLink *link = new evc::cGLink();
+		if (link->Create(*p, node0, node1))
+		{
+			g_geno->AddGLink(link);
+		}
+		else
+		{
+			delete link;
+		}
+	}
+
+	for (auto &p : gnodes)
+		delete p;
+	gnodes.clear();
+	for (auto &p : glinks)
+		delete p;
+	glinks.clear();
+
+	// moving actor position to camera center
+	if (!gmap.empty())
+	{
+		Vector3 spawnPos = pos - gmap.begin()->second->m_transform.pos;
+		spawnPos.y = 0;
+
+		g_geno->ClearSelection();
+
+		for (auto &kv : gmap)
+		{
+			evc::cGNode *gnode = kv.second;
+			gnode->m_transform.pos += spawnPos;
+			g_geno->SelectObject(gnode->m_id);
+		}
+	}
+
+	return true;
+}
+
+
+// read creature file from genotype file
+bool cGenoTypeManager::ReadCreatureFile(const StrPath &fileName, const Vector3 &pos)
+{
+	return ReadGenoTypeNodeFile(fileName, pos);
+}
+
+
 // create box genotype
 int cGenoTypeManager::SpawnBox(const Vector3 &pos)
 {
@@ -175,8 +251,8 @@ bool cGenoTypeManager::RemoveGNode(evc::cGNode *gnode)
 
 	for (auto &p : rms)
 	{
-		for (auto &link : p->m_links)
-			RemoveGLink(link);
+		for (int i = (int)p->m_links.size()-1; i>=0; --i) // back traverse
+			RemoveGLink(p->m_links[i]);
 		common::removevector(m_gnodes, p);
 		delete p;
 	}

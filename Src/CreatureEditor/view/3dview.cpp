@@ -1347,35 +1347,12 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		{			
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
-				vector<int> syncIds;
-				evc::ReadPhenoTypeFile(g_pheno->GetRenderer(), "tmp.pnt", &syncIds);
-				if (syncIds.empty())
-					break;
+				const Ray ray = m_camera.GetRay((int)m_camera.m_width / 2
+					, (int)m_camera.m_height / 2 + (int)m_camera.m_height / 5);
+				const Plane ground(Vector3(0, 1, 0), 0);
+				const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 
-				// moving actor position to camera center
-				if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(syncIds[0]))
-				{
-					const Ray ray = m_camera.GetRay((int)m_camera.m_width/2
-						, (int)m_camera.m_height/2 + (int)m_camera.m_height/5);
-					const Plane ground(Vector3(0, 1, 0), 0);
-					const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-					Vector3 spawnPos = targetPos - sync->node->m_transform.pos;
-					spawnPos.y = 0;
-
-					g_pheno->ClearSelection();
-
-					for (auto &id : syncIds)
-					{
-						phys::sSyncInfo *p = g_pheno->FindSyncInfo(id);
-						if (!p && !p->node)
-							continue;
-						p->node->m_transform.pos += spawnPos;
-						if (p->actor)
-							p->actor->SetGlobalPose(p->node->m_transform);
-
-						g_pheno->SelectObject(id);
-					}
-				}//~if FindSyncInfo()
+				g_pheno->ReadPhenoTypeFile("tmp.pnt", targetPos);
 			}//~VK_CONTROL
 		}
 		break;

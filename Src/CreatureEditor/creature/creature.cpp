@@ -123,18 +123,24 @@ bool cCreature::ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fi
 
 	m_gnodes = gnodes;
 	m_glinks = glinks;
-	LoadFromGenoType(renderer);
+	for (auto &gnode : gnodes)
+		m_gmap[gnode->id] = gnode;
+
+	LoadFromGenoType(renderer, g_pheno->m_generationCnt);
 	return true;
 }
 
 
 // create phenotype node from genotype node
-void cCreature::LoadFromGenoType(graphic::cRenderer &renderer)
+void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
+	, const uint generation)
 {
 	// clear phenotype node
 	for (auto &p : m_nodes)
 		delete p;
 	m_nodes.clear();
+
+	GenerationGenoType(generation);
 
 	map<int, cPNode*> nodeMap;
 	for (auto &p : m_gnodes)
@@ -158,6 +164,125 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer)
 }
 
 
+// Genotype node generation
+bool cCreature::GenerationGenoType(const uint generation)
+{
+	if (generation <= 0)
+		return true; // complete
+
+	// 1. find iteration node
+	// 2. add new genotype node where iteration node
+	// 3. add iteration node where new genotype node
+	// 4. decreament generation
+	set<sGenotypeNode*> visit;
+	for (uint i=0; i < m_gnodes.size(); ++i)
+	{
+		sGenotypeNode *gnode = m_gnodes[i];
+		if (gnode->iteration < 0 || gnode->generation)
+			continue;
+		if (visit.end() != visit.find(gnode))
+			continue; // generated node, ignore
+		auto it = m_gmap.find(gnode->iteration);
+		if (m_gmap.end() == it)
+			continue;
+
+		sGenotypeNode *parent = it->second;
+
+		// new iteration node
+		const Vector3 p0 = parent->transform.pos;
+		const Vector3 p1 = gnode->transform.pos;
+		const Vector3 dir = (p1 - p0).Normal();
+		const float len = p1.Distance(p0);
+		const Vector3 nextPos = dir * len + p1;
+		
+		sGenotypeNode *newIter = new sGenotypeNode;
+		*newIter = *gnode;
+		newIter->id = common::GenerateId();
+		newIter->iteration = gnode->id;
+		newIter->transform.pos = nextPos;
+		newIter->generation = false;
+		m_gnodes.push_back(newIter);
+		m_gmap[newIter->id] = newIter;
+		visit.insert(newIter);
+		gnode->generation = true;
+
+		// new link, iter node - new node
+		sGenotypeLink *parentLink = nullptr;
+		for (auto &glink : m_glinks)
+		{
+			if ((glink->gnode0 == parent)
+				&& (glink->gnode1 == gnode))
+			{
+				parentLink = glink;
+				break;
+			}		
+		}
+		if (!parentLink)
+			break; // error occurred
+
+		sGenotypeLink *newLink = new sGenotypeLink;
+		*newLink = *parentLink;
+		newLink->gnode0 = gnode;
+		newLink->gnode1 = newIter;
+		newLink->nodeLocal0 = gnode->transform;
+		newLink->nodeLocal1 = newIter->transform;
+		m_glinks.push_back(newLink);
+
+		// new genotype link
+		// find iteration link
+		GenerationGenotypeLink(parent, gnode);
+	}
+
+	return GenerationGenoType(generation - 1);
+}
+
+
+// generation genotype node and link from source genotype node
+// src: source genotype node
+// gen: new genotype node
+void cCreature::GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen)
+{
+	// new genotype link
+	// find iteration link
+	for (uint i=0; i < m_glinks.size(); ++i)
+	{
+		// find parent link
+		// find only parent role link
+		sGenotypeLink *glink = m_glinks[i];
+		if (glink->gnode0 != src)
+			continue;
+		if (glink->gnode1 == gen)
+			continue;
+
+		// new iteration node
+		const Vector3 p0 = glink->gnode0->transform.pos;
+		const Vector3 p1 = glink->gnode1->transform.pos;
+		const Vector3 dir = (p1 - p0).Normal();
+		const float len = p1.Distance(p0);
+		const Vector3 nextPos = dir * len + gen->transform.pos;
+
+		sGenotypeNode *newNode = new sGenotypeNode;
+		*newNode = *glink->gnode1;
+		newNode->id = common::GenerateId();
+		newNode->transform.pos = nextPos;
+		newNode->generation = true;
+		m_gnodes.push_back(newNode);
+		m_gmap[newNode->id] = newNode;
+
+		sGenotypeLink *newLink = new sGenotypeLink;
+		*newLink = *glink;
+		newLink->gnode0 = gen;
+		newLink->gnode1 = newNode;
+		newLink->nodeLocal0 = gen->transform;
+		newLink->nodeLocal1 = newNode->transform;
+		m_glinks.push_back(newLink);
+
+		// generate next link node
+		GenerationGenotypeLink(glink->gnode1, newNode);
+	}
+}
+
+
 void cCreature::Clear()
 {
 	for (auto &p : m_nodes)
@@ -171,4 +296,6 @@ void cCreature::Clear()
 	for (auto &p : m_gnodes)
 		delete p;
 	m_gnodes.clear();
+
+	m_gmap.clear();
 }

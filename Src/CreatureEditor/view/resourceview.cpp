@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "resourceview.h"
 #include "3dview.h"
+#include "genoview.h"
 #include "../creature/creature.h"
 
 using namespace graphic;
@@ -65,34 +66,25 @@ void cResourceView::OnRender(const float deltaSeconds)
 						// create creature
 						const StrPath fileName = StrPath("./media/creature/") + str;
 
-						const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
-						const Vector2 size(camera.m_width, camera.m_height);
-						const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-						const Plane ground(Vector3(0, 1, 0), 0);
-						const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-
-						evc::cCreature *creature = new evc::cCreature();
-						creature->Read(g_pheno->GetRenderer(), fileName, Transform(targetPos));
-						g_pheno->AddCreature(creature);
-
-						// unlock actor
-						if (!g_pheno->m_isSpawnLock)
-							creature->SetKinematic(false);
-
-						// selection
-						vector<int> syncIds;
-						creature->GetSyncIds(syncIds);
-						if (!syncIds.empty())
+						// phenotype view load
 						{
-							g_pheno->m_mode = ePhenoEditMode::Normal;
-							g_pheno->m_gizmo.SetControlNode(nullptr);
-							g_pheno->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
-							g_pheno->m_selJoint = nullptr;
-							g_pheno->ClearSelection();
+							const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+							const Vector2 size(camera.m_width, camera.m_height);
+							const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+							const Plane ground(Vector3(0, 1, 0), 0);
+							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+							g_pheno->ReadCreatureFile(fileName, targetPos);
+						}
 
-							for (auto id : syncIds)
-								g_pheno->SelectObject(id);
-						}//~syncIds.empty()
+						// genotype view load
+						{
+							const graphic::cCamera3D &camera = g_global->m_genoView->m_camera;
+							const Vector2 size(camera.m_width, camera.m_height);
+							const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+							const Plane ground(Vector3(0, 1, 0), 0);
+							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+							g_geno->ReadCreatureFile(fileName, targetPos);					
+						}
 
 					}//~IsDoubleClicked
 				}//~IsItemClicked

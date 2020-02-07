@@ -106,6 +106,10 @@ void cPhenoEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
 
+		ImGui::TextUnformatted("Generation    ");
+		ImGui::SameLine();
+		ImGui::DragInt("##generation", &g_pheno->m_generationCnt, 1, 0, 100);
+
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.9f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0, 1));

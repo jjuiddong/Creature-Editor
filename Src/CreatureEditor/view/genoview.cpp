@@ -1068,70 +1068,12 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		{
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
-				vector<evc::sGenotypeNode*> gnodes;
-				vector<evc::sGenotypeLink*> glinks;
-				map<int, evc::sGenotypeNode*> gnodeMap;
-				if (!evc::ReadGenoTypeFile("tmp.gnt", gnodes, glinks, gnodeMap))
-					break;
+				const Ray ray = m_camera.GetRay((int)m_camera.m_width / 2
+					, (int)m_camera.m_height / 2 + (int)m_camera.m_height / 5);
+				const Plane ground(Vector3(0, 1, 0), 0);
+				const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 
-				// create genotype node
-				map<int, evc::cGNode*> gmap;
-				for (auto &p : gnodes)
-				{
-					evc::cGNode *node = new evc::cGNode();
-					if (node->Create(GetRenderer(), *p))
-					{
-						g_geno->AddGNode(node);
-						gmap[p->id] = node;
-					}
-					else
-					{
-						delete node;
-					}
-				}
-
-				// create genotype link
-				for (auto &p : glinks)
-				{
-					evc::cGNode *node0 = gmap[p->gnode0->id];
-					evc::cGNode *node1 = gmap[p->gnode1->id];
-					evc::cGLink *link = new evc::cGLink();
-					if (link->Create(*p, node0, node1))
-					{
-						g_geno->AddGLink(link);
-					}
-					else
-					{
-						delete link;
-					}
-				}
-
-				for (auto &p : gnodes)
-					delete p;
-				gnodes.clear();
-				for (auto &p : glinks)
-					delete p;
-				glinks.clear();
-
-				// moving actor position to camera center
-				if (!gmap.empty())
-				{
-					const Ray ray = m_camera.GetRay((int)m_camera.m_width / 2
-						, (int)m_camera.m_height / 2 + (int)m_camera.m_height / 5);
-					const Plane ground(Vector3(0, 1, 0), 0);
-					const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-					Vector3 spawnPos = targetPos - gmap.begin()->second->m_transform.pos;
-					spawnPos.y = 0;
-
-					g_geno->ClearSelection();
-
-					for (auto &kv : gmap)
-					{
-						evc::cGNode *gnode = kv.second;
-						gnode->m_transform.pos += spawnPos;
-						g_geno->SelectObject(gnode->m_id);
-					}
-				}//~gmap.empty()
+				g_geno->ReadGenoTypeNodeFile("tmp.gnt", targetPos);
 			}//~VK_CONTROL
 		}
 		break;

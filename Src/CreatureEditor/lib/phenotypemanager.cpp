@@ -17,6 +17,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_pairSyncId0(-1)
 	, m_pairSyncId1(-1)
 	, m_fixJointSelection(false)
+	, m_generationCnt(0)
 {
 }
 
@@ -75,6 +76,71 @@ ePhenoEditMode cPhenoTypeManager::GetEditMode()
 bool cPhenoTypeManager::AddCreature(evc::cCreature *creature)
 {
 	m_creatures.push_back(creature);
+	return true;
+}
+
+
+// read phenotype file
+bool cPhenoTypeManager::ReadPhenoTypeFile(const StrPath &fileName
+	, const Vector3 &pos)
+{
+	vector<int> syncIds;
+	evc::ReadPhenoTypeFile(GetRenderer(), fileName, &syncIds);
+	if (syncIds.empty())
+		return false;
+
+	// moving actor position to camera center
+	if (phys::sSyncInfo *sync = FindSyncInfo(syncIds[0]))
+	{
+		Vector3 spawnPos = pos - sync->node->m_transform.pos;
+		spawnPos.y = 0;
+
+		ClearSelection();
+
+		for (auto &id : syncIds)
+		{
+			phys::sSyncInfo *p = FindSyncInfo(id);
+			if (!p && !p->node)
+				continue;
+			p->node->m_transform.pos += spawnPos;
+			if (p->actor)
+				p->actor->SetGlobalPose(p->node->m_transform);
+
+			SelectObject(id);
+		}
+	}
+
+	return true;
+}
+
+
+// read creature from phenotype file
+bool cPhenoTypeManager::ReadCreatureFile(const StrPath &fileName
+	, const Vector3 &pos)
+{
+	evc::cCreature *creature = new evc::cCreature();
+	creature->Read(GetRenderer(), fileName, Transform(pos));
+	AddCreature(creature);
+
+	// unlock actor
+	if (!m_isSpawnLock)
+		creature->SetKinematic(false);
+
+	// selection
+	vector<int> syncIds;
+	creature->GetSyncIds(syncIds);
+	if (!syncIds.empty())
+	{
+		m_mode = ePhenoEditMode::Normal;
+		m_gizmo.SetControlNode(nullptr);
+		m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+		m_selJoint = nullptr;
+		ClearSelection();
+
+		for (auto id : syncIds)
+			g_pheno->SelectObject(id);
+	}
+
 	return true;
 }
 

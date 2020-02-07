@@ -25,6 +25,8 @@ public:
 
 	// creature
 	bool AddCreature(evc::cCreature *creature);
+	bool ReadPhenoTypeFile(const StrPath &fileName, const Vector3 &pos);
+	bool ReadCreatureFile(const StrPath &fileName, const Vector3 &pos);
 
 	// spawn object
 	void SpawnBox(const Vector3 &pos);
@@ -92,4 +94,7 @@ public:
 
 	// creatures
 	vector<evc::cCreature*> m_creatures;
+
+	// generation
+	int m_generationCnt;
 };

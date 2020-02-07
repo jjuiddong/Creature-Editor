@@ -604,7 +604,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
 	, const sGenotypeNode &gnode)
 {
-	if (gnode.iteration >= 0)
+	if (gnode.iteration >= 0 && !gnode.generation)
 		return nullptr; // iteration node, skip creation
 
 	const Vector3 pos = gnode.transform.pos;
@@ -1592,6 +1592,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->linearDamping = linearDamping;
 					gnode->angularDamping = angularDamping;
 					gnode->iteration = iteration;
+					gnode->generation = false;
 					outNode.push_back(gnode);
 
 					gnodes[id] = gnode;
@@ -1791,6 +1792,28 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 	}
 
 	outMap = gnodes;
+
+	//------------------------------------------------------------------
+	// update unique id
+	map<int, int> ids; // original id, new id
+	for (auto &gnode : outNode)
+	{
+		const int id = common::GenerateId();
+		ids[gnode->id] = id;
+		gnode->id = id;
+	}
+
+	// update iteration id
+	for (auto &gnode : outNode)
+	{
+		if (gnode->iteration < 0)
+			continue;
+		gnode->iteration = ids[gnode->iteration];
+	}
+
+	outMap.clear();
+	for (auto &gnode : outNode)
+		outMap[gnode->id] = gnode;
 
 	return true;
 }
