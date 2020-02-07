@@ -236,7 +236,7 @@ void cGenoView::OnRender(const float deltaSeconds)
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Checkbox("grid", &m_showGrid);
-
+		//ImGui::Checkbox("name", )
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -280,7 +280,7 @@ void cGenoView::RenderPopupMenu()
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
 		}
-		if (ImGui::MenuItem("Spawn PhenoView", "P"))
+		if (ImGui::MenuItem("Spawn", "W"))
 		{
 			evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
 
@@ -1111,10 +1111,29 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		}
 		break;
 
-		case sf::Keyboard::U: // popup menu shortcut, unlock
-			break;
-		case sf::Keyboard::L: // popup menu shortcut, lock
-			break;
+		case sf::Keyboard::U: break;
+		case sf::Keyboard::L: break;
+
+		case sf::Keyboard::W:
+		{
+			if (m_popupMenuState == 2)
+			{
+				evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
+
+				// phenotype view load
+				{
+					const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+					const Vector2 size(camera.m_width, camera.m_height);
+					const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+					const Plane ground(Vector3(0, 1, 0), 0);
+					const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+					g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
+				}
+
+				m_popupMenuState = 3;
+			}
+		}
+		break;
 
 		case sf::Keyboard::J: // popup menu shortcut, joint remove
 		{

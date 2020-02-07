@@ -12,6 +12,7 @@ c3DView::c3DView(const string &name)
 	, m_showGrid(true)
 	, m_showReflection(true)
 	, m_showShadow(true)
+	, m_showJoint(true)
 	, m_groundPlane(nullptr)
 	, m_showSaveDialog(false)
 	, m_popupMenuState(0)
@@ -214,6 +215,8 @@ void c3DView::RenderScene(graphic::cRenderer &renderer
 	for (auto &p : physSync->m_syncs)
 	{
 		if (isBuildShadowMap && (p->name == "plane"))
+			continue;
+		if (!m_showJoint && p->joint)
 			continue;
 		p->node->SetTechnique(techiniqName.c_str());
 		p->node->Render(renderer, parentTm);
@@ -513,6 +516,8 @@ void c3DView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("reflection", &m_showReflection);
 		ImGui::SameLine();
 		ImGui::Checkbox("shadow", &m_showShadow);
+		ImGui::SameLine();
+		ImGui::Checkbox("joint", &m_showJoint);
 		if (m_isOrbitMove)
 		{
 			ImGui::SameLine();

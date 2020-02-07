@@ -59,6 +59,7 @@ public:
 	bool m_showGrid;
 	bool m_showReflection;
 	bool m_showShadow;
+	bool m_showJoint;
 	bool m_showSaveDialog;
 	bool m_isSaveOnlySelectionActor;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close

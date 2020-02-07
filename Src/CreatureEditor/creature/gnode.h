@@ -31,6 +31,10 @@ namespace evc
 			, const XMMATRIX &parentTm = graphic::XMIdentity
 			, const int flags = 1) override;
 
+		virtual graphic::cNode* Picking(const Ray &ray, const graphic::eNodeType::Enum type
+			, const bool isSpherePicking = true
+			, OUT float *dist = NULL) override;
+
 		bool AddLink(cGLink *glink);
 		bool RemoveLink(cGLink *glink);
 		bool RemoveLink(const int linkId);

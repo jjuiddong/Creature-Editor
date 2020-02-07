@@ -69,6 +69,7 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 		return false;
 
 	// create genotype node
+	vector<evc::cGNode*> addNodes;
 	map<int, evc::cGNode*> gmap;
 	for (auto &p : gnodes)
 	{
@@ -77,12 +78,18 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 		{
 			g_geno->AddGNode(node);
 			gmap[p->id] = node;
+			addNodes.push_back(node);
 		}
 		else
 		{
 			delete node;
 		}
 	}
+
+	// update iteration id (genotype nod id -> cGNode id)
+	for (auto &p : addNodes)
+		if (p->m_cloneId >= 0)
+			p->m_cloneId = gmap[p->m_cloneId]->m_id;
 
 	// create genotype link
 	for (auto &p : glinks)

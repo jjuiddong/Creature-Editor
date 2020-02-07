@@ -57,6 +57,7 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 	m_wname = gnode.name.wstr();
 	m_density = gnode.density;
 	m_color = gnode.color;
+	m_cloneId = gnode.iteration;
 	return true;
 }
 
@@ -155,6 +156,23 @@ bool cGNode::Render(graphic::cRenderer &renderer
 	}
 
 	return true;
+}
+
+
+// picking, tricky code
+graphic::cNode* cGNode::Picking(const Ray &ray, const graphic::eNodeType::Enum type
+	, const bool isSpherePicking //= true
+	, OUT float *dist //= NULL
+)
+{
+	if (m_children.empty())
+		return nullptr;
+
+	Transform temp = m_transform;
+	m_transform.scale = m_children[0]->m_transform.scale * m_transform.scale;
+	graphic::cNode *ret = __super::Picking(ray, type, isSpherePicking, dist);
+	m_transform = temp;
+	return ret;
 }
 
 
@@ -261,16 +279,20 @@ cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 		gnode->CreateBox(renderer, m_transform);
 		break;
 	case phys::eShapeType::Sphere:
-		gnode->CreateSphere(renderer, m_transform, m_transform.scale.x);
+		gnode->CreateSphere(renderer, m_transform, GetSphereRadius());
 		break;
 	case phys::eShapeType::Capsule:
-		gnode->CreateCapsule(renderer, m_transform
-			, m_transform.scale.y, m_transform.scale.x);
-		break;
+	{
+		const Vector2 dim = GetCapsuleDimension();
+		gnode->CreateCapsule(renderer, m_transform, dim.x, dim.y);
+	}
+	break;
 	case phys::eShapeType::Cylinder:
-		gnode->CreateCylinder(renderer, m_transform
-			, m_transform.scale.y, m_transform.scale.x);
-		break;
+	{
+		const Vector2 dim = GetCapsuleDimension();
+		gnode->CreateCylinder(renderer, m_transform, dim.x, dim.y);
+	}
+	break;
 	default: assert(0); break;
 	}
 
