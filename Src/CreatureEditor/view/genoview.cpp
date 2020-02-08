@@ -11,7 +11,7 @@ using namespace framework;
 cGenoView::cGenoView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
-	, m_showName(false)
+	, m_showName(true)
 	, m_showJoint(true)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
@@ -235,7 +235,7 @@ void cGenoView::OnRender(const float deltaSeconds)
 	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y));
 	ImGui::SetNextWindowBgAlpha(0.f);
 	ImGui::SetNextWindowSize(ImVec2(min(m_viewRect.Width(), 350.f), m_viewRect.Height()));
-	if (ImGui::Begin("Map Information", &isOpen, flags))
+	if (ImGui::Begin("Genotype Information", &isOpen, flags))
 	{
 		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		//ImGui::Checkbox("grid", &m_showGrid);

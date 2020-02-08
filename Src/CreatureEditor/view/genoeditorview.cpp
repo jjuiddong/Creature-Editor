@@ -319,16 +319,16 @@ void cGenoEditorView::RenderLinkInfo()
 
 		if (g_geno->m_selects.size() == 2)
 		{
+			auto it = g_geno->m_selects.begin();
+			const int id0 = *it++;
+			const int id1 = *it++;
+			evc::cGNode *gnode0 = g_geno->FindGNode(id0);
+			evc::cGNode *gnode1 = g_geno->FindGNode(id1);
+			if (!gnode0 || !gnode1)
+				return;
+
 			// check already connection
 			{
-				auto it = g_geno->m_selects.begin();
-				const int id0 = *it++;
-				const int id1 = *it++;
-
-				evc::cGNode *gnode0 = g_geno->FindGNode(id0);
-				evc::cGNode *gnode1 = g_geno->FindGNode(id1);
-				if (!gnode0 || !gnode1)
-					return;
 				for (auto &j1 : gnode0->m_links)
 					for (auto &j2 : gnode1->m_links)
 						if (j1 == j2)
@@ -340,9 +340,18 @@ void cGenoEditorView::RenderLinkInfo()
 				&& (g_geno->GetEditMode() != eGenoEditMode::Revolute)
 				&& (g_geno->GetEditMode() != eGenoEditMode::JointEdit))
 			{
-				auto it = g_geno->m_selects.begin();
-				g_geno->m_pairId0 = *it++;
-				g_geno->m_pairId1 = *it++;
+				// check iteration node
+				// iteration node always child role
+				if (gnode0->m_cloneId >= 0)
+				{
+					g_geno->m_pairId0 = id1;
+					g_geno->m_pairId1 = id0;
+				}
+				else
+				{
+					g_geno->m_pairId0 = id0;
+					g_geno->m_pairId1 = id1;
+				}
 				g_geno->ChangeEditMode(eGenoEditMode::JointEdit); // joint edit mode
 			}
 		}

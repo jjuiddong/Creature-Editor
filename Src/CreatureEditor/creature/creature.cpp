@@ -190,23 +190,47 @@ bool cCreature::GenerationGenoType(const uint generation)
 		sGenotypeNode *parent = it->second;
 
 		// new iteration node
-		const Vector3 p0 = parent->transform.pos;
-		const Vector3 p1 = gnode->transform.pos;
-		const Vector3 dir = (p1 - p0).Normal();
-		const float len = p1.Distance(p0);
-		const Vector3 nextPos = dir * len + p1;
+		const Matrix44 tm0 = parent->transform.GetMatrix();
+		const Matrix44 tm1 = gnode->transform.GetMatrix();
+		const Matrix44 localTm = tm1 * tm0.Inverse();
+		const Matrix44 tm = localTm * tm1;
+		
+		const Vector3 scale(gnode->transform.scale.x / parent->transform.scale.x
+			, gnode->transform.scale.y / parent->transform.scale.y
+			, gnode->transform.scale.z / parent->transform.scale.z);
+		const Vector3 newScale = gnode->transform.scale * scale;
+
+		if (newScale.Length() < 0.3f)
+			continue; // ignore too small dimension object
 		
 		sGenotypeNode *newIter = new sGenotypeNode;
 		*newIter = *gnode;
 		newIter->id = common::GenerateId();
 		newIter->iteration = gnode->id;
-		newIter->transform.pos = nextPos;
+		newIter->transform.pos = tm.GetPosition();
+		newIter->transform.scale = newScale;
+		newIter->transform.rot = tm.GetQuaternion();
 		newIter->generation = false;
 		m_gnodes.push_back(newIter);
 		m_gmap[newIter->id] = newIter;
 		iterNodes.insert(newIter);
 		gnode->generation = true;
 		addNodes.insert(gnode);
+
+		// if iteration node has link another node or final node?
+		// copy to new iteration node
+		for (auto &glink : m_glinks)
+		{
+			if (glink->gnode0 == parent)
+				continue; // ignore parent iteration node
+			if (glink->gnode1 == gnode)
+			{
+				// find another link node
+
+
+
+			}
+		}
 
 		// new link, iter node - new node
 		sGenotypeLink *parentLink = nullptr;

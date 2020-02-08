@@ -73,7 +73,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 						// create creature
 						const StrPath fileName = StrPath("./media/creature/") + str;
 						LoadPhenotypeView(fileName);
-						LoadGenotypeView(fileName);
+						//LoadGenotypeView(fileName);
 
 					}//~IsDoubleClicked
 				}//~IsItemClicked
