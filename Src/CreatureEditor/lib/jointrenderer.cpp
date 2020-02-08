@@ -89,7 +89,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	{
 		Transform tfm;
 		tfm.pos = pivotPos0;
-		tfm.scale = Vector3::Ones * 0.05f;
+		tfm.scale = Vector3::Ones * 0.025f;
 		renderer.m_dbgCube.SetCube(tfm);
 		renderer.m_dbgCube.Render(renderer);
 	}
@@ -99,7 +99,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	{
 		Transform tfm;
 		tfm.pos = pivotPos1;
-		tfm.scale = Vector3::Ones * 0.05f;
+		tfm.scale = Vector3::Ones * 0.025f;
 		renderer.m_dbgCube.SetCube(tfm);
 		renderer.m_dbgCube.Render(renderer);
 	}
@@ -108,7 +108,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	Vector3 jointPos = (pivotPos0 + pivotPos1) / 2.f;
 	Transform tfm;
 	tfm.pos = jointPos;
-	tfm.scale = Vector3::Ones * 0.05f;
+	tfm.scale = Vector3::Ones * 0.025f;
 	renderer.m_dbgBox.SetColor(cColor::GREEN);
 	renderer.m_dbgBox.SetBox(tfm);
 	renderer.m_dbgBox.Render(renderer);
@@ -117,7 +117,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	// render pivot - joint pos
 	if (1)
 	{
-		renderer.m_dbgLine.SetColor(cColor::GREEN);
+		renderer.m_dbgLine.SetColor(cColor(0.f,1.f,0.f,0.5f));
 		renderer.m_dbgLine.m_isSolid = true;
 		renderer.m_dbgLine.SetLine(pivotPos0, jointPos, 0.01f);
 		renderer.m_dbgLine.Render(renderer);
@@ -133,9 +133,10 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		
 		Vector3 p0, p1;
 		GetRevoluteAxis(p0, p1);
-		renderer.m_dbgLine.SetColor(m_highlightRevoluteJoint? cColor::YELLOW : cColor::BLUE);
+		renderer.m_dbgLine.SetColor(m_highlightRevoluteJoint ?
+			cColor(1.f, 1.f, 0.f, 0.9f) : cColor(0.f, 0.f, 1.f, 0.7f));
 		renderer.m_dbgLine.m_isSolid = true;
-		renderer.m_dbgLine.SetLine(p0, p1, 0.02f);
+		renderer.m_dbgLine.SetLine(p0, p1, m_highlightRevoluteJoint ? 0.03f : 0.01f);
 		renderer.m_dbgLine.Render(renderer);
 	}
 
@@ -295,8 +296,8 @@ bool cJointRenderer::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 
 	if (p2.Distance(p3) < 2.f)
 	{
-		out0 = dir + jointPos;
-		out1 = -dir + jointPos;
+		out0 = dir * 0.5f + jointPos;
+		out1 = -dir * 0.5f + jointPos;
 	}
 	else
 	{
@@ -323,7 +324,7 @@ cNode* cJointRenderer::Picking(const Ray &ray, const eNodeType::Enum type
 	const Vector3 jointPos = (p0 + p1) / 2.f;
 
 	cBoundingBox bbox;
-	bbox.SetLineBoundingBox(p0, p1, 0.02f);
+	bbox.SetLineBoundingBox(p0, p1, 0.05f);
 	if (bbox.Pick(ray))
 	{
 		if (dist)

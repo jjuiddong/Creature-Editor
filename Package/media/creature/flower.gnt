@@ -1,0 +1,181 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box",
+                "id": "10121",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.542008 0.462941 -10.112857",
+                "dim": "0.083550 0.479789 0.071658",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10123",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.550688 1.304957 -10.610115",
+                "dim": "0.156362 0.009170 0.500000",
+                "rot": "-0.000535 -0.958473 -0.285192 0.001796",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10115",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.546820 1.304957 -9.612129",
+                "dim": "0.156362 0.009170 0.500000",
+                "rot": "-0.285192 0.000000 0.000000 0.958474",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "10119",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.551585 1.867024 -8.747548",
+                "dim": "0.156362 0.009170 0.500000",
+                "rot": "-0.285192 0.000000 0.000000 0.958474",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10115"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "10125",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.553255 1.869603 -11.471084",
+                "dim": "0.156362 0.009170 0.500000",
+                "rot": "-0.000535 -0.958473 -0.285192 0.001796",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10123"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "10127",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.535662 2.665500 -10.110065",
+                "dim": "0.050000 0.568984 0.050000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10117"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10117",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.535775 1.512740 -10.110255",
+                "dim": "0.050000 0.568984 0.050000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10123",
+                "shape id1": "10125",
+                "jointpos": "-1.010690 1.587280 -0.930535",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "-0.003135 0.002052 1.000002",
+                "pivot len0": "0.514829338",
+                "pivot dir1": "0.003135 -0.002052 -1.000002",
+                "pivot len1": "0.514829457"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10117",
+                "shape id1": "10127",
+                "jointpos": "-1.026943 2.089120 -0.000095",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "-0.000098 1.000000 0.000166",
+                "pivot len0": "0.576380372",
+                "pivot dir1": "0.000098 -1.000000 -0.000166",
+                "pivot len1": "0.576380014"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10117",
+                "shape id1": "10123",
+                "jointpos": "-1.019430 1.408851 -0.250115",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 -0.383841 -0.923399",
+                "pivot len0": "0.270662546",
+                "pivot dir1": "0.003461 0.826223 -0.563348",
+                "pivot len1": "0.270676315"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10115",
+                "shape id1": "10119",
+                "jointpos": "-1.013459 1.585991 0.930225",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 -0.001963 1.000005",
+                "pivot len0": "0.515632749",
+                "pivot dir1": "0.000000 0.001963 -1.000005",
+                "pivot len1": "0.515632749"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10117",
+                "shape id1": "10115",
+                "jointpos": "-1.021364 1.408851 0.248867",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 -0.384979 0.922925",
+                "pivot len0": "0.269862592",
+                "pivot dir1": "0.000000 0.826919 -0.562334",
+                "pivot len1": "0.269873917"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10121",
+                "shape id1": "10117",
+                "jointpos": "-1.023771 0.987840 -0.001492",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.999997 0.002477",
+                "pivot len0": "0.524900854",
+                "pivot dir1": "0.000000 -0.999997 -0.002477",
+                "pivot len1": "0.524900913"
+            }
+        }
+    }
+}

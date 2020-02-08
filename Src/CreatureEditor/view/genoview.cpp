@@ -11,6 +11,8 @@ using namespace framework;
 cGenoView::cGenoView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
+	, m_showName(false)
+	, m_showJoint(true)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
 	, m_isOrbitMove(false)
@@ -111,7 +113,7 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 			spawnPos.y = 0.f;
 
 			renderer.m_dbgCube.SetColor(cColor::GREEN);
-			renderer.m_dbgCube.SetCube(Transform(spawnPos, Vector3::Ones*0.2f));
+			renderer.m_dbgCube.SetCube(Transform(spawnPos, Vector3::Ones*0.1f));
 			renderer.m_dbgCube.Render(renderer);
 		}
 
@@ -144,13 +146,16 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 	for (auto &p : g_geno->m_gnodes)
 	{
 		p->SetTechnique(techiniqName.c_str());
-		p->Render(renderer);
+		p->Render(renderer, parentTm, m_showName ? eRenderFlag::TEXT : 0);
 	}
 
-	for (auto &p : g_geno->m_glinks)
+	if (m_showJoint)
 	{
-		p->SetTechnique(techiniqName.c_str());
-		p->Render(renderer);
+		for (auto &p : g_geno->m_glinks)
+		{
+			p->SetTechnique(techiniqName.c_str());
+			p->Render(renderer, parentTm, m_showName ? eRenderFlag::TEXT : 0);
+		}
 	}
 
 	if (!isBuildShadowMap)
@@ -160,14 +165,12 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 	}
 
 	// joint edit mode?
-	// hight revolute axis when mouse hovering
-	if ((g_geno->GetEditMode() == eGenoEditMode::Revolute)
-		|| (g_geno->GetEditMode() == eGenoEditMode::JointEdit))
+	// hight revolute axis when mouse hover
+	if (g_geno->GetEditMode() == eGenoEditMode::JointEdit)
 	{
 		const Ray ray = GetMainCamera().GetRay((int)m_mousePos.x, (int)m_mousePos.y);
 		g_geno->m_uiLink.m_highlightRevoluteAxis = g_geno->m_uiLink.Picking(ray, eNodeType::MODEL);
 	}
-
 }
 
 
@@ -234,9 +237,11 @@ void cGenoView::OnRender(const float deltaSeconds)
 	ImGui::SetNextWindowSize(ImVec2(min(m_viewRect.Width(), 350.f), m_viewRect.Height()));
 	if (ImGui::Begin("Map Information", &isOpen, flags))
 	{
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::Checkbox("grid", &m_showGrid);
-		//ImGui::Checkbox("name", )
+		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		//ImGui::Checkbox("grid", &m_showGrid);
+		ImGui::Checkbox("name", &m_showName);
+		ImGui::SameLine();
+		ImGui::Checkbox("joint", &m_showJoint);
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -275,7 +280,7 @@ void cGenoView::RenderPopupMenu()
 			return;
 		}
 
-		if (ImGui::MenuItem("Save GenoType", "S"))
+		if (ImGui::MenuItem("Save GenoType"))
 		{
 			m_showSaveDialog = true;
 			m_popupMenuState = 0;
@@ -1026,10 +1031,10 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 			//m_camera.SetCamera(Vector3(30, 20, -30), Vector3(0, 0, 0), Vector3(0, 1, 0));
 			break;
 
-		case sf::Keyboard::R: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
-		case sf::Keyboard::T: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
-		case sf::Keyboard::S: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
-		case sf::Keyboard::H: if (!m_showSaveDialog) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
+		case sf::Keyboard::R: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;
+		case sf::Keyboard::T: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::TRANSLATE; break;
+		case sf::Keyboard::S: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
+		case sf::Keyboard::H: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
 		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
@@ -1116,20 +1121,22 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 
 		case sf::Keyboard::W:
 		{
-			if (m_popupMenuState == 2)
+			if ((m_popupMenuState == 2) && !g_geno->m_selects.empty())
 			{
-				evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
-
-				// phenotype view load
+				if (evc::cGNode *gnode = g_geno->FindGNode(g_geno->m_selects[0]))
 				{
-					const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
-					const Vector2 size(camera.m_width, camera.m_height);
-					const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-					const Plane ground(Vector3(0, 1, 0), 0);
-					const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-					g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
-				}
+					evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
 
+					// phenotype view load
+					{
+						const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+						const Vector2 size(camera.m_width, camera.m_height);
+						const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+						const Plane ground(Vector3(0, 1, 0), 0);
+						const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+						g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
+					}
+				}
 				m_popupMenuState = 3;
 			}
 		}

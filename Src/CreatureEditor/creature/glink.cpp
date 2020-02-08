@@ -246,7 +246,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	// render pivot - link pos
 	if (1)
 	{
-		renderer.m_dbgLine.SetColor(cColor::GREEN);
+		renderer.m_dbgLine.SetColor(cColor(0.f, 1.f, 0.f, 0.5f));
 		renderer.m_dbgLine.m_isSolid = true;
 		renderer.m_dbgLine.SetLine(pivotPos0, linkPos, 0.01f);
 		renderer.m_dbgLine.Render(renderer);
@@ -262,10 +262,10 @@ bool cGLink::Render(graphic::cRenderer &renderer
 
 		Vector3 p0, p1;
 		GetRevoluteAxis(p0, p1);
-		renderer.m_dbgLine.SetColor(m_highlightRevoluteAxis ? cColor::YELLOW : cColor::BLUE);
-		//renderer.m_dbgLine.SetColor(cColor::BLUE);
+		renderer.m_dbgLine.SetColor(m_highlightRevoluteAxis ?
+			cColor(0.f, 0.f, 1.f, 0.9f) : cColor(0.f, 0.f, 1.f, 0.7f));
 		renderer.m_dbgLine.m_isSolid = true;
-		renderer.m_dbgLine.SetLine(p0, p1, 0.02f);
+		renderer.m_dbgLine.SetLine(p0, p1, m_highlightRevoluteAxis? 0.03f : 0.01f);
 		renderer.m_dbgLine.Render(renderer);
 	}
 
@@ -304,7 +304,7 @@ graphic::cNode* cGLink::Picking(const Ray &ray, const graphic::eNodeType::Enum t
 	const Vector3 linkPos = (p0 + p1) / 2.f;
 
 	cBoundingBox bbox;
-	bbox.SetLineBoundingBox(p0, p1, 0.02f);
+	bbox.SetLineBoundingBox(p0, p1, 0.05f);
 	if (bbox.Pick(ray))
 	{
 		if (dist)
@@ -468,8 +468,8 @@ bool cGLink::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 
 	if (p2.Distance(p3) < 2.f)
 	{
-		out0 = dir + jointPos;
-		out1 = -dir + jointPos;
+		out0 = dir * 0.5f + jointPos;
+		out1 = -dir * 0.5f + jointPos;
 	}
 	else
 	{

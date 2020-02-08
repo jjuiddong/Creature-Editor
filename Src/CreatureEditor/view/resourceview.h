@@ -17,8 +17,12 @@ public:
 
 
 protected:
+	void RenderPopupMenu();
+	void LoadPhenotypeView(const StrPath &fileName);
+	void LoadGenotypeView(const StrPath &fileName);
 
 
 public:
-	list<string> m_fileList;
+	vector<string> m_fileList;
+	int m_selectFileIdx;
 };

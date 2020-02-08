@@ -511,8 +511,8 @@ void c3DView::OnRender(const float deltaSeconds)
 	if (ImGui::Begin("Map Information", &isOpen, flags))
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::Checkbox("grid", &m_showGrid);
-		ImGui::SameLine();
+		//ImGui::Checkbox("grid", &m_showGrid);
+		//ImGui::SameLine();
 		ImGui::Checkbox("reflection", &m_showReflection);
 		ImGui::SameLine();
 		ImGui::Checkbox("shadow", &m_showShadow);

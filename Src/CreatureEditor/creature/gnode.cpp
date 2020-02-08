@@ -68,6 +68,7 @@ bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 	cube->Create(renderer);
 	cube->SetCube(Transform());
 	cube->SetRenderFlag(eRenderFlag::OUTLINE, true);
+	cube->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(cube);
 
 	m_shape = phys::eShapeType::Box;
@@ -84,6 +85,7 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 	graphic::cSphere *sphere = new graphic::cSphere();
 	sphere->Create(renderer, 1.f, 10, 10);
 	sphere->SetRenderFlag(eRenderFlag::OUTLINE, true);
+	sphere->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(sphere);
 
 	m_shape = phys::eShapeType::Sphere;
@@ -102,6 +104,7 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 	graphic::cCapsule *capsule = new graphic::cCapsule();
 	capsule->Create(renderer, radius, halfHeight, 16, 8);
 	capsule->SetRenderFlag(eRenderFlag::OUTLINE, true);
+	capsule->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(capsule);
 
 	m_shape = phys::eShapeType::Capsule;
@@ -119,6 +122,7 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 	graphic::cCylinder *cylinder = new graphic::cCylinder();
 	cylinder->Create(renderer, 1.f, 2.f, 8);
 	cylinder->SetRenderFlag(eRenderFlag::OUTLINE, true);
+	cylinder->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(cylinder);
 
 	m_shape = phys::eShapeType::Cylinder;
@@ -138,15 +142,19 @@ bool cGNode::Render(graphic::cRenderer &renderer
 {
 	__super::Render(renderer, parentTm, flags);
 
-	if (!(flags & graphic::eRenderFlag::OUTLINE))
+	if (flags & graphic::eRenderFlag::TEXT)
 	{
 		Transform tfm;
-		tfm.pos = m_transform.pos + Vector3(0, 0.2f,0);
+		tfm.pos = m_transform.pos + Vector3(0, 0.2f, 0);
 		tfm.scale = Vector3::Ones * 0.15f;
 		renderer.m_textMgr.AddTextRender(renderer
 			, m_id, m_wname.c_str(), cColor::WHITE, cColor::BLACK
-			, BILLBOARD_TYPE::ALL_AXIS, tfm, true);
+			, BILLBOARD_TYPE::DYN_SCALE, tfm, true, 16, 1
+			, 0.5f, 200.f, 7.f);
+	}
 
+	if (!(flags & graphic::eRenderFlag::OUTLINE))
+	{
 		// y-axis line
 		renderer.m_dbgLine.m_isSolid = true;
 		renderer.m_dbgLine.SetColor(cColor::BLACK);

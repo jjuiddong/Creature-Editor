@@ -9,6 +9,7 @@ using namespace graphic;
 
 cResourceView::cResourceView(const StrId &name)
 	: framework::cDockWindow(name)
+	, m_selectFileIdx(-1)
 {
 	//UpdateResourceFiles();
 }
@@ -39,8 +40,8 @@ void cResourceView::OnRender(const float deltaSeconds)
 		UpdateResourceFiles();
 	ImGui::PopStyleColor(3);
 
-	static int selectIdx = -1;
 	int i = 0;
+	bool isOpenPopup = false;
 
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
 	if (ImGui::TreeNode((void*)0, "Creature Files"))
@@ -52,40 +53,27 @@ void cResourceView::OnRender(const float deltaSeconds)
 				| ImGuiTreeNodeFlags_OpenOnDoubleClick
 				| ImGuiTreeNodeFlags_Leaf 
 				| ImGuiTreeNodeFlags_NoTreePushOnOpen
-				| ((i == selectIdx) ? ImGuiTreeNodeFlags_Selected : 0);
+				| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
 
 			if (filter.PassFilter(str.c_str()))
 			{
 				ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
 
+				if (ImGui::IsItemClicked(1))
+				{
+					m_selectFileIdx = i;
+					isOpenPopup = true;
+				}
+
 				if (ImGui::IsItemClicked())
 				{
-					selectIdx = i;
+					m_selectFileIdx = i;
 					if (ImGui::IsMouseDoubleClicked(0))
 					{
 						// create creature
 						const StrPath fileName = StrPath("./media/creature/") + str;
-
-						// phenotype view load
-						{
-							const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
-							const Vector2 size(camera.m_width, camera.m_height);
-							const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-							const Plane ground(Vector3(0, 1, 0), 0);
-							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-							g_pheno->ReadCreatureFile(fileName, targetPos);
-						}
-
-						// genotype view load
-						if (1)
-						{
-							const graphic::cCamera3D &camera = g_global->m_genoView->m_camera;
-							const Vector2 size(camera.m_width, camera.m_height);
-							const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-							const Plane ground(Vector3(0, 1, 0), 0);
-							const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-							g_geno->ReadCreatureFile(fileName, targetPos);					
-						}
+						LoadPhenotypeView(fileName);
+						LoadGenotypeView(fileName);
 
 					}//~IsDoubleClicked
 				}//~IsItemClicked
@@ -95,6 +83,66 @@ void cResourceView::OnRender(const float deltaSeconds)
 		}
 		ImGui::TreePop();
 	}
+
+	if (isOpenPopup)
+		ImGui::OpenPopup("PopupMenu");
+
+	RenderPopupMenu();
+}
+
+
+void cResourceView::RenderPopupMenu()
+{
+	if (m_selectFileIdx < 0)
+		return;
+
+	if (ImGui::BeginPopup("PopupMenu"))
+	{
+		if (ImGui::MenuItem("Spawn PhenoType View"))
+		{
+			if (m_fileList.size() > (uint)m_selectFileIdx)
+			{
+				const StrPath fileName = StrPath("./media/creature/") 
+					+ m_fileList[m_selectFileIdx];
+				LoadPhenotypeView(fileName);
+			}
+		}
+		if (ImGui::MenuItem("Spawn GenoType View"))
+		{
+			if (m_fileList.size() > (uint)m_selectFileIdx)
+			{
+				const StrPath fileName = StrPath("./media/creature/")
+					+ m_fileList[m_selectFileIdx];
+				LoadGenotypeView(fileName);
+			}
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+// phenotype view load
+void cResourceView::LoadPhenotypeView(const StrPath &fileName)
+{
+	const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+	const Vector2 size(camera.m_width, camera.m_height);
+	const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+	const Plane ground(Vector3(0, 1, 0), 0);
+	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+	g_pheno->ReadCreatureFile(fileName, targetPos);
+}
+
+
+// genotype view load
+void cResourceView::LoadGenotypeView(const StrPath &fileName)
+{
+	const graphic::cCamera3D &camera = g_global->m_genoView->m_camera;
+	const Vector2 size(camera.m_width, camera.m_height);
+	const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+	const Plane ground(Vector3(0, 1, 0), 0);
+	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+	g_geno->ReadCreatureFile(fileName, targetPos);
 }
 
 
@@ -102,9 +150,13 @@ void cResourceView::UpdateResourceFiles()
 {
 	m_fileList.clear();
 
+	list<string> fileList;
 	list<string> exts;
 	exts.push_back(".pnt");
 	exts.push_back(".gnt");
 	const StrPath dir = StrPath("./media/creature/").GetFullFileName();
-	common::CollectFiles2(exts, dir.c_str(), dir.c_str(), m_fileList);
+	common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
+
+	m_fileList.reserve(fileList.size());
+	std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_fileList));
 }
