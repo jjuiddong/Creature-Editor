@@ -35,6 +35,13 @@ namespace evc
 		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation);
 		bool GenerationGenoType(const uint generation);
 		void GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen);
+		void MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *iter
+			, sGenotypeNode *addIter, sGenotypeNode *finalNode);
+		void MoveNode(sGenotypeNode *linkNode, const Matrix44 &localTm
+			, INOUT set<sGenotypeNode*> &visit);
+		void MoveFinalNode(sGenotypeNode *curLinkNode, sGenotypeNode *movLinkNode
+			, sGenotypeNode *finalNode);
+		void MoveAllFinalNode();
 
 
 	public:

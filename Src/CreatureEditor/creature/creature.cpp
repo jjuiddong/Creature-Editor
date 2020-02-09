@@ -168,7 +168,12 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 bool cCreature::GenerationGenoType(const uint generation)
 {
 	if (generation <= 0)
+	{
+		// complete generation?
+		// move final node to last generation node
+		MoveAllFinalNode();
 		return true; // complete
+	}
 
 	// 1. find iteration node
 	// 2. add new genotype node where iteration node
@@ -200,7 +205,7 @@ bool cCreature::GenerationGenoType(const uint generation)
 			, gnode->transform.scale.z / parent->transform.scale.z);
 		const Vector3 newScale = gnode->transform.scale * scale;
 
-		if (newScale.Length() < 0.3f)
+		if (newScale.Length() < 0.1f)
 			continue; // ignore too small dimension object
 		
 		sGenotypeNode *newIter = new sGenotypeNode;
@@ -218,17 +223,15 @@ bool cCreature::GenerationGenoType(const uint generation)
 		addNodes.insert(gnode);
 
 		// if iteration node has link another node or final node?
-		// copy to new iteration node
+		// move to new iteration node
 		for (auto &glink : m_glinks)
 		{
 			if (glink->gnode0 == parent)
 				continue; // ignore parent iteration node
 			if (glink->gnode1 == gnode)
 			{
-				// find another link node
-
-
-
+				// if find another link node, move to newIter position
+				MoveFinalNodeWithCalcTm(parent, gnode, newIter, glink->gnode0);
 			}
 		}
 
@@ -255,6 +258,7 @@ bool cCreature::GenerationGenoType(const uint generation)
 		m_glinks.push_back(newLink);
 	}
 
+	// create link added nodes
 	for (sGenotypeNode *gnode : addNodes)
 	{
 		auto it = m_gmap.find(gnode->iteration);
@@ -314,6 +318,157 @@ void cCreature::GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen)
 
 		// generate next link node
 		GenerationGenotypeLink(glink->gnode1, newNode);
+	}
+}
+
+
+// move final node to new iteration node
+// parent: parent of iteration node
+// iter: iteration node
+// addIter: added iteration node
+// finalNode: move node. move to addIter position
+void cCreature::MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *iter
+	, sGenotypeNode *addIter, sGenotypeNode *finalNode)
+{
+	const Matrix44 tm0 = iter->transform.GetMatrix();
+	const Matrix44 tm1 = addIter->transform.GetMatrix();
+	const Matrix44 localTm = tm1 * tm0.Inverse();
+	const Matrix44 tm = localTm * tm1;
+
+	const Vector3 scale(addIter->transform.scale.x / iter->transform.scale.x
+		, addIter->transform.scale.y / iter->transform.scale.y
+		, addIter->transform.scale.z / iter->transform.scale.z);
+	const Vector3 newScale = addIter->transform.scale * scale;
+
+	if (newScale.Length() < 0.3f)
+		return; // ignore too small dimension object
+
+	// create new link to addIter
+	for (auto &glink : m_glinks)
+	{
+		if ((glink->gnode0 == finalNode)
+			&& (glink->gnode1 == iter))
+		{
+			glink->gnode1 = addIter;
+			break;
+		}
+	}
+
+	// move linked node
+	set<sGenotypeNode*> visit;
+	visit.insert(parent); // ignore node
+	visit.insert(iter); // ignore node
+	visit.insert(addIter); // ignore node
+	const Matrix44 movTm = tm1.Inverse() * tm;
+	MoveNode(addIter, movTm, visit);
+}
+
+
+// move node
+// linkNode: all link has linkNode, move tm
+// localTm: move local transform
+void cCreature::MoveNode(sGenotypeNode *linkNode, const Matrix44 &tm
+	, INOUT set<sGenotypeNode*> &visit)
+{
+	for (auto &glink : m_glinks)
+	{
+		if ((glink->gnode0 == linkNode)
+			|| (glink->gnode1 == linkNode))
+		{
+			sGenotypeNode *gnode = (glink->gnode0 == linkNode)? glink->gnode1 : glink->gnode0;
+
+			if (visit.end() != visit.find(gnode))
+				continue;
+			visit.insert(gnode);
+
+			const Matrix44 m = gnode->transform.GetMatrix() * tm;
+
+			// move node
+			gnode->transform.pos = m.GetPosition();
+			gnode->transform.rot = m.GetQuaternion();
+			glink->origPos *= tm;
+			if (glink->gnode0 == linkNode)
+			{
+				glink->nodeLocal0 = linkNode->transform;
+				glink->nodeLocal1 = gnode->transform;
+			}
+			else
+			{
+				glink->nodeLocal0 = gnode->transform;
+				glink->nodeLocal1 = linkNode->transform;
+			}
+
+			// move next
+			MoveNode(gnode, tm, visit);
+		}
+	}
+}
+
+
+// move final node, curLinkNode to movLinkNode
+// because curLinkNode was hide current state
+void cCreature::MoveFinalNode(sGenotypeNode *curLinkNode, sGenotypeNode *movLinkNode
+	, sGenotypeNode *finalNode)
+{
+	for (auto &glink : m_glinks)
+	{
+		if ((glink->gnode0 == finalNode)
+			&& (glink->gnode1 == curLinkNode))
+		{
+			const Matrix44 tm0 = curLinkNode->transform.GetMatrix();
+			const Matrix44 tm1 = finalNode->transform.GetMatrix();
+			const Matrix44 localTm = tm1 * tm0.Inverse();
+			const Matrix44 tm = localTm * movLinkNode->transform.GetMatrix();
+
+			// move final node
+			finalNode->transform.pos = tm.GetPosition();
+			finalNode->transform.rot = tm.GetQuaternion();
+
+			// move linked node
+			set<sGenotypeNode*> visit;
+			visit.insert(curLinkNode); // ignore node
+			visit.insert(finalNode); // ignore node
+			const Matrix44 movTm = tm1.Inverse() * tm;
+			MoveNode(finalNode, movTm, visit);
+
+			// create new link to addIter
+			glink->gnode1 = movLinkNode;
+			glink->nodeLocal0 = finalNode->transform;
+			glink->nodeLocal1 = movLinkNode->transform;
+
+			break;
+		}
+	}
+}
+
+
+// move all final node to last visible generation node
+void cCreature::MoveAllFinalNode()
+{
+	for (auto &gnode : m_gnodes)
+	{
+		// add iteration node and no generation node
+		if ((gnode->iteration >= 0)
+			&& !gnode->generation)
+		{
+			sGenotypeNode *parent = m_gmap[gnode->iteration];
+			if (!parent)
+				continue; // error occurred
+
+			sGenotypeNode *curLinkNode = gnode;
+			sGenotypeNode *movLinkNode = parent;
+
+			// find link node and move to movLinkNode
+			for (auto &glink : m_glinks)
+			{
+				if ((glink->gnode1 == curLinkNode) 
+					&& (glink->gnode0 != parent))
+				{
+					sGenotypeNode *finalNode = glink->gnode0;
+					MoveFinalNode(curLinkNode, movLinkNode, finalNode);
+				}
+			}
+		}
 	}
 }
 

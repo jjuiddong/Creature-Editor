@@ -340,6 +340,9 @@ void cGenoEditorView::RenderLinkInfo()
 				&& (g_geno->GetEditMode() != eGenoEditMode::Revolute)
 				&& (g_geno->GetEditMode() != eGenoEditMode::JointEdit))
 			{
+				if ((gnode0->m_cloneId >= 0) && (gnode1->m_cloneId >= 0))
+					return; // no connection iteration node each other
+
 				// check iteration node
 				// iteration node always child role
 				if (gnode0->m_cloneId >= 0)
