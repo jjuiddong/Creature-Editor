@@ -28,11 +28,12 @@ public:
 
 	void SetPivotPos(const int actorIndex, const Vector3 &pos);
 	Transform GetPivotWorldTransform(const int actorIndex);
-	void SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
-	void SetRevoluteAxisPos(const Vector3 &pos);
+	void SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
+	void SetPivotPosByRevolutePos(const Vector3 &pos);
 	bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 		, const Vector3 &axisPos=Vector3::Zeroes);
 	bool ApplyPivot(phys::cPhysicsEngine &physics);
+	void UpdateLimit();
 	void Clear();
 
 
@@ -45,4 +46,16 @@ public:
 	phys::sSyncInfo *m_sync0; // reference
 	phys::sSyncInfo *m_sync1; // reference
 	bool m_highlightRevoluteJoint;
+
+	// cone limit
+	union sLimit {
+		struct {
+			bool isLimit;
+			float r;
+			float ry;
+			float rz;
+			float h;
+		} cone;
+	};
+	sLimit m_limit;
 };

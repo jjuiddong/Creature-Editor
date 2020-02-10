@@ -55,6 +55,7 @@ public:
 
 	bool m_showGrid;
 	bool m_showName;
+	bool m_showId;
 	bool m_showJoint;
 
 	bool m_showSaveDialog;

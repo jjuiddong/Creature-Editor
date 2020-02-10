@@ -47,8 +47,9 @@ namespace evc
 		void SetPivotPos(const int nodeIndex, const Vector3 &pos);
 		Transform GetPivotWorldTransform(const int nodeIndex);
 		Vector3 GetPivotPos(const int nodeIndex);
-		void SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
-		void SetRevoluteAxisPos(const Vector3 &pos);
+		void SetRevoluteAxis(const Vector3 &revoluteAxis);
+		void SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos);
+		void SetPivotPosByRevolutePos(const Vector3 &pos);
 		bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 			, const Vector3 &axisPos = Vector3::Zeroes);
 

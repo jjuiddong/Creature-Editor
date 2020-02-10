@@ -40,6 +40,8 @@ bool cJointRenderer::Create(phys::cPhysicsSync &sync, phys::cJoint *joint)
 
 	m_transform.pos = (GetPivotPos(0) + GetPivotPos(1)) / 2.f;
 
+	UpdateLimit();
+
 	return true;
 }
 
@@ -105,7 +107,27 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	}
 
 	// render joint position
-	Vector3 jointPos = (pivotPos0 + pivotPos1) / 2.f;
+	Vector3 jointPos;
+	Vector3 jointAxis0;
+	Vector3 jointAxis1;
+	
+	if (phys::eJointType::Spherical == m_type)
+	{
+		// spherical joint pos, direction
+		const Vector3 dir0 = m_joint->m_origPos - m_joint->m_actorLocal0.pos;
+		Transform tfm0(m_sync0->node->m_transform.pos, m_sync0->node->m_transform.rot);
+		jointPos = dir0 * tfm0;
+
+		jointAxis0 = (m_joint->m_origPos - m_joint->m_actorLocal0.pos).Normal()
+			* m_sync0->node->m_transform.rot;
+		jointAxis1 = (m_joint->m_origPos - m_joint->m_actorLocal1.pos).Normal()
+			* m_sync1->node->m_transform.rot;
+	}
+	else
+	{
+		jointPos = (pivotPos0 + pivotPos1) / 2.f;
+	}
+
 	Transform tfm;
 	tfm.pos = jointPos;
 	tfm.scale = Vector3::Ones * 0.025f;
@@ -154,6 +176,24 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 		renderer.m_dbgLine.SetLine(node1->m_transform.pos, p3, 0.02f);
 		renderer.m_dbgLine.Render(renderer);
+	}
+
+	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
+	{
+		// render cone limit
+		renderer.m_cone.SetDimension(m_limit.cone.r, m_limit.cone.h);
+		renderer.m_cone.SetRadiusXZ(m_limit.cone.ry, m_limit.cone.rz);
+
+		Quaternion q;
+		q.SetRotationArc(Vector3(0, -1, 0), jointAxis1);
+		renderer.m_cone.m_transform.pos = jointPos + jointAxis1 * m_limit.cone.h;
+		renderer.m_cone.m_transform.rot = q;
+		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
+
+		q.SetRotationArc(Vector3(0, -1, 0), jointAxis0);
+		renderer.m_cone.m_transform.pos = jointPos + jointAxis0 * m_limit.cone.h;
+		renderer.m_cone.m_transform.rot = q;
+		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 	}
 
 	// recovery
@@ -205,7 +245,7 @@ Transform cJointRenderer::GetPivotWorldTransform(const int actorIndex)
 
 // revoluteAxis : revolute axis direction
 // aixsPos : revolute axis position
-void cJointRenderer::SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos)
+void cJointRenderer::SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos)
 {
 	const Vector3 r0 = revoluteAxis * 2.f + axisPos;
 	const Vector3 r1 = revoluteAxis * -2.f + axisPos;
@@ -232,7 +272,7 @@ void cJointRenderer::SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 
 
 // pos : revolute axis world pos
 // revolute axis pos store relative center pos
-void cJointRenderer::SetRevoluteAxisPos(const Vector3 &pos)
+void cJointRenderer::SetPivotPosByRevolutePos(const Vector3 &pos)
 {
 	Vector3 r0, r1;
 	if (!GetRevoluteAxis(r0, r1, pos))
@@ -382,6 +422,37 @@ bool cJointRenderer::ApplyPivot(phys::cPhysicsEngine &physics)
 		, node0->m_transform, tfm0.pos
 		, node1->m_transform, tfm1.pos
 		, m_joint->m_revoluteAxis);
+}
+
+
+// update joint limit renderer
+void cJointRenderer::UpdateLimit()
+{
+	ZeroMemory(&m_limit, sizeof(m_limit));
+
+	switch (m_joint->m_type)
+	{
+	case eJointType::Fixed:
+		break;
+
+	case eJointType::Spherical:
+	{
+		physx::PxJointLimitCone limit = m_joint->GetConeLimit();
+
+		const float r = 0.2f;
+		const float ry = (float)sin(limit.yAngle) * r;
+		const float hy = (float)cos(limit.yAngle) * r;
+		const float rz = (float)sin(limit.zAngle) * r;
+		const float hz = (float)cos(limit.zAngle) * r;
+		const float h = max(max(hy, hz), 0.05f);
+		m_limit.cone.isLimit = m_joint->IsConeLimit();
+		m_limit.cone.ry = ry;
+		m_limit.cone.rz = rz;
+		m_limit.cone.h = h;
+		m_limit.cone.r = r;
+	}
+	break;
+	}
 }
 
 

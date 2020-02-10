@@ -12,6 +12,7 @@ cGenoView::cGenoView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
 	, m_showName(true)
+	, m_showId(false)
 	, m_showJoint(true)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
@@ -113,7 +114,7 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 			spawnPos.y = 0.f;
 
 			renderer.m_dbgCube.SetColor(cColor::GREEN);
-			renderer.m_dbgCube.SetCube(Transform(spawnPos, Vector3::Ones*0.1f));
+			renderer.m_dbgCube.SetCube(Transform(spawnPos, Vector3::Ones*0.2f));
 			renderer.m_dbgCube.Render(renderer);
 		}
 
@@ -146,7 +147,7 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 	for (auto &p : g_geno->m_gnodes)
 	{
 		p->SetTechnique(techiniqName.c_str());
-		p->Render(renderer, parentTm, m_showName ? eRenderFlag::TEXT : 0);
+		p->Render(renderer, parentTm, (m_showName||m_showId) ? eRenderFlag::TEXT : 0);
 	}
 
 	if (m_showJoint)
@@ -154,7 +155,7 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 		for (auto &p : g_geno->m_glinks)
 		{
 			p->SetTechnique(techiniqName.c_str());
-			p->Render(renderer, parentTm, m_showName ? eRenderFlag::TEXT : 0);
+			p->Render(renderer, parentTm, (m_showName || m_showId) ? eRenderFlag::TEXT : 0);
 		}
 	}
 
@@ -237,11 +238,35 @@ void cGenoView::OnRender(const float deltaSeconds)
 	ImGui::SetNextWindowSize(ImVec2(min(m_viewRect.Width(), 350.f), m_viewRect.Height()));
 	if (ImGui::Begin("Genotype Information", &isOpen, flags))
 	{
-		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		//ImGui::Checkbox("grid", &m_showGrid);
-		ImGui::Checkbox("name", &m_showName);
+		// genotype node change visible name
+		auto ChangeName = [&] {
+			for (auto &gnode : g_geno->m_gnodes)
+			{
+				if (m_showName)
+					gnode->m_wname = gnode->m_name.wstr();
+				if (m_showId)
+					gnode->m_wname.Format(L"%d", gnode->m_id);
+			}
+		};
+
+		if (ImGui::Checkbox("name", &m_showName))
+		{
+			if (m_showName)
+				m_showId = !m_showName;
+			ChangeName();
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Checkbox("id", &m_showId))
+		{
+			if (m_showId)
+				m_showName = !m_showId;
+			ChangeName();
+		}
+
 		ImGui::SameLine();
 		ImGui::Checkbox("joint", &m_showJoint);
+
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -619,7 +644,7 @@ void cGenoView::UpdateSelectModelTransform_Link()
 	switch (g_geno->m_gizmo.m_type)
 	{
 	case eGizmoEditType::TRANSLATE:
-		link->SetRevoluteAxisPos(link->m_transform.pos);
+		link->SetPivotPosByRevolutePos(link->m_transform.pos);
 		break;
 	case eGizmoEditType::SCALE:
 		break;

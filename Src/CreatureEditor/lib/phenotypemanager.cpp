@@ -443,18 +443,18 @@ bool cPhenoTypeManager::UpdateAllConnectionActorDimension(phys::cRigidActor *act
 		[&](phys::cRigidActor *a) {
 		UpdateActorDimension(a, isKinematic);
 
-		phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a);
-		if (!sync)
-			return true;
-
+		// ? why need this code?
+		//phys::sSyncInfo *sync = m_physSync->FindSyncInfo(a);
+		//if (!sync)
+		//	return true;
 		// update actor localFrame
-		for (auto &joint : a->m_joints)
-		{
-			if (joint->m_actor0 == a)
-				joint->m_actorLocal0 = sync->node->m_transform;
-			if (joint->m_actor1 == a)
-				joint->m_actorLocal1 = sync->node->m_transform;
-		}
+		//for (auto &joint : a->m_joints)
+		//{
+			//if (joint->m_actor0 == a)
+			//	joint->m_actorLocal0 = sync->node->m_transform;
+			//if (joint->m_actor1 == a)
+			//	joint->m_actorLocal1 = sync->node->m_transform;
+		//}
 		return true;
 	}
 	);

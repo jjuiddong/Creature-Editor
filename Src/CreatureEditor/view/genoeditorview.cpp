@@ -131,7 +131,8 @@ void cGenoEditorView::RenderSelectionInfo()
 			m_eulerAngle = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
 		}
 
-		ImGui::TextUnformatted("ID              ");
+		ImGui::Text("ID                %d", gnode->m_id);
+		ImGui::TextUnformatted("Name        ");
 		ImGui::SameLine();
 		if (ImGui::InputText("##id", gnode->m_name.m_str, gnode->m_name.SIZE))
 			gnode->m_wname = gnode->m_name.wstr();
@@ -247,7 +248,8 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 		if (ImGui::TreeNodeEx((void*)((int)glink + i), node_flags, "link-%d", i + 1))
 		{
 			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6" };
-			ImGui::Text("%s JointType", jointStr[(int)glink->m_type]);
+			ImGui::Text("%s Joint (Link to %d)", jointStr[(int)glink->m_type]
+				, ((glink->m_gnode0 == gnode)? glink->m_gnode1->m_id : glink->m_gnode0->m_id));
 
 			if (ImGui::Button("Pivot Setting"))
 			{
@@ -277,15 +279,15 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 				assert(0);
 				break;
 			}
-
-			ImGui::Spacing();
+			
 			ImGui::Spacing();
 
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0, 1));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0, 1));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0, 1));
 			StrId text;
-			text.Format("Remove Loint-%d", i + 1);
+			text.Format("Remove Link-%d", i + 1);
+			ImGui::SetCursorPosX(190);
 			if (ImGui::Button(text.c_str()))
 			{
 				rmLinks.insert(glink);
@@ -410,6 +412,9 @@ void cGenoEditorView::RenderFixedJoint()
 		g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
+	ImGui::Spacing();
+	ImGui::Spacing();
+
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
@@ -439,7 +444,7 @@ void cGenoEditorView::RenderSphericalJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	static evc::sConeLimit limit = { false, PxPi / 2.f, PxPi / 6.f };
+	static evc::sConeLimit limit = { false, PxPi / 2.f, PxPi / 2.f };
 	ImGui::Text("Limit Cone (Radian)");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Limit", &limit.isLimit);
@@ -459,6 +464,9 @@ void cGenoEditorView::RenderSphericalJoint()
 		g_geno->m_selLink = &g_geno->m_uiLink;
 		g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
+
+	ImGui::Spacing();
+	ImGui::Spacing();
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
@@ -561,28 +569,36 @@ void cGenoEditorView::RenderPrismaticJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	static Vector2 limit1(1.f, 2.f); // lower, upper
-	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
-	static Vector2 limit3(3.f, 0.0f); // length
-	static bool isLimit = false;
-	static bool isSpring = true;
+	static evc::sLinearLimit limit = 
+	{
+		false, // isLimit
+		true, // isSpring
+		0.f, // value
+		1.f, // lower
+		2.f, // upper
+		10.f, // stiffness
+		0.f, // damping (spring)
+		0.f, // contactDistance
+		0.f, // bounceThreshold
+	};
+	static float length = 3.f;
 
 	ImGui::Text("Linear Limit");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("Lower Limit", &limit1.x, 0.001f);
-	ImGui::DragFloat("Upper Limit", &limit1.y, 0.001f);
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::DragFloat("Lower Limit", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Limit", &limit.upper, 0.001f);
 	ImGui::Text("Spring");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Spring", &isSpring);
-	ImGui::DragFloat("Stiffness", &limit2.x, 0.001f);
-	ImGui::DragFloat("Damping", &limit2.y, 0.001f);
-	ImGui::DragFloat("Length (linear)", &limit3.x, 0.001f);
+	ImGui::Checkbox("##Spring", &limit.isSpring);
+	ImGui::DragFloat("Stiffness", &limit.stiffness, 0.001f);
+	ImGui::DragFloat("Damping", &limit.damping, 0.001f);
+	ImGui::DragFloat("Length (linear)", &length, 0.001f);
 
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Axis", &axisIdx, axisStr);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -608,34 +624,27 @@ void cGenoEditorView::RenderPrismaticJoint()
 		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos, axis[axisIdx]);
 		g_geno->AddGLink(link);
 
-		evc::sLinearLimit linear;
-		if (isSpring)
+		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
+		if (limit.isSpring)
 		{
-			PxJointLinearLimitPair limit(limit1.x, limit1.y
-				, physx::PxSpring(limit2.x, limit2.y));
-
-			linear.lower = limit.lower;
-			linear.upper = limit.upper;
-			linear.stiffness = limit.stiffness;
-			linear.damping = limit.damping;
-			linear.contactDistance = limit.contactDistance;
-			linear.bounceThreshold = limit.bounceThreshold;
+			temp = PxJointLinearLimitPair(limit.lower, limit.upper
+				, physx::PxSpring(limit.stiffness, limit.damping));
 		}
 		else
 		{
 			PxTolerancesScale scale;
-			scale.length = limit3.x;
-			PxJointLinearLimitPair limit(scale, limit1.x, limit1.y);
-
-			linear.lower = limit.lower;
-			linear.upper = limit.upper;
-			linear.stiffness = limit.stiffness;
-			linear.damping = limit.damping;
-			linear.contactDistance = limit.contactDistance;
-			linear.bounceThreshold = limit.bounceThreshold;
+			scale.length = length;
+			temp = PxJointLinearLimitPair(scale, limit.lower, limit.upper);
 		}
 
-		link->m_limit.linear = linear;
+		limit.lower = temp.lower;
+		limit.upper = temp.upper;
+		limit.stiffness = temp.stiffness;
+		limit.damping = temp.damping;
+		limit.contactDistance = temp.contactDistance;
+		limit.bounceThreshold = temp.bounceThreshold;
+		link->m_limit.linear = limit;
+
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -930,60 +939,56 @@ void cGenoEditorView::RenderD6Joint()
 
 void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 {
-	using namespace physx;
+	static evc::sAngularLimit limit = { false, -MATH_PI / 2.f, MATH_PI / 2.f };
+	static evc::sDriveInfo drive = { false, 1.f, false, 1.f, 1.f, 1.f };
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
 
-	//static bool isLimit = false;
-	//static PxJointAngularLimitPair limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
-	//static bool isDrive = false;
-	//static float driveVelocity = 0.f;
+	if (m_isChangeSelection)
+	{
+		limit = link->m_limit.angular;
+		drive = link->m_drive;
 
-	//if (m_isChangeSelection)
-	//{
-	//	isLimit = joint->IsAngularLimit();
-	//	limit = joint->GetAngularLimit();
-	//	isDrive = joint->IsDrive();
-	//	driveVelocity = joint->GetDriveVelocity();
-	//}
+		for (int i = 0; i < 3; ++i)
+			if (axis[i] == link->m_revoluteAxis)
+				axisIdx = i;
+	}
 
-	//ImGui::Text("Angular Limit (Radian)");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Limit", &isLimit);
-	//ImGui::Indent(30);
-	//ImGui::PushItemWidth(150);
-	//ImGui::DragFloat("Lower Angle", &limit.lower, 0.001f);
-	//ImGui::DragFloat("Upper Angle", &limit.upper, 0.001f);
-	//ImGui::PopItemWidth();
-	//ImGui::Unindent(30);
+	ImGui::Separator();
+	ImGui::Text("Angular Limit (Radian)");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Lower Angle", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Angle", &limit.upper, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
 
-	//ImGui::TextUnformatted("Drive");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Drive", &isDrive);
-	//ImGui::Indent(30);
-	//ImGui::PushItemWidth(150);
-	//ImGui::DragFloat("Velocity", &driveVelocity, 0.001f);
+	ImGui::TextUnformatted("Drive");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Drive", &drive.isDrive);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Velocity", &drive.velocity, 0.001f);
 
-	//const char *axisStr = "X\0Y\0Z\0\0";
-	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
-	//static int axisIdx = 0;
-	//ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
-	//ImGui::PopItemWidth();
-	//ImGui::Unindent(30);
+	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
+	ImGui::Spacing();
+	//ImGui::Separator();
+	ImGui::Spacing();
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		//joint->EnableAngularLimit(isLimit);
-		//if (isLimit)
-		//	joint->SetAngularLimit(limit);
-
-		//joint->EnableDrive(isDrive);
-		//if (isDrive)
-		//	joint->SetDriveVelocity(driveVelocity);
-
-		//joint->m_actor0->WakeUp();
-		//joint->m_actor1->WakeUp();
+		link->m_limit.angular = limit;
+		link->m_drive = drive;
+		link->SetRevoluteAxis(axis[axisIdx]);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -993,76 +998,88 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 {
 	using namespace physx;
 
-	//static Vector2 limit1(1.f, 2.f); // lower, upper
-	//static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
-	//static Vector2 limit3(3.f, 0.0f); // length
-	//static bool isLimit = false;
-	//static bool isSpring = true;
+	static evc::sLinearLimit limit =
+	{
+		false, // isLimit
+		true, // isSpring
+		0.f, // value
+		1.f, // lower
+		2.f, // upper
+		10.f, // stiffness
+		0.f, // damping (spring)
+		0.f, // contactDistance
+		0.f, // bounceThreshold
+	};
+	static float length = 3.f;
 
-	//if (m_isChangeSelection)
-	//{
-	//	isLimit = joint->IsLinearLimit();
-	//	PxJointLinearLimitPair limit(0, 0, PxSpring(0, 0));
-	//	limit = joint->GetLinearLimit();
-	//	limit1.x = isLimit ? limit.lower : 0.f;
-	//	limit1.y = isLimit ? limit.upper : 0.f;
-	//	limit2.x = limit.stiffness;
-	//	limit2.y = limit.damping;
-	//	//limit3.x = ?;
-	//	isSpring = limit.stiffness != 0.f;
-	//}
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
 
+	if (m_isChangeSelection)
+	{
+		limit = link->m_limit.linear;
+
+		for (int i = 0; i < 3; ++i)
+			if (axis[i] == link->m_revoluteAxis)
+				axisIdx = i;
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Linear Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Lower Limit", &limit.lower, 0.001f);
+	ImGui::DragFloat("Upper Limit", &limit.upper, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
+	ImGui::Text("Spring");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Spring", &limit.isSpring);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Stiffness", &limit.stiffness, 0.001f);
+	ImGui::DragFloat("Damping", &limit.damping, 0.001f);
+	ImGui::DragFloat("Length (linear)", &length, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
+	const bool editAxis = ImGui::Combo("Axis", &axisIdx, axisStr);
+
+	ImGui::Spacing();
 	//ImGui::Separator();
-	//ImGui::Text("Linear Limit");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Limit", &isLimit);
-	//ImGui::Indent(30);
-	//ImGui::PushItemWidth(150);
-	//ImGui::DragFloat("Lower Limit", &limit1.x, 0.001f);
-	//ImGui::DragFloat("Upper Limit", &limit1.y, 0.001f);
-	//ImGui::PopItemWidth();
-	//ImGui::Unindent(30);
-
-	//ImGui::Text("Spring");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Spring", &isSpring);
-	//ImGui::Indent(30);
-	//ImGui::PushItemWidth(150);
-	//ImGui::DragFloat("Stiffness", &limit2.x, 0.001f);
-	//ImGui::DragFloat("Damping", &limit2.y, 0.001f);
-	//ImGui::DragFloat("Length (linear)", &limit3.x, 0.001f);
-	//ImGui::PopItemWidth();
-	//ImGui::Unindent(30);
-
-	//const char *axisStr = "X\0Y\0Z\0\0";
-	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
-	//static int axisIdx = 0;
-	//const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
-
-	//ImGui::Spacing();
-	//ImGui::Spacing();
+	ImGui::Spacing();
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		//joint->EnableLinearLimit(isLimit);
+		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
+		if (limit.isSpring)
+		{
+			temp = PxJointLinearLimitPair(limit.lower, limit.upper
+				, physx::PxSpring(limit.stiffness, limit.damping));
+		}
+		else
+		{
+			PxTolerancesScale scale;
+			scale.length = length;
+			temp = PxJointLinearLimitPair(scale, limit.lower, limit.upper);
+		}
 
-		//if (isLimit)
-		//{
-		//	if (isSpring)
-		//	{
-		//		joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
-		//			, physx::PxSpring(limit2.x, limit2.y)));
-		//	}
-		//	else
-		//	{
-		//		PxTolerancesScale scale;
-		//		scale.length = limit3.x;
-		//		joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
-		//	}
-		//}
+		limit.lower = temp.lower;
+		limit.upper = temp.upper;
+		limit.stiffness = temp.stiffness;
+		limit.damping = temp.damping;
+		limit.contactDistance = temp.contactDistance;
+		limit.bounceThreshold = temp.bounceThreshold;
+		link->m_limit.linear = limit;
+
+		link->SetRevoluteAxis(axis[axisIdx]);
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -1070,29 +1087,34 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 
 void cGenoEditorView::RenderDistanceJointSetting(evc::cGLink *link)
 {
-	//static Vector2 limit(0.f, 2.f);
-	//static bool isLimit = false;
+	static evc::sDistanceLimit limit = { false, 0.f, 2.f };
 
-	//if (m_isChangeSelection)
-	//{
-	//	isLimit = joint->IsDistanceLimit();
-	//	limit = joint->GetDistanceLimit();
-	//}
+	if (m_isChangeSelection)
+	{
+		limit = link->m_limit.distance;
+	}
 
-	//ImGui::Text("Distance Limit");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Limit", &isLimit);
-	//ImGui::DragFloat("min distance", &limit.x, 0.001f);
-	//ImGui::DragFloat("max distance", &limit.y, 0.001f);
+	ImGui::Separator();
+	ImGui::Text("Distance Limit");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("min distance", &limit.minDistance, 0.001f);
+	ImGui::DragFloat("max distance", &limit.maxDistance, 0.001f);
+	ImGui::Unindent(30);
+	ImGui::PopItemWidth();
+
+	ImGui::Spacing();
+	//ImGui::Separator();
+	ImGui::Spacing();
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		//joint->EnableDistanceLimit(isLimit);
-		//if (isLimit)
-		//	joint->SetDistanceLimit(limit.x, limit.y);
+		link->m_limit.distance = limit;
 	}
 	ImGui::PopStyleColor(3);
 }
@@ -1328,44 +1350,25 @@ void cGenoEditorView::RenderD6JointSetting(evc::cGLink *link)
 
 void cGenoEditorView::RenderSphericalJointSetting(evc::cGLink *link)
 {
-	//using namespace physx;
+	using namespace physx;
 
-	//static bool isLimit = false;
-	//static PxJointLimitCone limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
+	ImGui::Text("Limit Cone (Radian)");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Limit", &link->m_limit.cone.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
+	ImGui::DragFloat("Y Limit Angle", &link->m_limit.cone.yAngle, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &link->m_limit.cone.zAngle, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
 
-	//if (m_isChangeSelection)
-	//{
-	//	isLimit = joint->IsConeLimit();
-	//	limit = joint->GetConeLimit();
-	//}
-
-	//ImGui::Text("Limit Cone (Radian)");
-	//ImGui::SameLine();
-	//ImGui::Checkbox("##Limit", &isLimit);
-	//ImGui::Indent(30);
-	//ImGui::PushItemWidth(150);
-	//ImGui::DragFloat("Y Angle", &limit.yAngle, 0.001f);
-	//ImGui::DragFloat("Z Angle", &limit.zAngle, 0.001f);
-	//ImGui::PopItemWidth();
-	//ImGui::Unindent(30);
-
-	////const char *axisStr = "X\0Y\0Z\0\0";
-	////const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
-	////static int axisIdx = 0;
-	////ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Apply Option"))
+	const char *axisStr = "X\0Y\0Z\0\0";
+	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	static int axisIdx = 0;
+	if (ImGui::Combo("Joint Axis", &axisIdx, axisStr))
 	{
-		//joint->SetConeLimit(limit);
-		//joint->EnableConeLimit(isLimit);
-
-		//joint->m_actor0->WakeUp();
-		//joint->m_actor1->WakeUp();
+		link->SetRevoluteAxis(axis[axisIdx]);
 	}
-	ImGui::PopStyleColor(3);
 }
 
 
@@ -1495,7 +1498,7 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 		g_geno->m_showUILink = true;
 
 		{
-			g_geno->m_uiLink.m_type = phys::eJointType::Revolute;
+			g_geno->m_uiLink.m_type = phys::eJointType::Fixed;
 			g_geno->m_uiLink.m_gnode0 = gnode0;
 			g_geno->m_uiLink.m_gnode1 = gnode1;
 			g_geno->m_uiLink.m_nodeLocal0 = gnode0->m_transform;
@@ -1533,7 +1536,7 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 
 			const Vector3 linkPos = (g_geno->m_uiLink.GetPivotWorldTransform(0).pos +
 				g_geno->m_uiLink.GetPivotWorldTransform(1).pos) / 2.f;
-			g_geno->m_uiLink.SetRevoluteAxis(revoluteAxis, linkPos);
+			g_geno->m_uiLink.SetPivotPosByRevoluteAxis(revoluteAxis, linkPos);
 		}
 	}
 }

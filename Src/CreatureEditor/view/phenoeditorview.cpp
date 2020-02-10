@@ -1163,10 +1163,10 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PushItemWidth(150);
 	ImGui::DragFloat("Velocity", &driveVelocity, 0.001f);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
-	static int axisIdx = 0;
-	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	//const char *axisStr = "X\0Y\0Z\0\0";
+	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	//static int axisIdx = 0;
+	//ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
@@ -1252,10 +1252,10 @@ void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
-	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
+	//const char *axisStr = "X\0Y\0Z\0\0";
+	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
+	//static int axisIdx = 0;
+	//const bool editAxis = ImGui::Combo("Prismatic Axis", &axisIdx, axisStr);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -1752,7 +1752,7 @@ void cPhenoEditorView::UpdateUIJoint(phys::sSyncInfo *sync0
 
 			const Vector3 jointPos = (g_pheno->m_uiJointRenderer.GetPivotWorldTransform(0).pos +
 				g_pheno->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
-			g_pheno->m_uiJointRenderer.SetRevoluteAxis(revoluteAxis, jointPos);
+			g_pheno->m_uiJointRenderer.SetPivotPosByRevoluteAxis(revoluteAxis, jointPos);
 		}
 	}
 }

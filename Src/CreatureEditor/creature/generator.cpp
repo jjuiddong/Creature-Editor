@@ -1328,6 +1328,7 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 	case phys::eJointType::Prismatic:
 	{
 		j.put<bool>("linear limit", glink->m_limit.linear.isLimit);
+		j.put<bool>("spring limit", glink->m_limit.linear.isSpring);
 		const sLinearLimit linearLimit = glink->m_limit.linear;
 		text.Format("%f %f %f", linearLimit.lower, linearLimit.upper
 			, linearLimit.stiffness);
@@ -1695,6 +1696,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					case phys::eJointType::Prismatic:
 					{
 						const bool isLinearLimit = vt0.second.get<bool>("linear limit");
+						const bool isSpringLimit = vt0.second.get<bool>("spring limit");
 						const string linearLimitStr1 = vt0.second.get<string>("linear limit config 1"
 							, "0 0 0");
 						const string linearLimitStr2 = vt0.second.get<string>("linear limit config 2"
@@ -1703,6 +1705,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 						const Vector3 tconf2 = ParseVector3(linearLimitStr2);
 
 						glink->limit.linear.isLimit = isLinearLimit;
+						glink->limit.linear.isSpring = isSpringLimit;
 						glink->limit.linear.lower = tconf1.x;
 						glink->limit.linear.upper = tconf1.y;
 						glink->limit.linear.stiffness = tconf1.z;

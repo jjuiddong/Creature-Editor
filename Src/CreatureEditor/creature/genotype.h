@@ -28,6 +28,7 @@ namespace evc
 	struct sLinearLimit
 	{
 		bool isLimit;
+		bool isSpring;
 		float value;
 		float lower;
 		float upper;

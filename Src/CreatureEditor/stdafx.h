@@ -7,13 +7,13 @@ using namespace common;
 #include "../../../Common/Physics/physics.h"
 
 
-#include "lib/jointrenderer.h"
 #include "creature/evc.h"
 #include "creature/genotype.h"
 #include "creature/generator.h"
 #include "creature/gnode.h"
 #include "creature/pnode.h"
 #include "creature/glink.h"
+#include "lib/jointrenderer.h"
 #include "lib/phenotypemanager.h"
 #include "lib/genotypemanager.h"
 #include "global.h"

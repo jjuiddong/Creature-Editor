@@ -11,13 +11,10 @@ cGLink::cGLink()
 	, m_revoluteAxis(Vector3(1, 0, 0))
 	, m_breakForce(2000.f)
 	//, m_breakForce(0.f)
-	//, m_isCycleDrive(false)
-	//, m_cyclePeriod(3.f)
-	//, m_maxDriveVelocity(0.f)
-	//, m_cycleDriveAccel(0.f)
 	, m_gnode0(nullptr)
 	, m_gnode1(nullptr)
 	, m_highlightRevoluteAxis(false)
+	, m_type(phys::eJointType::Fixed)
 {
 }
 
@@ -83,7 +80,7 @@ bool cGLink::CreateFixed(cGNode *gnode0 , const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = Vector3(1, 0, 0);
+	SetRevoluteAxis(Vector3(1, 0, 0));
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -108,7 +105,7 @@ bool cGLink::CreateSpherical(cGNode *gnode0, const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = Vector3(1, 0, 0);
+	SetRevoluteAxis(Vector3(1, 0, 0));
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -133,8 +130,7 @@ bool cGLink::CreateRevolute(cGNode *gnode0, const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = revoluteAxis;
-	m_rotRevolute.SetRotationArc(Vector3(1, 0, 0), revoluteAxis);
+	SetRevoluteAxis(revoluteAxis);
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -159,8 +155,7 @@ bool cGLink::CreatePrismatic(cGNode *gnode0, const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = revoluteAxis;
-	m_rotRevolute.SetRotationArc(Vector3(1, 0, 0), revoluteAxis);
+	SetRevoluteAxis(revoluteAxis);
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -185,7 +180,7 @@ bool cGLink::CreateDistance(cGNode *gnode0, const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = Vector3(1, 0, 0);
+	SetRevoluteAxis(Vector3(1, 0, 0));
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -210,7 +205,7 @@ bool cGLink::CreateD6(cGNode *gnode0, const Vector3 &pivot0
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
-	m_revoluteAxis = Vector3(1, 0, 0);
+	SetRevoluteAxis(Vector3(1, 0, 0));
 	m_origPos = linkPos;
 	m_nodeLocal0 = worldTfm0;
 	m_nodeLocal1 = worldTfm1;
@@ -283,6 +278,31 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 		renderer.m_dbgLine.SetLine(m_gnode1->m_transform.pos, p3, 0.02f);
 		renderer.m_dbgLine.Render(renderer);
+	}
+
+	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
+	{
+		// show cone limit
+		//const float h = 0.2f;
+		const float r = 0.2f;
+		const float ry = (float)sin(m_limit.cone.yAngle) * r;
+		const float hy = (float)cos(m_limit.cone.yAngle) * r;
+		const float rz = (float)sin(m_limit.cone.zAngle) * r;
+		const float hz = (float)cos(m_limit.cone.zAngle) * r;
+		const float h = max(max(hy, hz), 0.1f);
+		renderer.m_cone.SetDimension(r, h);
+		renderer.m_cone.SetRadiusXZ(ry, rz);
+
+		Quaternion q;
+		q.SetRotationArc(Vector3(0, -1, 0), m_revoluteAxis);
+		renderer.m_cone.m_transform.pos = m_origPos + m_revoluteAxis * h;
+		renderer.m_cone.m_transform.rot = q;
+		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
+
+		q.SetRotationArc(Vector3(0, -1, 0), -m_revoluteAxis);
+		renderer.m_cone.m_transform.pos = m_origPos + -m_revoluteAxis * h;
+		renderer.m_cone.m_transform.rot = q;
+		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 	}
 
 	__super::Render(renderer, parentTm, flags);
@@ -377,9 +397,17 @@ Vector3 cGLink::GetPivotPos(const int nodeIndex)
 }
 
 
+void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis)
+{
+	m_revoluteAxis = revoluteAxis;
+	m_rotRevolute.SetRotationArc(Vector3(1, 0, 0), revoluteAxis);
+}
+
+
+// update pivot position
 // revoluteAxis : revolute axis direction
 // aixsPos : revolute axis position
-void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos)
+void cGLink::SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos)
 {
 	const Vector3 r0 = revoluteAxis * 2.f + axisPos;
 	const Vector3 r1 = revoluteAxis * -2.f + axisPos;
@@ -406,7 +434,7 @@ void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos
 
 // pos : revolute axis world pos
 // revolute axis pos store relative center pos
-void cGLink::SetRevoluteAxisPos(const Vector3 &pos)
+void cGLink::SetPivotPosByRevolutePos(const Vector3 &pos)
 {
 	Vector3 r0, r1;
 	if (!GetRevoluteAxis(r0, r1, pos))

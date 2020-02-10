@@ -9,6 +9,7 @@ using namespace graphic;
 cGNode::cGNode()
 	: graphic::cNode(common::GenerateId(), "gnode")
 	, m_wname(L"gnode")
+	, m_wnameId(L"-1")
 	, m_cloneId(-1)
 	, m_density(1.f)
 {
@@ -55,6 +56,7 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 
 	m_name = gnode.name;
 	m_wname = gnode.name.wstr();
+	m_wnameId.Format(L"%d", m_id);
 	m_density = gnode.density;
 	m_color = gnode.color;
 	m_cloneId = gnode.iteration;
@@ -75,6 +77,7 @@ bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 	m_transform = tfm;
 	m_name = "Box";
 	m_wname = m_name.wstr();
+	m_wnameId.Format(L"%d", m_id);
 	return true;
 }
 
@@ -93,6 +96,7 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.scale = Vector3::Ones * radius;
 	m_name = "Sphere";
 	m_wname = m_name.wstr();
+	m_wnameId.Format(L"%d", m_id);
 	SetSphereRadius(radius);
 	return true;
 }
@@ -111,6 +115,7 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.pos = tfm.pos;
 	m_name = "Capsule";
 	m_wname = m_name.wstr();
+	m_wnameId.Format(L"%d", m_id);
 	SetCapsuleDimension(radius, halfHeight);
 	return true;
 }
@@ -130,6 +135,7 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 	m_transform.scale = Vector3(height/2.f, radius, radius);
 	m_name = "Cylinder";
 	m_wname = m_name.wstr();
+	m_wnameId.Format(L"%d", m_id);
 	SetCylinderDimension(radius, height);
 	return true;
 }
@@ -159,7 +165,7 @@ bool cGNode::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.m_isSolid = true;
 		renderer.m_dbgLine.SetColor(cColor::BLACK);
 		renderer.m_dbgLine.SetLine(m_transform.pos
-			, m_transform.pos + Vector3(0, -m_transform.pos.y, 0), 0.01f);
+			, m_transform.pos + Vector3(0, -m_transform.pos.y, 0), 0.005f);
 		renderer.m_dbgLine.Render(renderer);
 	}
 

@@ -51,6 +51,7 @@ namespace evc
 
 	public:
 		WStrId m_wname;
+		WStrId m_wnameId;
 		phys::eShapeType::Enum m_shape;
 		float m_density;
 		graphic::cColor m_color;

@@ -1,0 +1,53 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box",
+                "id": "10067",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10071",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "2.906939 3.000000 0.000000",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Spherical",
+                "shape id0": "10071",
+                "shape id1": "10067",
+                "jointpos": "1.453469 3.000000 0.000000",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "cone limit": "true",
+                "cone limit config": "1.570796 1.570796 0.010000"
+            }
+        }
+    }
+}

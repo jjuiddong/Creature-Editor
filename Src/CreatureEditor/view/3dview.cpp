@@ -475,11 +475,10 @@ void c3DView::UpdateSelectModelTransform_Joint()
 	if (!jointRenderer)
 		return; // error occurred
 
-	//g_pheno->m_gizmo;
 	switch (g_pheno->m_gizmo.m_type)
 	{
 	case eGizmoEditType::TRANSLATE:
-		jointRenderer->SetRevoluteAxisPos(jointRenderer->m_transform.pos);
+		jointRenderer->SetPivotPosByRevolutePos(jointRenderer->m_transform.pos);
 		break;
 	case eGizmoEditType::SCALE:
 		break;
