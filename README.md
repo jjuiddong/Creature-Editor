@@ -46,4 +46,6 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/tree.jpg?raw=true)
 - Flower
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/flower2.jpg?raw=true)
+- Cone Limit
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/cone%20limit.jpg?raw=true)
 
