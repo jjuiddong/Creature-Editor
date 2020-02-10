@@ -333,6 +333,16 @@ void c3DView::UpdateSelectModelTransform(const bool isGizmoEdit)
 	{
 		UpdateSelectModelTransform_MultiObject();
 	}
+
+	// if update gizmo, wakeup connected actors
+	if (!g_pheno->m_selects.empty())
+	{
+		const int selectSyncId = *g_pheno->m_selects.begin();
+		phys::sSyncInfo *sync = physSync->FindSyncInfo(selectSyncId);
+		if (!sync)
+			return;
+		g_pheno->SetAllConnectionActorWakeUp(sync->actor);
+	}
 }
 
 

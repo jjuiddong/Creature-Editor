@@ -50,6 +50,7 @@ public:
 	phys::cRigidActor* FindRigidActorFromSyncId(const int syncId);
 	bool UpdateActorDimension(phys::cRigidActor *actor, const bool isKinematic);
 	bool SetAllConnectionActorKinematic(phys::cRigidActor *actor, const bool isKinematic);
+	bool SetAllConnectionActorWakeUp(phys::cRigidActor *actor);
 	bool SetAllConnectionActorSelect(phys::cRigidActor *actor);
 	bool UpdateAllConnectionActorDimension(phys::cRigidActor *actor, const bool isKinematic);
 	bool UpdateAllConnectionActorTransform(phys::cRigidActor *actor, const Transform &transform);

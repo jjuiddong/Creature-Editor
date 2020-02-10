@@ -372,7 +372,8 @@ void cGenoEditorView::RenderLinkInfo()
 			static int idx = 0;
 			ImGui::TextUnformatted("Joint");
 			ImGui::SameLine();
-			ImGui::Combo("##joint type", &idx, jointType);
+			if (ImGui::Combo("##joint type", &idx, jointType))
+				g_geno->m_uiLink.m_type = (phys::eJointType::Enum)idx;
 			ImGui::Separator();
 
 			switch ((phys::eJointType::Enum)idx)
@@ -1498,7 +1499,6 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 		g_geno->m_showUILink = true;
 
 		{
-			g_geno->m_uiLink.m_type = phys::eJointType::Fixed;
 			g_geno->m_uiLink.m_gnode0 = gnode0;
 			g_geno->m_uiLink.m_gnode1 = gnode1;
 			g_geno->m_uiLink.m_nodeLocal0 = gnode0->m_transform;

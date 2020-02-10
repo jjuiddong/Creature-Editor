@@ -111,7 +111,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	Vector3 jointAxis0;
 	Vector3 jointAxis1;
 	
-	if (phys::eJointType::Spherical == m_type)
+	if (phys::eJointType::Spherical == m_joint->m_type)
 	{
 		// spherical joint pos, direction
 		const Vector3 dir0 = m_joint->m_origPos - m_joint->m_actorLocal0.pos;

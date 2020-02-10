@@ -52,10 +52,14 @@ public:
 		struct {
 			bool isLimit;
 			float r;
+			float h;
 			float ry;
 			float rz;
-			float h;
 		} cone;
+
+		struct {
+			bool isLimit;
+		} angular;
 	};
 	sLimit m_limit;
 };

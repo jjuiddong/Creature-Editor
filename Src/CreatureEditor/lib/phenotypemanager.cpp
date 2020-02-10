@@ -416,6 +416,20 @@ bool cPhenoTypeManager::SetAllConnectionActorKinematic(phys::cRigidActor *actor
 }
 
 
+
+// wakeup all connection actor
+bool cPhenoTypeManager::SetAllConnectionActorWakeUp(phys::cRigidActor *actor)
+{
+	TraverseAllConnectionActor(actor,
+		[&](phys::cRigidActor *a) {
+		a->WakeUp(); 
+		return true;
+	});
+
+	return true;
+}
+
+
 // select all connection actor
 bool cPhenoTypeManager::SetAllConnectionActorSelect(phys::cRigidActor *actor)
 {
