@@ -12,6 +12,8 @@ cGNode::cGNode()
 	, m_wnameId(L"-1")
 	, m_cloneId(-1)
 	, m_density(1.f)
+	, m_color(cColor::WHITE)
+	, m_txtColor(cColor::WHITE)
 {
 }
 
@@ -58,7 +60,8 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 	m_wname = gnode.name.wstr();
 	m_wnameId.Format(L"%d", m_id);
 	m_density = gnode.density;
-	m_color = gnode.color;
+	SetColor(gnode.color);
+	m_txtColor = cColor::WHITE;
 	m_cloneId = gnode.iteration;
 	return true;
 }
@@ -154,7 +157,7 @@ bool cGNode::Render(graphic::cRenderer &renderer
 		tfm.pos = m_transform.pos + Vector3(0, 0.2f, 0);
 		tfm.scale = Vector3::Ones * 0.15f;
 		renderer.m_textMgr.AddTextRender(renderer
-			, m_id, m_wname.c_str(), cColor::WHITE, cColor::BLACK
+			, m_id, m_wname.c_str(), m_txtColor, cColor::BLACK
 			, BILLBOARD_TYPE::DYN_SCALE, tfm, true, 16, 1
 			, 0.5f, 200.f, 7.f);
 	}
@@ -283,6 +286,38 @@ Vector2 cGNode::GetCylinderDimension()
 }
 
 
+// update genotype node color
+void cGNode::SetColor(const graphic::cColor &color)
+{
+	m_color = color;
+
+	if (m_children.empty())
+		return;
+
+	switch (m_shape)
+	{
+	case phys::eShapeType::Box:
+		if (cCube *p = dynamic_cast<cCube*>(m_children[0]))
+			p->SetColor(color);
+		break;
+	case phys::eShapeType::Sphere:
+		if (cSphere *p= dynamic_cast<cSphere*>(m_children[0]))
+			p->SetColor(color);
+		break;
+	case phys::eShapeType::Capsule:
+		if (cCapsule *p = dynamic_cast<cCapsule*>(m_children[0]))
+			p->SetColor(color);
+		break;
+	case phys::eShapeType::Cylinder:
+		if (cCylinder *p = dynamic_cast<cCylinder*>(m_children[0]))
+			p->SetColor(color);
+		break;
+	default: assert(0); break;
+	}
+}
+
+
+// clone iteration node
 cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 {
 	cGNode *gnode = new cGNode();
@@ -314,6 +349,8 @@ cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 	gnode->m_wname = m_wname + L" iter";
 	const Vector3 scale = gnode->m_transform.scale * 2.f;
 	gnode->m_transform.pos += Vector3(scale.x, 0, scale.z);
+	const Vector4 vColor = m_color.GetColor();
+	gnode->SetColor(cColor(vColor.x, vColor.y, vColor.z, 0.8f));
 	gnode->m_cloneId = m_id;
 	return gnode;
 }

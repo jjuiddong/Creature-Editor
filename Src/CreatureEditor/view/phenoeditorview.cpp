@@ -28,7 +28,9 @@ void cPhenoEditorView::OnRender(const float deltaSeconds)
 	cRenderer &renderer = g_pheno->GetRenderer();
 	phys::cPhysicsSync *physSync = g_pheno->m_physSync;
 
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0, 1));
 	ImGui::TextUnformatted("PhenoType Editor");
+	ImGui::PopStyleColor();
 	ImGui::Separator();
 
 	ImGui::Checkbox("Debug", &renderer.m_isDbgRender);
@@ -734,7 +736,7 @@ void cPhenoEditorView::RenderPrismaticJoint()
 	if (!sync0 || !sync1)
 		return;
 
-	static Vector2 limit1(1.f, 2.f); // lower, upper
+	static Vector2 limit1(-1.f, 1.f); // lower, upper
 	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
 	static Vector2 limit3(3.f, 0.0f); // length
 	static bool isLimit = false;
@@ -1211,7 +1213,7 @@ void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 {
 	using namespace physx;
 
-	static Vector2 limit1(1.f, 2.f); // lower, upper
+	static Vector2 limit1(-1.f, 1.f); // lower, upper
 	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
 	static Vector2 limit3(3.f, 0.0f); // length
 	static bool isLimit = false;
@@ -1281,6 +1283,9 @@ void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 				joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
 			}
 		}
+
+		if (cJointRenderer *j = g_pheno->FindJointRenderer(joint))
+			j->UpdateLimit();
 	}
 	ImGui::PopStyleColor(3);
 }

@@ -62,6 +62,13 @@ public:
 			float rtm0[4][4]; // inverse actor0 local tm
 			float rtm1[4][4]; // inverse actor1 local tm
 		} angular;
+
+		struct {
+			bool isLimit;
+			float lower;
+			float upper;
+			float distance; // original actor0,1 distance
+		} linear;
 	};
 	sLimit m_limit;
 };

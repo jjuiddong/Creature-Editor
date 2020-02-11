@@ -137,7 +137,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 	//~render joint position
 
 	// render pivot - joint pos
-	if (1)
+	if (phys::eJointType::Revolute != m_joint->m_type)
 	{
 		renderer.m_dbgLine.SetColor(cColor(0.f,1.f,0.f,0.5f));
 		renderer.m_dbgLine.m_isSolid = true;
@@ -178,8 +178,8 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 	}
 
-	// render cone limit
-	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
+	// render cone limit (y,z angle)
+	if ((phys::eJointType::Spherical == m_joint->m_type) && (m_limit.cone.isLimit))
 	{
 		renderer.m_cone.SetDimension(m_limit.cone.r, m_limit.cone.h);
 		renderer.m_cone.SetRadiusXZ(m_limit.cone.ry, m_limit.cone.rz);
@@ -196,19 +196,19 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 	}
 
-	// render revolute axis limit
+	// render revolute axis limit (origin, current revolute position)
 	if (phys::eJointType::Revolute == m_joint->m_type)
 	{
 		const float axisLen = 0.2f;
-		const float axisDis = 0.2f; // joint pos - axis pos length
-		const float axisDis2 = 0.25f; // joint pos - axis pos length
+		const float axisDis = 0.03f; // joint pos - axis pos length
+		const float axisDis2 = 0.05f; // joint pos - axis pos length
 		const float lineSize = 0.01f;
 
-		// render origin axis
 		Vector3 r0, r1;
 		GetRevoluteAxis(r0, r1);
-		const Quaternion rot(Vector3(1, 0, 0), (r1 - r0).Normal());		
+		const Quaternion rot(Vector3(1, 0, 0), (r1 - r0).Normal()); // local -> world axis transform
 
+		// render origin axis
 		{
 			const Vector3 dir = Vector3(0, 1, 0) * rot; // axis origin direction
 			const Vector3 b0 = jointPos + Vector3(-axisDis, 0, 0) * rot;
@@ -239,6 +239,32 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 			renderer.m_dbgLine.SetLine(b1, p1, lineSize);
 			renderer.m_dbgLine.Render(renderer);
 		}
+	}
+
+
+	// render linear limit (lower, upper)
+	if ((phys::eJointType::Prismatic == m_joint->m_type) && (m_limit.linear.isLimit))
+	{
+		Vector3 r0, r1;
+		GetRevoluteAxis(r0, r1);
+		const Vector3 dir = (r1 - r0).Normal();
+		const Quaternion rot(Vector3(1, 0, 0), dir);
+		const float lower = m_limit.linear.distance + m_limit.linear.lower;
+		const float upper = m_limit.linear.distance + m_limit.linear.upper;
+		const Vector3 p0 = Vector3(1, 0, 0) * lower * rot + m_sync0->node->m_transform.pos;
+		const Vector3 p1 = Vector3(1, 0, 0) * upper * rot + m_sync0->node->m_transform.pos;
+
+		Transform tfm;
+		tfm.pos = p0;
+		tfm.scale = Vector3::Ones * 0.02f;
+		renderer.m_dbgBox.SetColor(cColor::YELLOW);
+		renderer.m_dbgBox.SetBox(tfm);
+		renderer.m_dbgBox.Render(renderer);
+
+		tfm.pos = p1;
+		renderer.m_dbgBox.SetBox(tfm);
+		renderer.m_dbgBox.SetColor(cColor::RED);
+		renderer.m_dbgBox.Render(renderer);
 	}
 
 	// recovery
@@ -372,8 +398,8 @@ bool cJointRenderer::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 		dir = (pivotPos1 - pivotPos0).Normal();
 	}
 
-	const Vector3 p0 = dir * 2.f + jointPos;
-	const Vector3 p1 = dir * -2.f + jointPos;
+	const Vector3 p0 = dir * -2.f + jointPos;
+	const Vector3 p1 = dir * 2.f + jointPos;
 
 	const common::Line line(p0, p1);
 	const Vector3 p2 = line.Projection(node0->m_transform.pos);
@@ -381,8 +407,8 @@ bool cJointRenderer::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 
 	if (p2.Distance(p3) < 2.f)
 	{
-		out0 = dir * 0.5f + jointPos;
-		out1 = -dir * 0.5f + jointPos;
+		out0 = dir * -0.5f + jointPos;
+		out1 = dir * 0.5f + jointPos;
 	}
 	else
 	{
@@ -509,9 +535,20 @@ void cJointRenderer::UpdateLimit()
 		m_limit.angular.isLimit = m_joint->IsAngularLimit();
 		*(Matrix44*)m_limit.angular.rtm0 = rtm0;
 		*(Matrix44*)m_limit.angular.rtm1 = rtm1;
+	}
+	break;
 
-		const Vector3 dir = Vector3(0, 1, 0) * m_joint->m_rotRevolute;
+	case eJointType::Prismatic:
+	{
+		m_limit.linear.isLimit = m_joint->IsLinearLimit();
 
+		const physx::PxJointLinearLimitPair limit = m_joint->GetLinearLimit();
+		m_limit.linear.lower = limit.lower;
+		m_limit.linear.upper = limit.upper;
+		
+		const float projLen = m_joint->m_revoluteAxis.DotProduct(
+			m_joint->m_actorLocal1.pos - m_joint->m_actorLocal0.pos);
+		m_limit.linear.distance = abs(projLen);
 	}
 	break;
 	}

@@ -26,7 +26,9 @@ void cGenoEditorView::OnUpdate(const float deltaSeconds)
 
 void cGenoEditorView::OnRender(const float deltaSeconds)
 {
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0, 1));
 	ImGui::TextUnformatted("GenoType Editor");
+	ImGui::PopStyleColor();
 	ImGui::Separator();
 
 	CheckChangeSelection();
@@ -48,15 +50,15 @@ void cGenoEditorView::RenderSpawnTransform()
 	if (ImGui::Button("SpawnPos"))
 		g_geno->ChangeEditMode(eGenoEditMode::SpawnLocation);
 
-		ImGui::TextUnformatted("Pos  ");
+		ImGui::TextUnformatted("Pos            ");
 		ImGui::SameLine();
 		ImGui::DragFloat3("##position", (float*)&g_geno->m_spawnTransform.pos, 0.001f);
 
-		ImGui::TextUnformatted("Dim ");
+		ImGui::TextUnformatted("Dim           ");
 		ImGui::SameLine();
 		ImGui::DragFloat3("##scale", (float*)&g_geno->m_spawnTransform.scale, 0.001f, 0.01f, 1000.f);
 
-		ImGui::TextUnformatted("Rot  ");
+		ImGui::TextUnformatted("Rot            ");
 		ImGui::SameLine();
 		static Vector3 rot;
 		ImGui::DragFloat3("##rotation", (float*)&rot, 0.001f);
@@ -406,6 +408,8 @@ void cGenoEditorView::RenderFixedJoint()
 
 	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
 
+	ImGui::Spacing();
+
 	if (ImGui::Button("Pivot Setting"))
 	{
 		g_geno->ChangeEditMode(eGenoEditMode::Pivot0);
@@ -575,8 +579,8 @@ void cGenoEditorView::RenderPrismaticJoint()
 		false, // isLimit
 		true, // isSpring
 		0.f, // value
-		1.f, // lower
-		2.f, // upper
+		-1.f, // lower
+		1.f, // upper
 		10.f, // stiffness
 		0.f, // damping (spring)
 		0.f, // contactDistance
@@ -980,90 +984,72 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 {
 	using namespace physx;
 
-	static evc::sLinearLimit limit =
-	{
-		false, // isLimit
-		true, // isSpring
-		0.f, // value
-		1.f, // lower
-		2.f, // upper
-		10.f, // stiffness
-		0.f, // damping (spring)
-		0.f, // contactDistance
-		0.f, // bounceThreshold
-	};
 	static float length = 3.f;
-
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 
+	evc::sLinearLimit &linear = link->m_limit.linear;
+
 	if (m_isChangeSelection)
 	{
-		limit = link->m_limit.linear;
-
 		for (int i = 0; i < 3; ++i)
 			if (axis[i] == link->m_revoluteAxis)
 				axisIdx = i;
 	}
 
+	bool isEdit = false;
+
 	ImGui::Separator();
 	ImGui::Text("Linear Limit");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Checkbox("##Limit", &linear.isLimit);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Lower Limit", &limit.lower, 0.001f);
-	ImGui::DragFloat("Upper Limit", &limit.upper, 0.001f);
+	isEdit |= ImGui::DragFloat("Lower Limit", &linear.lower, 0.001f);
+	isEdit |= ImGui::DragFloat("Upper Limit", &linear.upper, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
 	ImGui::Text("Spring");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Spring", &limit.isSpring);
+	ImGui::Checkbox("##Spring", &linear.isSpring);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Stiffness", &limit.stiffness, 0.001f);
-	ImGui::DragFloat("Damping", &limit.damping, 0.001f);
-	ImGui::DragFloat("Length (linear)", &length, 0.001f);
+	isEdit |= ImGui::DragFloat("Stiffness", &linear.stiffness, 0.001f);
+	isEdit |= ImGui::DragFloat("Damping", &linear.damping, 0.001f);
+	isEdit |= ImGui::DragFloat("Length (linear)", &length, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	const bool editAxis = ImGui::Combo("Axis", &axisIdx, axisStr);
+	if (ImGui::Combo("Axis", &axisIdx, axisStr))
+		link->SetRevoluteAxis(axis[axisIdx]);
 
 	ImGui::Spacing();
-	//ImGui::Separator();
 	ImGui::Spacing();
 
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Apply Option"))
+	if (isEdit)
 	{
 		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
-		if (limit.isSpring)
+		if (linear.isSpring)
 		{
-			temp = PxJointLinearLimitPair(limit.lower, limit.upper
-				, physx::PxSpring(limit.stiffness, limit.damping));
+			temp = PxJointLinearLimitPair(linear.lower, linear.upper
+				, physx::PxSpring(linear.stiffness, linear.damping));
 		}
 		else
 		{
 			PxTolerancesScale scale;
 			scale.length = length;
-			temp = PxJointLinearLimitPair(scale, limit.lower, limit.upper);
+			temp = PxJointLinearLimitPair(scale, linear.lower, linear.upper);
 		}
 
-		limit.lower = temp.lower;
-		limit.upper = temp.upper;
-		limit.stiffness = temp.stiffness;
-		limit.damping = temp.damping;
-		limit.contactDistance = temp.contactDistance;
-		limit.bounceThreshold = temp.bounceThreshold;
-		link->m_limit.linear = limit;
-
-		link->SetRevoluteAxis(axis[axisIdx]);
+		linear.lower = temp.lower;
+		linear.upper = temp.upper;
+		linear.stiffness = temp.stiffness;
+		linear.damping = temp.damping;
+		linear.contactDistance = temp.contactDistance;
+		linear.bounceThreshold = temp.bounceThreshold;
 	}
-	ImGui::PopStyleColor(3);
 }
 
 

@@ -52,7 +52,6 @@ namespace evc
 		void SetPivotPosByRevolutePos(const Vector3 &pos);
 		bool GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 			, const Vector3 &axisPos = Vector3::Zeroes);
-		bool GetLocalRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1);
 
 		void Clear();
 

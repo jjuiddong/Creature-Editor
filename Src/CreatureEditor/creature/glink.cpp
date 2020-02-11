@@ -251,7 +251,8 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	//~
 
 	// render revolution axis
-	if (phys::eJointType::Revolute == m_type)
+	if ((phys::eJointType::Revolute == m_type)
+		|| (phys::eJointType::Prismatic == m_type))
 	{
 		m_transform.pos = linkPos;
 
@@ -265,7 +266,8 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render pivot - revolution axis
-	if (0 && (phys::eJointType::Revolute == m_type))
+	if ((phys::eJointType::Revolute == m_type)
+		|| (phys::eJointType::Prismatic == m_type))
 	{
 		Vector3 p0, p1;
 		GetRevoluteAxis(p0, p1);
@@ -280,7 +282,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 	}
 
-	// render angular limit
+	// render angular limit (origin axis)
 	if (phys::eJointType::Revolute == m_type)
 	{
 		const float axisLen = 0.2f;
@@ -289,7 +291,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		Vector3 r0, r1;
 		GetRevoluteAxis(r0, r1);
 		const Vector3 dir = (r1 - r0).Normal();
-		Quaternion rot(Vector3(1, 0, 0), dir);
+		const Quaternion rot(Vector3(1, 0, 0), dir);
 
 		Vector3 dirOrig = Vector3(0, 1, 0) * rot;
 		const Vector3 b0 = Vector3(-0.2f, 0, 0) * rot + linkPos;
@@ -304,7 +306,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 	}
 
-	// render cone limit
+	// render cone limit (y,z angle)
 	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
 	{
 		const float r = 0.2f;
@@ -326,6 +328,33 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		renderer.m_cone.m_transform.pos = m_origPos + -m_revoluteAxis * h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
+	}
+
+	// render linear limit (lower, upper)
+	if ((phys::eJointType::Prismatic == m_type) && (m_limit.linear.isLimit))
+	{
+		Vector3 r0, r1;
+		GetRevoluteAxis(r0, r1);
+		const Vector3 dir = (r1 - r0).Normal();
+		const Quaternion rot(Vector3(1, 0, 0), dir);
+		const float distance = abs(m_revoluteAxis.DotProduct(
+			m_gnode1->m_transform.pos - m_gnode0->m_transform.pos));
+		const float lower = distance + m_limit.linear.lower;
+		const float upper = distance + m_limit.linear.upper;
+		const Vector3 p0 = Vector3(1, 0, 0) * lower * rot + m_gnode0->m_transform.pos;
+		const Vector3 p1 = Vector3(1, 0, 0) * upper * rot + m_gnode0->m_transform.pos;
+
+		Transform tfm;
+		tfm.pos = p0;
+		tfm.scale = Vector3::Ones * 0.02f;
+		renderer.m_dbgBox.SetColor(cColor::YELLOW);
+		renderer.m_dbgBox.SetBox(tfm);
+		renderer.m_dbgBox.Render(renderer);
+
+		tfm.pos = p1;
+		renderer.m_dbgBox.SetBox(tfm);
+		renderer.m_dbgBox.SetColor(cColor::RED);
+		renderer.m_dbgBox.Render(renderer);
 	}
 
 	__super::Render(renderer, parentTm, flags);
@@ -527,30 +556,6 @@ bool cGLink::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 		out0 = p2;
 		out1 = p3;
 	}
-	return true;
-}
-
-
-// return local revolute axis
-bool cGLink::GetLocalRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1)
-{
-	//const Vector3 pivotPos0 = m_pivots[0].dir * m_pivots[0].len + m_nodeLocal0.pos;
-	//const Vector3 pivotPos1 = m_pivots[1].dir * m_pivots[1].len + m_nodeLocal1.pos;
-	//Vector3 dir;
-	//Vector3 jointPos;
-	//if (pivotPos0.Distance(pivotPos1) < 0.2f)
-	//{
-	//	dir = m_revoluteAxis;
-	//	jointPos = m_origPos;
-	//}
-	//else
-	//{
-	//	jointPos = (pivotPos0 + pivotPos1) / 2.f;
-	//	dir = (pivotPos1 - pivotPos0).Normal();
-	//}
-
-	out0 = m_revoluteAxis * 0.5f + m_origPos;
-	out1 = m_revoluteAxis * -0.5f + m_origPos;
 	return true;
 }
 

@@ -324,17 +324,34 @@ bool cGenoTypeManager::SelectObject(const int id
 	, const bool isToggle //= false
 )
 {
+	const graphic::cColor &selColor = graphic::cColor::RED;
+	const graphic::cColor &noSelColor = graphic::cColor::WHITE;
+
+	evc::cGNode *gnode = g_geno->FindGNode(id);
+	if (!gnode)
+		return false; // error occurred
+
+	auto it = std::find(m_selects.begin(), m_selects.end(), id);
 	if (isToggle)
 	{
-		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), id))
+		if (m_selects.end() == it)
+		{
+			gnode->m_txtColor = selColor;
 			m_selects.push_back(id);
+		}
 		else
+		{
+			gnode->m_txtColor = noSelColor;
 			common::removevector(m_selects, id);
+		}
 	}
 	else
 	{
-		if (m_selects.end() == std::find(m_selects.begin(), m_selects.end(), id))
+		if (m_selects.end() == it)
+		{
+			gnode->m_txtColor = selColor;
 			m_selects.push_back(id);
+		}
 	}
 
 	// update multi selection transform
@@ -343,9 +360,9 @@ bool cGenoTypeManager::SelectObject(const int id
 		Vector3 center;
 		for (auto &id : m_selects)
 		{
-			evc::cGNode *gnode = g_geno->FindGNode(id);
-			if (gnode)
-				center += gnode->m_transform.pos;
+			evc::cGNode *p = g_geno->FindGNode(id);
+			if (p)
+				center += p->m_transform.pos;
 		}
 		center /= (float)m_selects.size();
 		center.y += 0.5f;
@@ -371,6 +388,8 @@ bool cGenoTypeManager::ClearSelection()
 {
 	m_selects.clear();
 	m_highLights.clear();
+	for (auto &p : m_gnodes)
+		p->m_txtColor = graphic::cColor::WHITE;
 	return true;
 }
 

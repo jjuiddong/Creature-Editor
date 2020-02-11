@@ -44,6 +44,7 @@ namespace evc
 		Vector2 GetCapsuleDimension();
 		void SetCylinderDimension(const float radius, const float height);
 		Vector2 GetCylinderDimension();
+		void SetColor(const graphic::cColor &color);
 
 		cGNode* Clone(graphic::cRenderer &renderer);
 		void Clear();
@@ -55,8 +56,9 @@ namespace evc
 		phys::eShapeType::Enum m_shape;
 		float m_density;
 		graphic::cColor m_color;
+		graphic::cColor m_txtColor;
 		vector<cGLink*> m_links; // reference
-		int m_cloneId; // original gnode id, if clone (iterator type)
+		int m_cloneId; // original gnode id, if clone (iterator type)		
 	};
 
 }

@@ -267,6 +267,14 @@ void cGenoView::OnRender(const float deltaSeconds)
 		ImGui::SameLine();
 		ImGui::Checkbox("joint", &m_showJoint);
 
+		if (m_isOrbitMove)
+		{
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
+			ImGui::TextUnformatted("Orbit");
+			ImGui::PopStyleColor();
+		}
+
 		ImGui::End();
 	}
 	ImGui::PopStyleColor();
@@ -880,8 +888,22 @@ void cGenoView::OnMouseMove(const POINT mousePt)
 	else if (m_mouseDown[1])
 	{
 		const float scale = 0.003f;
-		m_camera.Yaw2(delta.x * scale, Vector3(0, 1, 0));
-		m_camera.Pitch2(delta.y * scale, Vector3(0, 1, 0));
+		if (m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 25.f)
+		{
+			// cancel orbit moving
+			m_isOrbitMove = false;
+		}
+
+		if (m_isOrbitMove)
+		{
+			m_camera.Yaw3(delta.x * scale, m_orbitTarget);
+			m_camera.Pitch3(delta.y * scale, m_orbitTarget);
+		}
+		else
+		{
+			m_camera.Yaw2(delta.x * scale, Vector3(0, 1, 0));
+			m_camera.Pitch2(delta.y * scale, Vector3(0, 1, 0));
+		}
 	}
 	else if (m_mouseDown[2])
 	{
@@ -964,6 +986,14 @@ void cGenoView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt
 		m_mouseDown[1] = true;
 		m_tempSpawnPos = target;
 		//g_geno->m_spawnTransform.pos = target;
+
+		const int id = PickingNode(0, mousePt);
+		evc::cGNode *gnode = g_geno->FindGNode(id);
+		if (gnode)
+		{
+			m_isOrbitMove = true;
+			m_orbitTarget = gnode->m_transform.pos;
+		}
 	}
 	break;
 
