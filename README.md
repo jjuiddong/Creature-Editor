@@ -50,4 +50,6 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/cone%20limit.jpg?raw=true)
 - Angular Limit
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/angular%20limit.jpg?raw=true)
+- Limit & Creature
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/creature2.jpg?raw=true)
 
