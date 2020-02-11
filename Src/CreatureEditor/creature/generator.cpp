@@ -1589,6 +1589,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->shape = shape;
 					gnode->transform = Transform(pos, dim, q);
 					gnode->density = density;
+					gnode->color = graphic::cColor::WHITE;
 					gnode->mass = mass;
 					gnode->linearDamping = linearDamping;
 					gnode->angularDamping = angularDamping;

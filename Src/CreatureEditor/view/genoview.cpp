@@ -1079,14 +1079,14 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		if ((m_owner->GetFocus() != this)
 			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resourceView))
 			break;
-
+		
 		switch (evt.key.cmd)
 		{
 		case sf::Keyboard::Return: break;
 		case sf::Keyboard::Space: break;
 		case sf::Keyboard::Home: break;
 		case sf::Keyboard::Tilde:
-			//m_camera.SetCamera(Vector3(30, 20, -30), Vector3(0, 0, 0), Vector3(0, 1, 0));
+			m_camera.SetCamera(Vector3(30, 20, -30), Vector3(0, 0, 0), Vector3(0, 1, 0));
 			break;
 
 		case sf::Keyboard::R: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::ROTATE; break;

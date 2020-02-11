@@ -115,7 +115,7 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 	AddChild(capsule);
 
 	m_shape = phys::eShapeType::Capsule;
-	m_transform.pos = tfm.pos;
+	m_transform = tfm;
 	m_name = "Capsule";
 	m_wname = m_name.wstr();
 	m_wnameId.Format(L"%d", m_id);

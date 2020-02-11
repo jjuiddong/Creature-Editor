@@ -328,20 +328,20 @@ bool cGenoTypeManager::SelectObject(const int id
 	const graphic::cColor &noSelColor = graphic::cColor::WHITE;
 
 	evc::cGNode *gnode = g_geno->FindGNode(id);
-	if (!gnode)
-		return false; // error occurred
 
 	auto it = std::find(m_selects.begin(), m_selects.end(), id);
 	if (isToggle)
 	{
 		if (m_selects.end() == it)
 		{
-			gnode->m_txtColor = selColor;
+			if (gnode)
+				gnode->m_txtColor = selColor;
 			m_selects.push_back(id);
 		}
 		else
 		{
-			gnode->m_txtColor = noSelColor;
+			if (gnode)
+				gnode->m_txtColor = noSelColor;
 			common::removevector(m_selects, id);
 		}
 	}
@@ -349,7 +349,8 @@ bool cGenoTypeManager::SelectObject(const int id
 	{
 		if (m_selects.end() == it)
 		{
-			gnode->m_txtColor = selColor;
+			if (gnode)
+				gnode->m_txtColor = selColor;
 			m_selects.push_back(id);
 		}
 	}

@@ -975,6 +975,13 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 
 	if (ImGui::Combo("Revolute Axis", &axisIdx, axisStr))
 		link->m_revoluteAxis = axis[axisIdx];
+
+	ImGui::TextUnformatted("Cycle");
+	ImGui::SameLine();
+	ImGui::Checkbox("##Cycle", &link->m_drive.isCycle);
+	ImGui::DragFloat("Cycle Period", &link->m_drive.period, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &link->m_drive.driveAccel, 0.001f);
+
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 }
