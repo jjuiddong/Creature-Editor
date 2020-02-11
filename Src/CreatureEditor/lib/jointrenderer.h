@@ -59,6 +59,8 @@ public:
 
 		struct {
 			bool isLimit;
+			float rtm0[4][4]; // inverse actor0 local tm
+			float rtm1[4][4]; // inverse actor1 local tm
 		} angular;
 	};
 	sLimit m_limit;

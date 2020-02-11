@@ -940,17 +940,12 @@ void cGenoEditorView::RenderD6Joint()
 
 void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 {
-	static evc::sAngularLimit limit = { false, -MATH_PI / 2.f, MATH_PI / 2.f };
-	static evc::sDriveInfo drive = { false, 1.f, false, 1.f, 1.f, 1.f };
 	const char *axisStr = "X\0Y\0Z\0\0";
 	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 
 	if (m_isChangeSelection)
 	{
-		limit = link->m_limit.angular;
-		drive = link->m_drive;
-
 		for (int i = 0; i < 3; ++i)
 			if (axis[i] == link->m_revoluteAxis)
 				axisIdx = i;
@@ -959,39 +954,25 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 	ImGui::Separator();
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Checkbox("##Limit", &link->m_limit.angular.isLimit);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Lower Angle", &limit.lower, 0.001f);
-	ImGui::DragFloat("Upper Angle", &limit.upper, 0.001f);
+	ImGui::DragFloat("Lower Angle", &link->m_limit.angular.lower, 0.001f);
+	ImGui::DragFloat("Upper Angle", &link->m_limit.angular.upper, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
 	ImGui::TextUnformatted("Drive");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Drive", &drive.isDrive);
+	ImGui::Checkbox("##Drive", &link->m_drive.isDrive);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Velocity", &drive.velocity, 0.001f);
+	ImGui::DragFloat("Velocity", &link->m_drive.velocity, 0.001f);
 
-	ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	if (ImGui::Combo("Revolute Axis", &axisIdx, axisStr))
+		link->m_revoluteAxis = axis[axisIdx];
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
-
-	ImGui::Spacing();
-	//ImGui::Separator();
-	ImGui::Spacing();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Apply Option"))
-	{
-		link->m_limit.angular = limit;
-		link->m_drive = drive;
-		link->SetRevoluteAxis(axis[axisIdx]);
-	}
-	ImGui::PopStyleColor(3);
 }
 
 

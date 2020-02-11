@@ -178,9 +178,9 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 	}
 
+	// render cone limit
 	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
 	{
-		// render cone limit
 		renderer.m_cone.SetDimension(m_limit.cone.r, m_limit.cone.h);
 		renderer.m_cone.SetRadiusXZ(m_limit.cone.ry, m_limit.cone.rz);
 
@@ -194,6 +194,51 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		renderer.m_cone.m_transform.pos = jointPos + jointAxis0 * m_limit.cone.h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
+	}
+
+	// render revolute axis limit
+	if (phys::eJointType::Revolute == m_joint->m_type)
+	{
+		const float axisLen = 0.2f;
+		const float axisDis = 0.2f; // joint pos - axis pos length
+		const float axisDis2 = 0.25f; // joint pos - axis pos length
+		const float lineSize = 0.01f;
+
+		// render origin axis
+		Vector3 r0, r1;
+		GetRevoluteAxis(r0, r1);
+		const Quaternion rot(Vector3(1, 0, 0), (r1 - r0).Normal());		
+
+		{
+			const Vector3 dir = Vector3(0, 1, 0) * rot; // axis origin direction
+			const Vector3 b0 = jointPos + Vector3(-axisDis, 0, 0) * rot;
+			const Vector3 b1 = jointPos + Vector3(axisDis, 0, 0) * rot;
+			const Vector3 p0 = dir * axisLen + b0;
+			const Vector3 p1 = dir * axisLen + b1;
+			renderer.m_dbgLine.SetColor(cColor::BLUE);
+			renderer.m_dbgLine.SetLine(b0, p0, lineSize);
+			renderer.m_dbgLine.Render(renderer);
+			renderer.m_dbgLine.SetLine(b1, p1, lineSize);
+			renderer.m_dbgLine.Render(renderer);
+		}
+
+		// render current axis
+		{
+			const Vector3 dir = Vector3(0, 1, 0) * m_joint->m_rotRevolute; // axis origin local direction
+			const Matrix44 ctm0 = Transform(m_sync0->node->m_transform.rot).GetMatrix();
+			const Matrix44 ctm1 = Transform(m_sync1->node->m_transform.rot).GetMatrix();
+			const Matrix44 rtm0 = *(Matrix44*)m_limit.angular.rtm0 * ctm0;
+			const Matrix44 rtm1 = *(Matrix44*)m_limit.angular.rtm1 * ctm1;
+			const Vector3 b0 = jointPos + Vector3(-axisDis2, 0, 0) * rot;
+			const Vector3 b1 = jointPos + Vector3(axisDis2, 0, 0) * rot;
+			const Vector3 p0 = dir * axisLen * rtm0 + b0;
+			const Vector3 p1 = dir * axisLen * rtm1 + b1;
+			renderer.m_dbgLine.SetColor(cColor::RED);
+			renderer.m_dbgLine.SetLine(b0, p0, lineSize);
+			renderer.m_dbgLine.Render(renderer);
+			renderer.m_dbgLine.SetLine(b1, p1, lineSize);
+			renderer.m_dbgLine.Render(renderer);
+		}
 	}
 
 	// recovery
@@ -450,6 +495,23 @@ void cJointRenderer::UpdateLimit()
 		m_limit.cone.rz = rz;
 		m_limit.cone.h = h;
 		m_limit.cone.r = r;
+	}
+	break;
+
+	case eJointType::Revolute:
+	{
+		const Transform tfm0(m_joint->m_actorLocal0.rot);
+		const Transform tfm1(m_joint->m_actorLocal1.rot);
+		const Matrix44 tm0 = tfm0.GetMatrix();
+		const Matrix44 tm1 = tfm1.GetMatrix();
+		const Matrix44 rtm0 = tm0.Inverse();
+		const Matrix44 rtm1 = tm1.Inverse();
+		m_limit.angular.isLimit = m_joint->IsAngularLimit();
+		*(Matrix44*)m_limit.angular.rtm0 = rtm0;
+		*(Matrix44*)m_limit.angular.rtm1 = rtm1;
+
+		const Vector3 dir = Vector3(0, 1, 0) * m_joint->m_rotRevolute;
+
 	}
 	break;
 	}

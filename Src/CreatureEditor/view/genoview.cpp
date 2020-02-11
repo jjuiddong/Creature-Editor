@@ -249,18 +249,18 @@ void cGenoView::OnRender(const float deltaSeconds)
 			}
 		};
 
-		if (ImGui::Checkbox("name", &m_showName))
-		{
-			if (m_showName)
-				m_showId = !m_showName;
-			ChangeName();
-		}
-
-		ImGui::SameLine();
 		if (ImGui::Checkbox("id", &m_showId))
 		{
 			if (m_showId)
 				m_showName = !m_showId;
+			ChangeName();
+		}
+
+		ImGui::SameLine();
+		if (ImGui::Checkbox("name", &m_showName))
+		{
+			if (m_showName)
+				m_showId = !m_showName;
 			ChangeName();
 		}
 
@@ -829,6 +829,9 @@ void cGenoView::OnWheelMove(const float delta, const POINT mousePt)
 	const float zoomLen = min(len * 0.1f, (float)(2 << (16 - lv)));
 
 	GetMainCamera().Zoom(ray.dir, (delta < 0) ? -zoomLen : zoomLen);
+
+	// active genotype editor view
+	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_geditorView);
 }
 
 

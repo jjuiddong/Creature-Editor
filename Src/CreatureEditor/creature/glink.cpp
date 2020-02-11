@@ -265,7 +265,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render pivot - revolution axis
-	if (phys::eJointType::Revolute == m_type)
+	if (0 && (phys::eJointType::Revolute == m_type))
 	{
 		Vector3 p0, p1;
 		GetRevoluteAxis(p0, p1);
@@ -280,10 +280,33 @@ bool cGLink::Render(graphic::cRenderer &renderer
 		renderer.m_dbgLine.Render(renderer);
 	}
 
+	// render angular limit
+	if (phys::eJointType::Revolute == m_type)
+	{
+		const float axisLen = 0.2f;
+		const float axisSize = 0.01f;
+
+		Vector3 r0, r1;
+		GetRevoluteAxis(r0, r1);
+		const Vector3 dir = (r1 - r0).Normal();
+		Quaternion rot(Vector3(1, 0, 0), dir);
+
+		Vector3 dirOrig = Vector3(0, 1, 0) * rot;
+		const Vector3 b0 = Vector3(-0.2f, 0, 0) * rot + linkPos;
+		const Vector3 b1 = Vector3(0.2f, 0, 0) * rot + linkPos;
+		const Vector3 p0 = dirOrig * axisLen + b0;
+		const Vector3 p1 = dirOrig * axisLen + b1;
+
+		renderer.m_dbgLine.SetColor(cColor::BLUE);
+		renderer.m_dbgLine.SetLine(b0, p0, axisSize);
+		renderer.m_dbgLine.Render(renderer);
+		renderer.m_dbgLine.SetLine(b1, p1, axisSize);
+		renderer.m_dbgLine.Render(renderer);
+	}
+
+	// render cone limit
 	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
 	{
-		// show cone limit
-		//const float h = 0.2f;
 		const float r = 0.2f;
 		const float ry = (float)sin(m_limit.cone.yAngle) * r;
 		const float hy = (float)cos(m_limit.cone.yAngle) * r;
@@ -504,6 +527,30 @@ bool cGLink::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 		out0 = p2;
 		out1 = p3;
 	}
+	return true;
+}
+
+
+// return local revolute axis
+bool cGLink::GetLocalRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1)
+{
+	//const Vector3 pivotPos0 = m_pivots[0].dir * m_pivots[0].len + m_nodeLocal0.pos;
+	//const Vector3 pivotPos1 = m_pivots[1].dir * m_pivots[1].len + m_nodeLocal1.pos;
+	//Vector3 dir;
+	//Vector3 jointPos;
+	//if (pivotPos0.Distance(pivotPos1) < 0.2f)
+	//{
+	//	dir = m_revoluteAxis;
+	//	jointPos = m_origPos;
+	//}
+	//else
+	//{
+	//	jointPos = (pivotPos0 + pivotPos1) / 2.f;
+	//	dir = (pivotPos1 - pivotPos0).Normal();
+	//}
+
+	out0 = m_revoluteAxis * 0.5f + m_origPos;
+	out1 = m_revoluteAxis * -0.5f + m_origPos;
 	return true;
 }
 

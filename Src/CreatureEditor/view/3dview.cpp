@@ -1035,6 +1035,9 @@ void c3DView::OnWheelMove(const float delta, const POINT mousePt)
 	const float zoomLen = min(len * 0.1f, (float)(2 << (16 - lv)));
 
 	GetMainCamera().Zoom(ray.dir, (delta < 0) ? -zoomLen : zoomLen);
+
+	// active phenotype editor view
+	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_peditorView);
 }
 
 
@@ -1126,7 +1129,7 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 	if (m_showSaveDialog || (m_popupMenuState > 0))
 		return;
 
-	// active genotype editor view
+	// active phenotype editor view
 	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_peditorView);
 
 	switch (button)
