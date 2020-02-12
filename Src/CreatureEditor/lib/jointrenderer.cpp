@@ -390,7 +390,7 @@ bool cJointRenderer::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 	Vector3 dir;
 	if (pivotPos1.Distance(pivotPos0) < 0.2f)
 	{
-		const Quaternion rot = node0->m_transform.rot * m_joint->m_actorLocal0.rot.Inverse();
+		const Quaternion rot = m_joint->m_actorLocal0.rot.Inverse() * node0->m_transform.rot;
 		dir = m_joint->m_revoluteAxis * rot;
 	}
 	else

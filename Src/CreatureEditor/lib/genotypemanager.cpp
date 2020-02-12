@@ -30,7 +30,7 @@ bool cGenoTypeManager::Init(graphic::cRenderer &renderer
 	m_physics = physics;
 	m_physSync = sync;
 
-	m_gizmo.Create(renderer);
+	m_gizmo.Create(renderer, false);
 
 	m_uiLink.m_autoDelete = false;
 	return true;

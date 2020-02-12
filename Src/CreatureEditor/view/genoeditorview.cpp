@@ -4,6 +4,22 @@
 
 using namespace graphic;
 
+namespace
+{
+	const char *g_axisStr = "X\0Y\0Z\0XZ45\0XZ-45\0XY45\0XY-45\0YZ45\0YZ-45\0\0";
+	const static Vector3 g_axis[9] = { 
+		Vector3(1,0,0)
+		, Vector3(0,1,0)
+		, Vector3(0,0,1)
+		, Vector3(1,0,1).Normal()  // xz45
+		, Vector3(1,0,-1).Normal() // xz-45
+		, Vector3(1,1,0).Normal()  // xy45
+		, Vector3(1,-1,0).Normal() // xy-45
+		, Vector3(0,1,1).Normal()  // yz45
+		, Vector3(0,1,-1).Normal() // yz-45
+	};
+}
+
 
 cGenoEditorView::cGenoEditorView(const StrId &name)
 	: framework::cDockWindow(name)
@@ -401,12 +417,10 @@ void cGenoEditorView::RenderFixedJoint()
 	if (!gnode0 || !gnode1)
 		return;
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
 
-	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
+	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
 	ImGui::Spacing();
 
@@ -456,12 +470,10 @@ void cGenoEditorView::RenderSphericalJoint()
 	ImGui::DragFloat("Y Limit Angle", &limit.yAngle, 0.001f);
 	ImGui::DragFloat("Z Limit Angle", &limit.zAngle, 0.001f);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
 
-	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
+	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -516,10 +528,8 @@ void cGenoEditorView::RenderRevoluteJoint()
 	ImGui::Checkbox("##Drive", &drive.isDrive);
 	ImGui::DragFloat("Velocity", &drive.velocity, 0.001f);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr);
 
 	if (!drive.isDrive)
 		drive.isCycle = false;
@@ -537,7 +547,7 @@ void cGenoEditorView::RenderRevoluteJoint()
 		g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
-	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
+	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -551,7 +561,8 @@ void cGenoEditorView::RenderRevoluteJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
-		link->CreateRevolute(gnode0, pivot0.pos, gnode1, pivot1.pos, axis[axisIdx]);
+		link->CreateRevolute(gnode0, pivot0.pos, gnode1, pivot1.pos
+			, g_geno->m_uiLink.m_revoluteAxis);
 		g_geno->AddGLink(link);
 
 		link->m_limit.angular = limit;
@@ -600,10 +611,8 @@ void cGenoEditorView::RenderPrismaticJoint()
 	ImGui::DragFloat("Damping", &limit.damping, 0.001f);
 	ImGui::DragFloat("Length (linear)", &length, 0.001f);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Axis", &axisIdx, g_axisStr);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -612,7 +621,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 		g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None;
 	}
 
-	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
+	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -626,7 +635,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
-		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos, axis[axisIdx]);
+		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos, g_axis[axisIdx]);
 		g_geno->AddGLink(link);
 
 		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
@@ -675,12 +684,10 @@ void cGenoEditorView::RenderDistanceJoint()
 	ImGui::DragFloat("min distance", &limit.minDistance, 0.001f);
 	ImGui::DragFloat("max distance", &limit.maxDistance, 0.001f);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, axisStr);
+	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
 
-	UpdateUILink(gnode0, gnode1, editAxis, axis[axisIdx]);
+	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -944,14 +951,12 @@ void cGenoEditorView::RenderD6Joint()
 
 void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 {
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 
 	if (m_isChangeSelection)
 	{
-		for (int i = 0; i < 3; ++i)
-			if (axis[i] == link->m_revoluteAxis)
+		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
+			if (g_axis[i] == link->m_revoluteAxis)
 				axisIdx = i;
 	}
 
@@ -973,8 +978,8 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 	ImGui::PushItemWidth(150);
 	ImGui::DragFloat("Velocity", &link->m_drive.velocity, 0.001f);
 
-	if (ImGui::Combo("Revolute Axis", &axisIdx, axisStr))
-		link->m_revoluteAxis = axis[axisIdx];
+	if (ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr))
+		link->m_revoluteAxis = g_axis[axisIdx];
 
 	ImGui::TextUnformatted("Cycle");
 	ImGui::SameLine();
@@ -992,16 +997,14 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 	using namespace physx;
 
 	static float length = 3.f;
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
 
 	evc::sLinearLimit &linear = link->m_limit.linear;
 
 	if (m_isChangeSelection)
 	{
-		for (int i = 0; i < 3; ++i)
-			if (axis[i] == link->m_revoluteAxis)
+		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
+			if (g_axis[i] == link->m_revoluteAxis)
 				axisIdx = i;
 	}
 
@@ -1029,8 +1032,8 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	if (ImGui::Combo("Axis", &axisIdx, axisStr))
-		link->SetRevoluteAxis(axis[axisIdx]);
+	if (ImGui::Combo("Axis", &axisIdx, g_axisStr))
+		link->SetRevoluteAxis(g_axis[axisIdx]);
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -1337,12 +1340,10 @@ void cGenoEditorView::RenderSphericalJointSetting(evc::cGLink *link)
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	const char *axisStr = "X\0Y\0Z\0\0";
-	const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
 	static int axisIdx = 0;
-	if (ImGui::Combo("Joint Axis", &axisIdx, axisStr))
+	if (ImGui::Combo("Joint Axis", &axisIdx, g_axisStr))
 	{
-		link->SetRevoluteAxis(axis[axisIdx]);
+		link->SetRevoluteAxis(g_axis[axisIdx]);
 	}
 }
 
@@ -1483,10 +1484,6 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 			g_geno->m_uiLink.m_pivots[0].len = 0;
 			g_geno->m_uiLink.m_pivots[1].dir = Vector3::Zeroes;
 			g_geno->m_uiLink.m_pivots[1].len = 0;
-
-			//g_geno->m_uiLinkRenderer.m_joint = &g_geno->m_uiJoint;
-			//g_geno->m_uiJointRenderer.m_sync0 = sync0;
-			//g_geno->m_uiJointRenderer.m_sync1 = sync1;
 
 			// auto pivot position targeting
 			const Vector3 pos0 = gnode0->m_transform.pos;

@@ -531,7 +531,7 @@ bool cGLink::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 	Vector3 dir;
 	if (pivotPos1.Distance(pivotPos0) < 0.2f)
 	{
-		const Quaternion rot = m_gnode0->m_transform.rot * m_nodeLocal0.rot.Inverse();
+		const Quaternion rot = m_nodeLocal0.rot.Inverse() * m_gnode0->m_transform.rot;
 		dir = m_revoluteAxis * rot;
 	}
 	else

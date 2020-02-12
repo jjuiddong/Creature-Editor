@@ -549,36 +549,48 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 	if (!gnode && !glink)
 		return;
 
-	Transform temp = g_geno->m_gizmo.m_targetTransform;
-	temp.pos.y = max(0.f, temp.pos.y);
-	const Transform tfm = temp;
+	Transform tmp = g_geno->m_gizmo.m_targetTransform;
+	tmp.pos.y = max(0.f, tmp.pos.y);
 
-	// change dimension?
-	if ((eGizmoEditType::SCALE == g_geno->m_gizmo.m_type) && gnode)
+	if (eGizmoEditType::SCALE == g_geno->m_gizmo.m_type)
 	{
-		// rigidactor dimension change
-		g_geno->m_gizmo.m_controlNode->m_transform.scale = tfm.scale;
+		const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale / 5.f;
 
 		// change 3d model dimension
 		switch (gnode->m_shape)
 		{
-		case phys::eShapeType::Box: break;
-		case phys::eShapeType::Sphere:
+		case phys::eShapeType::Box: 
 		{
-			float scale = 1.f;
+			Vector3 scale = gnode->m_transform.scale;
 			switch (g_geno->m_gizmo.m_axisType)
 			{
-			case eGizmoEditAxis::X: scale = gnode->m_transform.scale.x; break;
-			case eGizmoEditAxis::Y: scale = gnode->m_transform.scale.y; break;
-			case eGizmoEditAxis::Z: scale = gnode->m_transform.scale.z; break;
+			case eGizmoEditAxis::X: scale.x += delta.x; break;
+			case eGizmoEditAxis::Y: scale.y += delta.y; break;
+			case eGizmoEditAxis::Z: scale.z += delta.z; break;
 			}
-			gnode->SetSphereRadius(scale); // update radius transform
+			gnode->m_transform.scale = scale.Maximum(Vector3(0, 0, 0));
 			g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
 		}
 		break;
+
+		case phys::eShapeType::Sphere:
+		{
+			float radius = gnode->GetSphereRadius();
+			switch (g_geno->m_gizmo.m_axisType)
+			{
+			case eGizmoEditAxis::X: radius += delta.x; break;
+			case eGizmoEditAxis::Y: radius += delta.y; break;
+			case eGizmoEditAxis::Z: radius += delta.z; break;
+			}
+			radius = max(0.f, radius);
+			gnode->SetSphereRadius(radius); // update radius transform
+			g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
+		}
+		break;
+
 		case phys::eShapeType::Capsule:
 		{
-			const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale;
+			const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale / 5.f;
 			float radius = 1.f;
 			switch (g_geno->m_gizmo.m_axisType)
 			{
@@ -595,34 +607,45 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 		break;
 		case phys::eShapeType::Cylinder:
 		{
-			const Vector3 scale = gnode->m_transform.scale;
+			const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale / 5.f;
 			float radius = 1.f;
 			switch (g_geno->m_gizmo.m_axisType)
 			{
-			case eGizmoEditAxis::X: radius = scale.y; break;
-			case eGizmoEditAxis::Y: radius = scale.y; break;
-			case eGizmoEditAxis::Z: radius = scale.z; break;
+			case eGizmoEditAxis::X: radius = delta.y; break;
+			case eGizmoEditAxis::Y: radius = delta.y; break;
+			case eGizmoEditAxis::Z: radius = delta.z; break;
 			}
-			const float height = scale.x * 2.f;
-			gnode->SetCylinderDimension(radius, height); // update cylinder transform
+			Vector2 dim = gnode->GetCylinderDimension();
+			dim.x = max(0.f, dim.x + radius);
+			dim.y = max(0.f, dim.y + delta.x);
+			gnode->SetCylinderDimension(dim.x, dim.y); // update cylinder transform
 			g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
 		}
 		break;
 		}
 	}
+	else
+	{
+		gnode->m_transform = tmp;
+		g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
+	}
+
 }
 
 
 // update gizmo transform to multi selection object
 void cGenoView::UpdateSelectModelTransform_MultiObject()
 {
+	const Transform tfm = g_geno->m_gizmo.m_targetTransform;
+	g_geno->m_multiSel.m_transform = tfm;
+
 	const Vector3 realCenter = g_geno->m_multiSelPos - Vector3(0, 0.5f, 0);
 	const Vector3 center = g_geno->m_multiSelPos;
-	const Vector3 offset = g_geno->m_multiSel.m_transform.pos - center;
-	g_geno->m_multiSelPos = g_geno->m_multiSel.m_transform.pos; // update current position
+	const Vector3 offset = tfm.pos - center;
+	g_geno->m_multiSelPos = tfm.pos; // update current position
 
-	const Quaternion rot = g_geno->m_multiSel.m_transform.rot * g_geno->m_multiSelRot.Inverse();
-	g_geno->m_multiSelRot = g_geno->m_multiSel.m_transform.rot; // update current rotation
+	const Quaternion rot = tfm.rot * g_geno->m_multiSelRot.Inverse();
+	g_geno->m_multiSelRot = tfm.rot; // update current rotation
 
 	// update
 	for (auto id : g_geno->m_selects)
@@ -652,11 +675,21 @@ void cGenoView::UpdateSelectModelTransform_Link()
 	switch (g_geno->m_gizmo.m_type)
 	{
 	case eGizmoEditType::TRANSLATE:
+		link->m_transform.pos += g_geno->m_gizmo.m_deltaTransform.pos;
 		link->SetPivotPosByRevolutePos(link->m_transform.pos);
 		break;
-	case eGizmoEditType::SCALE:
-		break;
+
 	case eGizmoEditType::ROTATE:
+	{
+		const Quaternion delta = g_geno->m_gizmo.m_deltaTransform.rot;
+		link->m_transform.rot *= delta;
+		link->m_revoluteAxis = link->m_revoluteAxis * delta;
+		link->m_rotRevolute = Quaternion(Vector3(1,0,0), link->m_revoluteAxis);
+		link->SetPivotPosByRevoluteAxis(link->m_revoluteAxis, link->m_transform.pos);
+	}
+	break;
+
+	case eGizmoEditType::SCALE:
 		break;
 	}
 }
