@@ -39,6 +39,11 @@ protected:
 	int PickingNode(const int pickType, const POINT &mousePos
 		, OUT float *outDistance = nullptr);
 
+	void SpawnSelectNodeToPhenoTypeView();
+	void SpawnSelectIterator();
+	void DeleteSelectNode();
+	void DeleteSelectLink();
+
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
 	void OnMouseMove(const POINT mousePt);
@@ -62,8 +67,6 @@ public:
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
 	int m_popupMenuType; // 0: genotype menu
 
-	bool m_isOrbitMove;
-	Vector3 m_orbitTarget;
 	Vector3 m_tempSpawnPos;
 	Vector3 m_pivotPos;
 	int m_clickedId;

@@ -36,7 +36,8 @@ namespace evc
 		bool GenerationGenoType(const uint generation);
 		void GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen);
 		void MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *iter
-			, sGenotypeNode *addIter, sGenotypeNode *finalNode);
+			, sGenotypeNode *addIter, sGenotypeNode *finalNode
+			, INOUT set<sGenotypeNode*> &visit);
 		void MoveNode(sGenotypeNode *linkNode, const Matrix44 &localTm
 			, INOUT set<sGenotypeNode*> &visit);
 		void MoveFinalNode(sGenotypeNode *curLinkNode, sGenotypeNode *movLinkNode

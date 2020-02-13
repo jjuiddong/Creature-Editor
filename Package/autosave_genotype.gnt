@@ -1,0 +1,24 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Capsule",
+                "id": "10073",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "7.296359 3.179119 -7.204007",
+                "dim": "0.185591 0.038651 0.038651",
+                "rot": "0.042075 0.296913 0.133870 0.944539",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            }
+        },
+        "joints": ""
+    }
+}

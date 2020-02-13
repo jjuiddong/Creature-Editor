@@ -79,6 +79,8 @@ public:
 	graphic::cNode m_multiSel; // multi selection moving transform
 	Quaternion m_multiSelRot; // multi selection rotation offset (prev rotation)
 	Vector3 m_multiSelPos; // multi selection position offset (prev position)
+	int m_orbitId;
+	Vector3 m_orbitTarget;
 
 	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;

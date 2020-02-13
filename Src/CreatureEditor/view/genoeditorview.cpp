@@ -6,8 +6,8 @@ using namespace graphic;
 
 namespace
 {
-	const char *g_axisStr = "X\0Y\0Z\0XZ45\0XZ-45\0XY45\0XY-45\0YZ45\0YZ-45\0\0";
-	const static Vector3 g_axis[9] = { 
+	const char *g_axisStr = "X\0Y\0Z\0XZ45\0XZ-45\0XY45\0XY-45\0YZ45\0YZ-45\0Custom\0\0";
+	const static Vector3 g_axis[10] = { 
 		Vector3(1,0,0)
 		, Vector3(0,1,0)
 		, Vector3(0,0,1)
@@ -17,6 +17,7 @@ namespace
 		, Vector3(1,-1,0).Normal() // xy-45
 		, Vector3(0,1,1).Normal()  // yz45
 		, Vector3(0,1,-1).Normal() // yz-45
+		, Vector3(1,0,0) // custom axis
 	};
 }
 
@@ -149,7 +150,14 @@ void cGenoEditorView::RenderSelectionInfo()
 			m_eulerAngle = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
 		}
 
-		ImGui::Text("ID                %d", gnode->m_id);
+		if (gnode->m_cloneId >= 0)
+		{
+			ImGui::Text("ID                %d (%d)", gnode->m_id, gnode->m_cloneId);
+		}
+		else
+		{
+			ImGui::Text("ID                %d", gnode->m_id);
+		}
 		ImGui::TextUnformatted("Name        ");
 		ImGui::SameLine();
 		if (ImGui::InputText("##id", gnode->m_name.m_str, gnode->m_name.SIZE))
@@ -446,6 +454,7 @@ void cGenoEditorView::RenderFixedJoint()
 		link->CreateFixed(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -497,6 +506,7 @@ void cGenoEditorView::RenderSphericalJoint()
 		link->CreateSpherical(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 		link->m_limit.cone = limit;
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -568,6 +578,7 @@ void cGenoEditorView::RenderRevoluteJoint()
 		link->m_limit.angular = limit;
 		link->m_drive = drive;
 
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -635,7 +646,8 @@ void cGenoEditorView::RenderPrismaticJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
-		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos, g_axis[axisIdx]);
+		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos
+			, g_geno->m_uiLink.m_revoluteAxis);
 		g_geno->AddGLink(link);
 
 		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
@@ -659,6 +671,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 		limit.bounceThreshold = temp.bounceThreshold;
 		link->m_limit.linear = limit;
 
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -711,6 +724,7 @@ void cGenoEditorView::RenderDistanceJoint()
 		link->CreateDistance(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 		link->m_limit.distance = limit;
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -940,7 +954,8 @@ void cGenoEditorView::RenderD6Joint()
 
 		*(Vector3*)link->m_limit.d6.linearVelocity = linearDriveVelocity;
 		*(Vector3*)link->m_limit.d6.angularVelocity = angularDriveVelocity;
-
+		
+		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
 	ImGui::PopStyleColor(3);
@@ -955,6 +970,7 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 
 	if (m_isChangeSelection)
 	{
+		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
 			if (g_axis[i] == link->m_revoluteAxis)
 				axisIdx = i;
@@ -1003,6 +1019,7 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 
 	if (m_isChangeSelection)
 	{
+		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
 			if (g_axis[i] == link->m_revoluteAxis)
 				axisIdx = i;

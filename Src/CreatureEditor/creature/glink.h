@@ -44,6 +44,8 @@ namespace evc
 			, const bool isSpherePicking = true
 			, OUT float *dist = NULL) override;
 
+		bool UpdateLinkInfo();
+
 		void SetPivotPos(const int nodeIndex, const Vector3 &pos);
 		Transform GetPivotWorldTransform(const int nodeIndex);
 		Vector3 GetPivotPos(const int nodeIndex);

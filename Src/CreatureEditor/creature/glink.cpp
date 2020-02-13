@@ -388,6 +388,17 @@ graphic::cNode* cGLink::Picking(const Ray &ray, const graphic::eNodeType::Enum t
 }
 
 
+// update link information if genotype node moving or rotation
+// update pivot position, local transform
+bool cGLink::UpdateLinkInfo()
+{
+	SetPivotPosByRevoluteAxis(m_revoluteAxis, m_origPos);
+	m_nodeLocal0 = m_gnode0->m_transform;
+	m_nodeLocal1 = m_gnode1->m_transform;
+	return true;
+}
+
+
 // nodeIndex: 0=node0, 1=node1
 // pos : pivot global pos
 void cGLink::SetPivotPos(const int nodeIndex, const Vector3 &pos)

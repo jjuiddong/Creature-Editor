@@ -18,6 +18,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_pairSyncId1(-1)
 	, m_fixJointSelection(false)
 	, m_generationCnt(0)
+	, m_orbitId(-1)
 {
 }
 
@@ -274,6 +275,7 @@ bool cPhenoTypeManager::SelectObject(const int syncId
 
 bool cPhenoTypeManager::ClearSelection()
 {
+	m_orbitId = -1;
 	m_selects.clear();
 	m_highLights.clear();
 	return true;

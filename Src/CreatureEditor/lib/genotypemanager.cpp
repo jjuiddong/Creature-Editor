@@ -10,10 +10,11 @@
 
 
 cGenoTypeManager::cGenoTypeManager()
-	: m_spawnTransform(Vector3(0, 3, 0), Vector3(0.5f, 0.5f, 0.5f))
+	: m_mode(eGenoEditMode::Normal)
+	, m_spawnTransform(Vector3(0, 3, 0), Vector3(0.5f, 0.5f, 0.5f))
 	, m_physics(nullptr)
 	, m_physSync(nullptr)
-	, m_mode(eGenoEditMode::Normal)
+	, m_orbitId(-1)
 {
 }
 
@@ -88,8 +89,19 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 
 	// update iteration id (genotype nod id -> cGNode id)
 	for (auto &p : addNodes)
-		if (p->m_cloneId >= 0)
+	{
+		if (p->m_cloneId < 0)
+			continue;
+		if (gmap.find(p->m_cloneId) == gmap.end())
+		{
+			if (!FindGNode(p->m_cloneId))
+				p->m_cloneId = -1; // not found parent clone id
+		}
+		else
+		{
 			p->m_cloneId = gmap[p->m_cloneId]->m_id;
+		}
+	}
 
 	// create genotype link
 	for (auto &p : glinks)
@@ -155,6 +167,7 @@ int cGenoTypeManager::SpawnBox(const Vector3 &pos)
 	m_gnodes.push_back(node);
 
 	SetSelection(node->m_id);
+	AutoSave();
 	return node->m_id;
 }
 
@@ -174,6 +187,7 @@ int cGenoTypeManager::SpawnSphere(const Vector3 &pos)
 	m_gnodes.push_back(node);
 
 	SetSelection(node->m_id);
+	AutoSave();
 	return node->m_id;
 }
 
@@ -194,6 +208,7 @@ int cGenoTypeManager::SpawnCapsule(const Vector3 &pos)
 	m_gnodes.push_back(node);
 
 	SetSelection(node->m_id);
+	AutoSave();
 	return node->m_id;
 }
 
@@ -214,6 +229,7 @@ int cGenoTypeManager::SpawnCylinder(const Vector3 &pos)
 	m_gnodes.push_back(node);
 
 	SetSelection(node->m_id);
+	AutoSave();
 	return node->m_id;
 }
 
@@ -304,16 +320,26 @@ bool cGenoTypeManager::RemoveGLink(evc::cGLink *glink)
 void cGenoTypeManager::SetSelection(const int id)
 {
 	evc::cGNode *gnode = FindGNode(id);
+	evc::cGLink *glink = FindGLink(id);
+
+	// select spawn genotype node
+	ChangeEditMode(eGenoEditMode::Normal);
+	ClearSelection();
+	SelectObject(id);
+
+	// change focus
+	g_global->m_genoView->SetFocus((framework::cDockWindow*)g_global->m_genoView);
+
 	if (gnode)
 	{
-		// select spawn genotype node
-		ChangeEditMode(eGenoEditMode::Normal);
-		ClearSelection();
-		SelectObject(id);
 		m_gizmo.SetControlNode(gnode);
+		m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
 
-		// change focus
-		g_global->m_genoView->SetFocus((framework::cDockWindow*)g_global->m_genoView);
+	}
+	else if (glink)
+	{
+		m_gizmo.SetControlNode(glink);
+		m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 	}
 }
 
@@ -387,6 +413,7 @@ bool cGenoTypeManager::SelectObject(const int id
 
 bool cGenoTypeManager::ClearSelection()
 {
+	m_orbitId = -1;
 	m_selects.clear();
 	m_highLights.clear();
 	for (auto &p : m_gnodes)
@@ -449,6 +476,15 @@ bool cGenoTypeManager::UpdateAllLinkedNodeTransform(evc::cGNode *gnode, const Tr
 		}
 	);
 	return true;
+}
+
+
+// auto save all genotype node, link
+bool cGenoTypeManager::AutoSave()
+{
+	if (m_gnodes.empty())
+		return false;
+	return evc::WriteGenoTypeFileFrom_Node("autosave_genotype.gnt", m_gnodes);
 }
 
 

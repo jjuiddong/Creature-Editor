@@ -59,6 +59,7 @@ namespace evc
 		graphic::cColor m_txtColor;
 		vector<cGLink*> m_links; // reference
 		int m_cloneId; // original gnode id, if clone (iterator type)		
+		int m_gid; // genotype id
 	};
 
 }

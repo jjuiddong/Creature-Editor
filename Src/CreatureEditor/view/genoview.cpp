@@ -16,7 +16,6 @@ cGenoView::cGenoView(const string &name)
 	, m_showJoint(true)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
-	, m_isOrbitMove(false)
 	, m_showSaveDialog(false)
 {
 }
@@ -35,7 +34,7 @@ bool cGenoView::Init(cRenderer &renderer)
 	m_camera.SetViewPort(m_rect.Width(), m_rect.Height());
 
 	GetMainLight().Init(graphic::cLight::LIGHT_DIRECTIONAL);
-	GetMainLight().SetDirection(Vector3(-1, -2, 1.3f).Normal());
+	GetMainLight().SetDirection(Vector3(-1, -2, -1.3f).Normal());
 
 	sf::Vector2u size((u_int)m_rect.Width() - 15, (u_int)m_rect.Height() - 50);
 	cViewport vp = renderer.m_viewPort;
@@ -79,7 +78,7 @@ void cGenoView::OnPreRender(const float deltaSeconds)
 	GetMainLight().Bind(renderer);
 
 	// Render Outline select object
-	if (!g_geno->m_selects.empty() || !g_geno->m_highLights.empty())
+	if (!g_geno->m_selects.empty() || !g_geno->m_highLights.empty() || (g_geno->m_orbitId >= 0))
 	{
 		m_depthBuff.Begin(renderer);
 		RenderSelectModel(renderer, true, XMIdentity);
@@ -178,7 +177,7 @@ void cGenoView::RenderScene(graphic::cRenderer &renderer
 void cGenoView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 	, const XMMATRIX &tm)
 {
-	if (g_geno->m_selects.empty() && g_geno->m_highLights.empty())
+	if (g_geno->m_selects.empty() && g_geno->m_highLights.empty() && (g_geno->m_orbitId < 0))
 		return;
 
 	// render function object
@@ -210,6 +209,12 @@ void cGenoView::RenderSelectModel(graphic::cRenderer &renderer, const bool build
 	for (auto id : g_geno->m_highLights)
 	{
 		if (evc::cGNode *node = g_geno->FindGNode(id))
+			render(node);
+	}
+	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(1.f, 1.f, 0.f, 1).GetVectorXM();
+	if (g_geno->m_orbitId >= 0)
+	{
+		if (evc::cGNode *node = g_geno->FindGNode(g_geno->m_orbitId))
 			render(node);
 	}
 	if (!buildOutline)
@@ -267,7 +272,7 @@ void cGenoView::OnRender(const float deltaSeconds)
 		ImGui::SameLine();
 		ImGui::Checkbox("joint", &m_showJoint);
 
-		if (m_isOrbitMove)
+		if (g_geno->m_orbitId >= 0)
 		{
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
@@ -320,39 +325,11 @@ void cGenoView::RenderPopupMenu()
 		}
 		if (ImGui::MenuItem("Spawn", "W"))
 		{
-			evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
-
-			// phenotype view load
-			{
-				const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
-				const Vector2 size(camera.m_width, camera.m_height);
-				const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-				const Plane ground(Vector3(0, 1, 0), 0);
-				const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-				g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
-			}
+			SpawnSelectNodeToPhenoTypeView();
 		}
 		if (ImGui::MenuItem("Iterator", "I"))
 		{
-			evc::cGNode *clone = nullptr;
-			if (gnode->m_cloneId >= 0)
-			{
-				// find original genotype node
-				if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
-					clone = p->Clone(GetRenderer());
-			}
-			else
-			{
-				clone = gnode->Clone(GetRenderer());
-			}
-
-			if (clone)
-			{
-				g_geno->AddGNode(clone);
-				g_geno->ClearSelection();
-				g_geno->SelectObject(clone->m_id);
-				g_geno->m_gizmo.SetControlNode(clone);
-			}
+			SpawnSelectIterator();
 		}
 		if (ImGui::MenuItem("Select All", "A"))
 		{
@@ -363,30 +340,11 @@ void cGenoView::RenderPopupMenu()
 
 		if (ImGui::MenuItem("Delete All Link", "J", false, true))
 		{
-			// remove ui joint
-			g_geno->RemoveGLink(&g_geno->m_uiLink);
-
-			// remove all link
-			set<evc::cGLink*> rms;
-			for (auto id : g_geno->m_selects)
-				if (evc::cGNode *gnode = g_geno->FindGNode(id))
-					for (auto &p : gnode->m_links)
-						rms.insert(p);
-
-			for (auto *p : rms)
-				g_geno->RemoveGLink(p);
+			DeleteSelectLink();
 		}
 		if (ImGui::MenuItem("Delete", "D"))
 		{
-			// remove all node
-			for (auto id : g_geno->m_selects)
-				if (evc::cGNode *gnode = g_geno->FindGNode(id))
-					g_geno->RemoveGNode(gnode);
-
-			g_geno->ClearSelection();
-			g_geno->m_gizmo.SetControlNode(nullptr);
-			g_geno->m_showUILink = false;
-			g_geno->m_selLink = nullptr;
+			DeleteSelectNode();
 		}
 
 		ImGui::EndPopup();
@@ -630,6 +588,9 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 		g_geno->m_gizmo.UpdateTargetTransform(gnode->m_transform); // update gizmo
 	}
 
+	// update link info, if connect link
+	for (auto &glink : gnode->m_links)
+		glink->UpdateLinkInfo();
 }
 
 
@@ -741,8 +702,7 @@ bool cGenoView::PickingProcess(const POINT &mousePos)
 	// link picking
 	if (glink)
 	{
-		g_geno->ClearSelection();
-		g_geno->SelectObject(glink->m_id);
+		g_geno->SetSelection(glink->m_id);
 
 		g_geno->m_highLights.clear();
 		if (glink->m_gnode0)
@@ -751,8 +711,6 @@ bool cGenoView::PickingProcess(const POINT &mousePos)
 			g_geno->m_highLights.insert(glink->m_gnode1->m_id);
 
 		g_geno->ChangeEditMode(eGenoEditMode::Revolute);
-		g_geno->m_gizmo.SetControlNode(glink);
-		g_geno->m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, true);
 	}
 
 
@@ -828,6 +786,98 @@ int cGenoView::PickingNode(const int pickType, const POINT &mousePos
 }
 
 
+// spawn select node to phenotype view
+void cGenoView::SpawnSelectNodeToPhenoTypeView()
+{
+	evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+	if (!gnode)
+		return;
+
+	evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
+
+	// phenotype view load
+	{
+		const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
+		const Vector2 size(camera.m_width, camera.m_height);
+		const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
+		const Plane ground(Vector3(0, 1, 0), 0);
+		const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
+		g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
+	}
+}
+
+
+// spawn select iterator node
+void cGenoView::SpawnSelectIterator()
+{
+	evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+	if (!gnode)
+		return;
+
+	g_geno->AutoSave();
+
+	evc::cGNode *clone = nullptr;
+	if (gnode->m_cloneId >= 0)
+	{
+		// find original genotype node
+		if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
+			clone = p->Clone(GetRenderer());
+	}
+	else
+	{
+		clone = gnode->Clone(GetRenderer());
+	}
+
+	if (clone)
+	{
+		g_geno->AddGNode(clone);
+		g_geno->ClearSelection();
+		g_geno->SelectObject(clone->m_id);
+		g_geno->m_gizmo.SetControlNode(clone);
+	}
+}
+
+
+// delete select node
+void cGenoView::DeleteSelectNode()
+{
+	g_geno->AutoSave();
+
+	// remove ui joint
+	g_geno->RemoveGLink(&g_geno->m_uiLink);
+
+	// remove all node
+	for (auto id : g_geno->m_selects)
+		if (evc::cGNode *gnode = g_geno->FindGNode(id))
+			g_geno->RemoveGNode(gnode);
+
+	g_geno->ClearSelection();
+	g_geno->m_gizmo.SetControlNode(nullptr);
+	g_geno->m_showUILink = false;
+	g_geno->m_selLink = nullptr;
+}
+
+
+// delete select node link
+void cGenoView::DeleteSelectLink()
+{
+	g_geno->AutoSave();
+
+	// remove ui joint
+	g_geno->RemoveGLink(&g_geno->m_uiLink);
+
+	// remove all link
+	set<evc::cGLink*> rms;
+	for (auto id : g_geno->m_selects)
+		if (evc::cGNode *gnode = g_geno->FindGNode(id))
+			for (auto &p : gnode->m_links)
+				rms.insert(p);
+
+	for (auto *p : rms)
+		g_geno->RemoveGLink(p);
+}
+
+
 void cGenoView::UpdateLookAt()
 {
 	GetMainCamera().MoveCancel();
@@ -840,14 +890,8 @@ void cGenoView::UpdateLookAt()
 	if (distance < -0.2f)
 	{
 		GetMainCamera().m_lookAt = groundPlane.Pick(ray.orig, ray.dir);
+		GetMainCamera().UpdateViewMatrix();
 	}
-	else
-	{ // horizontal viewing
-		const Vector3 lookAt = GetMainCamera().m_eyePos + GetMainCamera().GetDirection() * 5.f;
-		GetMainCamera().m_lookAt = lookAt;
-	}
-
-	GetMainCamera().UpdateViewMatrix();
 }
 
 
@@ -915,22 +959,22 @@ void cGenoView::OnMouseMove(const POINT mousePt)
 		right.y = 0;
 		right.Normalize();
 
-		GetMainCamera().MoveRight(-delta.x * m_rotateLen * 0.001f);
-		GetMainCamera().MoveFrontHorizontal(delta.y * m_rotateLen * 0.001f);
+		GetMainCamera().MoveRight(-delta.x * m_rotateLen * 0.0005f);
+		GetMainCamera().MoveFrontHorizontal(delta.y * m_rotateLen * 0.0005f);
 	}
 	else if (m_mouseDown[1])
 	{
-		const float scale = 0.003f;
-		if (m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 25.f)
+		const float scale = 0.001f;
+		if (g_geno->m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 25.f)
 		{
 			// cancel orbit moving
-			m_isOrbitMove = false;
+			g_geno->m_orbitId = -1;
 		}
 
-		if (m_isOrbitMove)
+		if (g_geno->m_orbitId >= 0)
 		{
-			m_camera.Yaw3(delta.x * scale, m_orbitTarget);
-			m_camera.Pitch3(delta.y * scale, m_orbitTarget);
+			m_camera.Yaw3(delta.x * scale, g_geno->m_orbitTarget);
+			m_camera.Pitch3(delta.y * scale, g_geno->m_orbitTarget);
 		}
 		else
 		{
@@ -1024,8 +1068,8 @@ void cGenoView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt
 		evc::cGNode *gnode = g_geno->FindGNode(id);
 		if (gnode)
 		{
-			m_isOrbitMove = true;
-			m_orbitTarget = gnode->m_transform.pos;
+			g_geno->m_orbitId = id;
+			g_geno->m_orbitTarget = gnode->m_transform.pos;
 		}
 	}
 	break;
@@ -1129,7 +1173,7 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
-			m_isOrbitMove = false;
+			g_geno->m_orbitId = -1;
 
 			if (m_popupMenuState > 0)
 			{
@@ -1185,6 +1229,7 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 				const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 
 				g_geno->ReadGenoTypeNodeFile("tmp.gnt", targetPos);
+				g_geno->AutoSave();
 			}//~VK_CONTROL
 		}
 		break;
@@ -1211,101 +1256,36 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::L: break;
 
 		case sf::Keyboard::W:
-		{
-			if ((m_popupMenuState == 2) && !g_geno->m_selects.empty())
+			if (m_popupMenuState == 2)
 			{
-				if (evc::cGNode *gnode = g_geno->FindGNode(g_geno->m_selects[0]))
-				{
-					evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
-
-					// phenotype view load
-					{
-						const graphic::cCamera3D &camera = g_global->m_3dView->m_camera;
-						const Vector2 size(camera.m_width, camera.m_height);
-						const Ray ray = camera.GetRay((int)size.x / 2, (int)size.y / 2 + (int)size.y / 5);
-						const Plane ground(Vector3(0, 1, 0), 0);
-						const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
-						g_pheno->ReadCreatureFile("tmp_spawn.gnt", targetPos);
-					}
-				}
+				SpawnSelectNodeToPhenoTypeView();
 				m_popupMenuState = 3;
 			}
-		}
-		break;
+			break;
 
 		case sf::Keyboard::J: // popup menu shortcut, joint remove
-		{
 			if (m_popupMenuState == 2)
 			{
-				// remove all link
-				set<evc::cGLink*> rms;
-				for (auto id : g_geno->m_selects)
-					if (evc::cGNode *gnode = g_geno->FindGNode(id))
-						for (auto &p : gnode->m_links)
-							rms.insert(p);
-
-				for (auto *p : rms)
-					g_geno->RemoveGLink(p);
-
+				DeleteSelectLink();
 				m_popupMenuState = 3; // close popup
 			}
-		}
-		break;
+			break;
 
 		case sf::Keyboard::D:
-		{
 			if (m_popupMenuState == 2)
 			{
-				// remove ui joint
-				g_geno->RemoveGLink(&g_geno->m_uiLink);
-
-				// remove all node
-				for (auto id : g_geno->m_selects)
-					if (evc::cGNode *gnode = g_geno->FindGNode(id))
-						g_geno->RemoveGNode(gnode);
-
-				g_geno->ClearSelection();
-				g_geno->m_gizmo.SetControlNode(nullptr);
-				g_geno->m_showUILink = false;
-				g_geno->m_selLink = nullptr;
-
+				DeleteSelectNode();
 				m_popupMenuState = 3; // close popup
 			}
-		}
-		break;
+			break;
 
-		case sf::Keyboard::I:
-		{
-			if ((m_popupMenuState == 2) && !g_geno->m_selects.empty())
+		case sf::Keyboard::I: // spawn iterator
+			if (m_popupMenuState == 2)
 			{
-				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
-				if (!gnode)
-					break;
-
-				evc::cGNode *clone = nullptr;
-				if (gnode->m_cloneId >= 0)
-				{
-					// find original genotype node
-					if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
-						clone = p->Clone(GetRenderer());
-				}
-				else
-				{
-					clone = gnode->Clone(GetRenderer());
-				}
-
-				if (clone)
-				{
-					g_geno->AddGNode(clone);
-					g_geno->ClearSelection();
-					g_geno->SelectObject(clone->m_id);
-					g_geno->m_gizmo.SetControlNode(clone);
-				}
-
+				SpawnSelectIterator();
 				m_popupMenuState = 3; // close popup
 			}
-		}
-		break;
+			break;
 		}
 		break;
 

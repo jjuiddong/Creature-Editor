@@ -63,6 +63,14 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 	SetColor(gnode.color);
 	m_txtColor = cColor::WHITE;
 	m_cloneId = gnode.iteration;
+	m_gid = gnode.id;
+
+	if (gnode.iteration >= 0) // iteration node? alpha blending
+	{
+		const Vector4 vColor = gnode.color.GetColor();
+		SetColor(cColor(vColor.x, vColor.y, vColor.z, 0.8f));
+	}
+
 	return true;
 }
 
@@ -338,7 +346,7 @@ cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 	break;
 	case phys::eShapeType::Cylinder:
 	{
-		const Vector2 dim = GetCapsuleDimension();
+		const Vector2 dim = GetCylinderDimension();
 		gnode->CreateCylinder(renderer, m_transform, dim.x, dim.y);
 	}
 	break;

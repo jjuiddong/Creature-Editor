@@ -34,7 +34,7 @@ bool c3DView::Init(cRenderer &renderer)
 	m_camera.SetViewPort(m_rect.Width(), m_rect.Height());
 
 	GetMainLight().Init(graphic::cLight::LIGHT_DIRECTIONAL);
-	GetMainLight().SetDirection(Vector3(-1, -2, 1.3f).Normal());
+	GetMainLight().SetDirection(Vector3(-1, -2, -1.3f).Normal());
 
 	sf::Vector2u size((u_int)m_rect.Width() - 15, (u_int)m_rect.Height() - 50);
 	cViewport vp = renderer.m_viewPort;
@@ -125,7 +125,7 @@ void c3DView::OnPreRender(const float deltaSeconds)
 	}
 
 	// Render Outline select object
-	if (!g_pheno->m_selects.empty() || !g_pheno->m_highLights.empty())
+	if (!g_pheno->m_selects.empty() || !g_pheno->m_highLights.empty() || (g_pheno->m_orbitId >= 0))
 	{
 		m_depthBuff.Begin(renderer);
 		RenderSelectModel(renderer, true, XMIdentity);
@@ -264,7 +264,7 @@ void c3DView::RenderEtc(graphic::cRenderer &renderer)
 void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 	, const XMMATRIX &tm)
 {
-	if (g_pheno->m_selects.empty() && g_pheno->m_highLights.empty())
+	if (g_pheno->m_selects.empty() && g_pheno->m_highLights.empty() && (g_pheno->m_orbitId < 0))
 		return;
 
 	// render function object
@@ -300,6 +300,9 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 		if (phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId))
 			render(sync);
 	}
+	renderer.m_cbPerFrame.m_v->outlineColor = Vector4(1.f, 1.f, 0.f, 1).GetVectorXM();
+	if (phys::sSyncInfo *sync = physSync->FindSyncInfo(g_pheno->m_orbitId))
+		render(sync);
 	if (!buildOutline)
 		renderer.GetDevContext()->OMSetDepthStencilState(renderer.m_renderState.DepthDefault(), 0);
 }
@@ -527,7 +530,7 @@ void c3DView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("shadow", &m_showShadow);
 		ImGui::SameLine();
 		ImGui::Checkbox("joint", &m_showJoint);
-		if (m_isOrbitMove)
+		if (g_pheno->m_orbitId >= 0)
 		{
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
@@ -1086,17 +1089,17 @@ void c3DView::OnMouseMove(const POINT mousePt)
 	}
 	else if (m_mouseDown[1])
 	{
-		const float scale = 0.003f;
-		if (m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 25.f)
+		const float scale = 0.002f;
+		if (g_pheno->m_orbitTarget.Distance(GetMainCamera().GetEyePos()) > 25.f)
 		{
 			// cancel orbit moving
-			m_isOrbitMove = false;
+			g_pheno->m_orbitId = -1;
 		}
 
-		if (m_isOrbitMove)
+		if (g_pheno->m_orbitId >= 0)
 		{
-			m_camera.Yaw3(delta.x * scale, m_orbitTarget);
-			m_camera.Pitch3(delta.y * scale, m_orbitTarget);
+			m_camera.Yaw3(delta.x * scale, g_pheno->m_orbitTarget);
+			m_camera.Pitch3(delta.y * scale, g_pheno->m_orbitTarget);
 		}
 		else
 		{
@@ -1198,8 +1201,8 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 		phys::sSyncInfo *sync = g_pheno->FindSyncInfo(syncId);
 		if (sync && sync->node)
 		{
-			m_isOrbitMove = true;
-			m_orbitTarget = sync->node->m_transform.pos;
+			g_pheno->m_orbitId = syncId;
+			g_pheno->m_orbitTarget = sync->node->m_transform.pos;
 		}
 	}
 	break;
@@ -1308,7 +1311,7 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
 
 		case sf::Keyboard::Escape:
-			m_isOrbitMove = false;
+			g_pheno->m_orbitId = -1;
 
 			if (m_popupMenuState > 0)
 			{

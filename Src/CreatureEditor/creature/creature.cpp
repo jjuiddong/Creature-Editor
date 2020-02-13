@@ -224,14 +224,21 @@ bool cCreature::GenerationGenoType(const uint generation)
 
 		// if iteration node has link another node or final node?
 		// move to new iteration node
-		for (auto &glink : m_glinks)
 		{
-			if (glink->gnode0 == parent)
-				continue; // ignore parent iteration node
-			if (glink->gnode1 == gnode)
+			set<sGenotypeNode*> visit; // ignore node
+			visit.insert(parent);
+			visit.insert(gnode);
+			visit.insert(newIter);
+
+			for (auto &glink : m_glinks)
 			{
-				// if find another link node, move to newIter position
-				MoveFinalNodeWithCalcTm(parent, gnode, newIter, glink->gnode0);
+				if (glink->gnode0 == parent)
+					continue; // ignore parent iteration node
+				if (glink->gnode1 == gnode)
+				{
+					// if find another link node, move to newIter position
+					MoveFinalNodeWithCalcTm(parent, gnode, newIter, glink->gnode0, visit);
+				}
 			}
 		}
 
@@ -291,6 +298,9 @@ void cCreature::GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen)
 			continue;
 		if (glink->gnode1 == gen)
 			continue;
+		if ((glink->gnode1->iteration >= 0)
+			&& (glink->gnode1->iteration != glink->gnode0->id))
+			continue; // iteratio node? link another parent node, skip generation
 
 		// new iteration node
 		const Vector3 p0 = glink->gnode0->transform.pos;
@@ -328,7 +338,8 @@ void cCreature::GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen)
 // addIter: added iteration node
 // finalNode: move node. move to addIter position
 void cCreature::MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *iter
-	, sGenotypeNode *addIter, sGenotypeNode *finalNode)
+	, sGenotypeNode *addIter, sGenotypeNode *finalNode
+	, INOUT set<sGenotypeNode*> &visit)
 {
 	const Matrix44 tm0 = iter->transform.GetMatrix();
 	const Matrix44 tm1 = addIter->transform.GetMatrix();
@@ -355,10 +366,6 @@ void cCreature::MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *it
 	}
 
 	// move linked node
-	set<sGenotypeNode*> visit;
-	visit.insert(parent); // ignore node
-	visit.insert(iter); // ignore node
-	visit.insert(addIter); // ignore node
 	const Matrix44 movTm = tm1.Inverse() * tm;
 	MoveNode(addIter, movTm, visit);
 }
