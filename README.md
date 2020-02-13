@@ -54,4 +54,6 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/creature2.jpg?raw=true)
 - Anemone
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/anemone.jpg?raw=true)
+- Anemone2
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/anemone2.jpg?raw=true)
 
