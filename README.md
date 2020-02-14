@@ -1,7 +1,6 @@
 # Creature-Editor
 Creature Editor With VS2017 C++, DX11, ImGui, PhysX
- - Physics base Structure and Creature Modeling Tool
- - Procedural Modeling
+ - Physics base Structure and Creature Procedural Modeling Tool
 - First
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/first.jpg?raw=true)
 - Gizmo Edit
