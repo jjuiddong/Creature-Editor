@@ -1,0 +1,77 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box",
+                "id": "12358",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.500000 0.047099 0.334903",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "12362",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "1.151707 3.000000 -0.691860",
+                "dim": "0.500000 0.047099 0.334903",
+                "rot": "0.000000 0.319087 0.000000 0.947726",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "12358"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "12364",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "1.151160 3.000000 0.666534",
+                "dim": "0.500000 0.047099 0.334903",
+                "rot": "0.000000 -0.368168 0.000000 0.929760",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "12358"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "12358",
+                "shape id1": "12364",
+                "jointpos": "0.575580 3.000000 0.333267",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 1.000000",
+                "pivot len0": "0.333266944",
+                "pivot dir1": "-0.684616 0.000000 -0.728905",
+                "pivot len1": "0.333267629"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "12358",
+                "shape id1": "12362",
+                "jointpos": "0.575853 3.000000 -0.345930",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.34593001",
+                "pivot dir1": "-0.604814 0.000000 0.796368",
+                "pivot len1": "0.345930666"
+            }
+        }
+    }
+}

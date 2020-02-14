@@ -208,6 +208,11 @@ bool cCreature::GenerationGenoType(const uint generation)
 		if (newScale.Length() < 0.1f)
 			continue; // ignore too small dimension object
 		
+		// find iteration node
+		//for (auto &glink : m_glinks)
+		//{
+		//}
+
 		sGenotypeNode *newIter = new sGenotypeNode;
 		*newIter = *gnode;
 		newIter->id = common::GenerateId();
@@ -243,26 +248,28 @@ bool cCreature::GenerationGenoType(const uint generation)
 		}
 
 		// new link, iter node - new node
-		sGenotypeLink *parentLink = nullptr;
+		sGenotypeLink *curLink = nullptr;
 		for (auto &glink : m_glinks)
 		{
 			if ((glink->gnode0 == parent)
 				&& (glink->gnode1 == gnode))
 			{
-				parentLink = glink;
+				curLink = glink;
 				break;
 			}		
 		}
-		if (!parentLink)
+		if (!curLink)
 			break; // error occurred
 
 		sGenotypeLink *newLink = new sGenotypeLink;
-		*newLink = *parentLink;
+		*newLink = *curLink;
 		newLink->gnode0 = gnode;
 		newLink->gnode1 = newIter;
 		newLink->nodeLocal0 = gnode->transform;
 		newLink->nodeLocal1 = newIter->transform;
 		m_glinks.push_back(newLink);
+
+
 	}
 
 	// create link added nodes

@@ -163,7 +163,7 @@ bool cGNode::Render(graphic::cRenderer &renderer
 	{
 		Transform tfm;
 		tfm.pos = m_transform.pos + Vector3(0, 0.2f, 0);
-		tfm.scale = Vector3::Ones * 0.15f;
+		tfm.scale = Vector3::Ones * 0.12f;
 		renderer.m_textMgr.AddTextRender(renderer
 			, m_id, m_wname.c_str(), m_txtColor, cColor::BLACK
 			, BILLBOARD_TYPE::DYN_SCALE, tfm, true, 16, 1
