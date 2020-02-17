@@ -1,0 +1,51 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box",
+                "id": "10119",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "2.354465 3.000000 -2.591928",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "10121",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "5.022627 3.000000 -2.771466",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10119"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10119",
+                "shape id1": "10121",
+                "jointpos": "3.688546 3.000000 -2.771466",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.179537296",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            }
+        }
+    }
+}

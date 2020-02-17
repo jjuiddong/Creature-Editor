@@ -106,8 +106,8 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 	// create genotype link
 	for (auto &p : glinks)
 	{
-		evc::cGNode *node0 = gmap[p->gnode0->id];
-		evc::cGNode *node1 = gmap[p->gnode1->id];
+		evc::cGNode *node0 = gmap[p->parent->id];
+		evc::cGNode *node1 = gmap[p->child->id];
 		evc::cGLink *link = new evc::cGLink();
 		if (link->Create(*p, node0, node1))
 		{

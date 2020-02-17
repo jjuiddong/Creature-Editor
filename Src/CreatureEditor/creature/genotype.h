@@ -97,6 +97,7 @@ namespace evc
 		float linearDamping;
 		float angularDamping;
 		int iteration; // iterate genotype node id
+		int iteration_internal; // internal used
 		bool generation; // internal used, is generation node?
 		Transform transform; // dimension
 							 //           box : scale
@@ -111,8 +112,8 @@ namespace evc
 	struct sGenotypeLink
 	{
 		phys::eJointType::Enum type;
-		sGenotypeNode *gnode0; // parent reference
-		sGenotypeNode *gnode1; // child reference
+		sGenotypeNode *parent; // parent reference
+		sGenotypeNode *child; // child reference
 
 		// joint property
 		Vector3 revoluteAxis; // local space

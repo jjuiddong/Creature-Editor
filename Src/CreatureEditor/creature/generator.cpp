@@ -1594,6 +1594,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->linearDamping = linearDamping;
 					gnode->angularDamping = angularDamping;
 					gnode->iteration = iteration;
+					gnode->iteration_internal = -1;
 					gnode->generation = false;
 					outNode.push_back(gnode);
 
@@ -1640,8 +1641,8 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 
 					sGenotypeLink *glink = new sGenotypeLink;
 					glink->type = type;
-					glink->gnode0 = gnode0;
-					glink->gnode1 = gnode1;
+					glink->parent = gnode0;
+					glink->child = gnode1;
 					glink->origPos = (pivot0 + pivot1) / 2.f;
 					glink->revoluteAxis = revoluteAxis;
 					glink->rotRevolute = revoluteQ;
