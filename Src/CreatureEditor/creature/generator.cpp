@@ -602,9 +602,9 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 
 // create phenotype node from genotype node
 cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
-	, const sGenotypeNode &gnode)
+	, const sGenotypeNode &gnode, const uint generation)
 {
-	if (gnode.iteration >= 0 && !gnode.generation)
+	if (gnode.iteration >= 0 && (gnode.generation > generation))
 		return nullptr; // iteration node, skip creation
 
 	const Vector3 pos = gnode.transform.pos;
@@ -669,7 +669,7 @@ cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
 
 // create joint from genotype link 
 phys::cJoint* evc::CreatePhenoTypeJoint(const sGenotypeLink &glink
-	, cPNode *pnode0, cPNode *pnode1)
+	, cPNode *pnode0, cPNode *pnode1, const uint generation)
 {
 	using namespace physx;
 
@@ -1595,7 +1595,8 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->angularDamping = angularDamping;
 					gnode->iteration = iteration;
 					gnode->iteration_internal = -1;
-					gnode->generation = false;
+					gnode->generation = (iteration < 0)? 0 : 1;
+					gnode->clonable = true;
 					outNode.push_back(gnode);
 
 					gnodes[id] = gnode;

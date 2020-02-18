@@ -1,0 +1,103 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box iter",
+                "id": "10324",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "11.152689 3.000000 -9.600154",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10322"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10322",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.490814 3.000000 -9.519978",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Sphere",
+                "id": "10326",
+                "type": "Dynamic",
+                "shape": "Sphere",
+                "pos": "12.659947 3.000000 -9.719648",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1"
+            },
+            "shape": {
+                "name": "Box iter",
+                "id": "10352",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.554255 3.000000 -11.239344",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10322"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10322",
+                "shape id1": "10324",
+                "jointpos": "1.162796 3.000000 -0.181995",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.0801763609",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10322",
+                "shape id1": "10352",
+                "jointpos": "9.522535 3.000000 -10.379661",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 -1.000000",
+                "pivot len0": "0.859683037",
+                "pivot dir1": "0.000000 0.000000 1.000000",
+                "pivot len1": "0.859683037"
+            },
+            "joint": {
+                "type": "Fixed",
+                "shape id0": "10326",
+                "shape id1": "10324",
+                "jointpos": "2.747363 3.000000 -0.181995",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 1.000000",
+                "pivot len0": "0.119495273",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0"
+            }
+        }
+    }
+}

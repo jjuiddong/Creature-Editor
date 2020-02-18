@@ -31,10 +31,10 @@ namespace evc
 		, OUT vector<int> *outSyncIds = nullptr);
 
 	cPNode* CreatePhenoTypeNode(graphic::cRenderer &renderer
-		, const sGenotypeNode &gnode);
+		, const sGenotypeNode &gnode, const uint generation);
 
 	phys::cJoint* CreatePhenoTypeJoint(const sGenotypeLink &glink
-		, cPNode *pnode0, cPNode *pnode1);
+		, cPNode *pnode0, cPNode *pnode1, const uint generation);
 
 
 	//----------------------------------------------------------------------------

@@ -11,6 +11,7 @@ cCreature::cCreature(const StrId &name //="creature"
 )
 	: m_id(common::GenerateId())
 	, m_name(name)
+	, m_generation(0)
 {
 }
 
@@ -145,12 +146,13 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		delete p;
 	m_nodes.clear();
 
-	GenerationGenoType2(generation);
+	m_generation = generation;
+	GenerationGenoType2(0, generation);
 
 	map<int, cPNode*> nodeMap;
 	for (auto &p : m_gnodes)
 	{
-		cPNode *pnode = evc::CreatePhenoTypeNode(renderer, *p);
+		cPNode *pnode = evc::CreatePhenoTypeNode(renderer, *p, generation);
 		if (!pnode)
 			continue;
 		m_nodes.push_back(pnode);
@@ -164,7 +166,7 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		if (!pnode0 || !pnode1)
 			continue;
 
-		evc::CreatePhenoTypeJoint(*p, pnode0, pnode1);
+		evc::CreatePhenoTypeJoint(*p, pnode0, pnode1, generation);
 	}
 }
 
@@ -305,44 +307,45 @@ bool cCreature::GenerationGenoType(const uint generation)
 
 
 // Genotype node generation
-bool cCreature::GenerationGenoType2(const uint generation)
+bool cCreature::GenerationGenoType2(const uint generation, const uint maxGeneration)
 {
-	if (generation <= 0)
+	if (generation >= maxGeneration)
+	{
+		// move final node to visible iteration node
+		MoveAllFinalNode2();
 		return true; // complete
+	}
 
-	// 1. find iteration node
-	// 2. add new genotype node where iteration node
-	// 3. add iteration node where new genotype node
-	// 4. decreament generation
-	set<sGenotypeNode*> iterNodes; // already generate node?
-	set<sGenotypeNode*> addNodes;
+	set<sGenotypeNode*> rmNodes;
 	vector<sGenotypeNode*> nodes = m_gnodes;
 	for (uint i = 0; i < nodes.size(); ++i)
 	{
 		sGenotypeNode *gnode = nodes[i];
-		if (gnode->iteration < 0 || gnode->generation)
+		if ((gnode->iteration < 0) || (gnode->generation != (generation+1)))
 			continue;
-		if (iterNodes.end() != iterNodes.find(gnode))
-			continue; // already generated node, ignore
 		auto it = m_gmap.find(gnode->iteration);
 		if (m_gmap.end() == it) // find parent node?
 			continue;
 
 		sGenotypeNode *parent = it->second;
-
 		sGenotypeLink *glink = FindLink(parent, gnode);
 		if (!glink)
 			continue;
 
-		sGenotypeNode *clone = CloneGenoTypeNode(eHierachy::Parent, glink, parent);
-		if (!clone)
-			continue; // error occurred
+		CloneGenoTypeNode(generation + 1, eHierachy::Parent, glink, parent);
 
-		// remove iterator node, link
-		RemoveGenoTypeNode(gnode);
+		rmNodes.insert(gnode); // remove iterator node, link
 	}
 
-	return GenerationGenoType2(generation - 1);
+	// remove cloning iteration node
+	for (auto &gnode : rmNodes)
+		RemoveGenoTypeNode(gnode, true);
+
+	// update cloneable
+	for (auto &gnode : m_gnodes)
+		gnode->clonable = true;
+
+	return GenerationGenoType2(generation + 1, maxGeneration);
 }
 
 
@@ -411,7 +414,8 @@ bool cCreature::CopyGenoType(sGenotypeNode *src, sGenotypeLink *srcLink, sGenoty
 
 
 // clone genotype node src -> dst
-sGenotypeNode* cCreature::CloneGenoTypeNode(sGenotypeNode *src, sGenotypeNode *dst)
+sGenotypeNode* cCreature::CloneGenoTypeNode(const uint generation
+	, sGenotypeNode *src, sGenotypeNode *dst)
 {
 	sGenotypeLink *glink = FindParentLink(src);
 	if (!glink)
@@ -419,21 +423,21 @@ sGenotypeNode* cCreature::CloneGenoTypeNode(sGenotypeNode *src, sGenotypeNode *d
 
 	set<sGenotypeNode*> ignoreNodes;
 	set<std::pair<sGenotypeNode*, sGenotypeNode*>> ignoreLinks;
-	sGenotypeNode *clone = CloneGenoTypeNode(eHierachy::Child, glink, glink->parent, glink->child, dst
-		, ignoreNodes, ignoreLinks);
+	sGenotypeNode *clone = CloneGenoTypeNode(generation, eHierachy::Child
+		, glink, glink->parent, glink->child, dst, ignoreNodes, ignoreLinks);
 	UpdateIterationId();
 	return clone;
 }
 
 
 // clone genotype node src -> dst
-sGenotypeNode* cCreature::CloneGenoTypeNode(const eHierachy cloneType
-	, sGenotypeLink *srcLink, sGenotypeNode *dst)
+sGenotypeNode* cCreature::CloneGenoTypeNode(const uint generation
+	, const eHierachy cloneType, sGenotypeLink *srcLink, sGenotypeNode *dst)
 {
 	set<sGenotypeNode*> ignoreNodes;
 	set<std::pair<sGenotypeNode*, sGenotypeNode*>> ignoreLinks;
-	sGenotypeNode *clone = CloneGenoTypeNode(cloneType, srcLink, srcLink->parent, srcLink->child, dst
-		, ignoreNodes, ignoreLinks);
+	sGenotypeNode *clone = CloneGenoTypeNode(generation, cloneType
+		, srcLink, srcLink->parent, srcLink->child, dst, ignoreNodes, ignoreLinks);
 	UpdateIterationId();
 	return clone;
 }
@@ -456,18 +460,28 @@ void cCreature::UpdateIterationId()
 
 // clone child genotype node, from srcChild to dstParent
 // cloneType : clone node type
-sGenotypeNode* cCreature::CloneGenoTypeNode(const eHierachy cloneType
+sGenotypeNode* cCreature::CloneGenoTypeNode(const uint generation
+	, const eHierachy cloneType
 	, sGenotypeLink *srcLink
 	, sGenotypeNode *srcParent, sGenotypeNode *srcChild, sGenotypeNode *dst
 	, INOUT set<sGenotypeNode*> &ignoreNodes
 	, INOUT set<std::pair<sGenotypeNode*, sGenotypeNode*>> &ignoreLinks)
 {
+	// check clonable, generation
+	if (((eHierachy::Parent == cloneType) 
+			&& ((srcParent->generation > generation) || (!srcParent->clonable)))
+		|| ((eHierachy::Child == cloneType) 
+			&& ((srcChild->generation > generation) || (!srcChild->clonable))))
+		return nullptr;
+
+	// already visit link?
 	const bool isVisitLink = (ignoreLinks.end() != ignoreLinks.find(std::make_pair(srcParent, srcChild)))
 		|| (ignoreLinks.end() != ignoreLinks.find(std::make_pair(srcChild, srcParent)));
 	if (isVisitLink)
 		return nullptr;
 
-	const bool isFirstIteration = (cloneType == eHierachy::Parent) && (srcChild->iteration >= 0);
+	const bool isFirstIteration = (cloneType == eHierachy::Parent) 
+		&& (srcChild->iteration == srcParent->id);
 	if (!isFirstIteration)
 		ignoreLinks.insert(std::make_pair(srcParent, srcChild));
 
@@ -480,11 +494,6 @@ sGenotypeNode* cCreature::CloneGenoTypeNode(const eHierachy cloneType
 	{
 		isVisitNode = ignoreNodes.end() != ignoreNodes.find(srcChild);
 	}
-
-	if ((cloneType == eHierachy::Parent)
-		//&& (srcChild->iteration == srcParent->id)
-		&& srcParent->generation)
-		return nullptr; // already generation
 
 	sGenotypeNode *clone = nullptr;
 	sGenotypeNode *dstParent = nullptr;
@@ -510,44 +519,53 @@ sGenotypeNode* cCreature::CloneGenoTypeNode(const eHierachy cloneType
 			localTm = tm0 * tm1.Inverse(); // parent -> child transform
 		const Matrix44 tm = localTm * tm2;
 
-		//const Vector3 scale(srcChild->transform.scale.x / srcParent->transform.scale.x
-		//	, srcChild->transform.scale.y / srcParent->transform.scale.y
-		//	, srcChild->transform.scale.z / srcParent->transform.scale.z);
-		//const Vector3 newScale = srcChild->transform.scale * scale;
-		//if (newScale.Length() < 0.1f)
-		//	return nullptr; // ignore too small dimension object
+		// calc next node dimension
+		const Vector3 scale(to->transform.scale.x / from->transform.scale.x
+			, to->transform.scale.y / from->transform.scale.y
+			, to->transform.scale.z / from->transform.scale.z);
+		Vector3 newScale = to->transform.scale;
+		if (isFirstIteration)
+		{
+			// reverse scale (child -> parent)
+			const Vector3 nscale = Vector3(1.f / scale.x, 1.f / scale.y, 1.f / scale.z);
+			newScale = to->transform.scale * nscale;
+			if (newScale.Length() < 0.1f)
+				return nullptr; // ignore too small dimension object
+		}
+		else if (to->iteration >= 0)
+		{
+			newScale = to->transform.scale * scale;
+			if (newScale.Length() < 0.1f)
+				return nullptr; // ignore too small dimension object
+		}
 
 		clone = new sGenotypeNode;
 		*clone = *to;
 		clone->id = common::GenerateId();
 		clone->transform.pos = tm.GetPosition();
-		//clone->transform.scale = newScale;
+		clone->transform.scale = newScale;
 		clone->transform.rot = tm.GetQuaternion();
 		clone->iteration_internal = -1;
+		clone->clonable = false;
+		clone->generation += 1;
 		m_gnodes.push_back(clone);
 		m_gmap[clone->id] = clone;
-		//iterNodes.insert(clone);
-		//addNodes.insert(srcChild);
 
 		dstParent = (cloneType == eHierachy::Child) ? dst : clone;
 		dstChild = (cloneType == eHierachy::Child) ? clone : dst;
 		if (isFirstIteration) // iteration node?
 		{
-			to->generation = true; // generate!!, no more generation
-			clone->iteration = -1;
-			clone->generation = false;
+			clone->iteration = from->iteration;		
 			dstParent = dst;
 			dstChild = clone;
 		}
 		else if (to->iteration >= 0)
 		{
 			clone->iteration_internal = to->iteration;
-			clone->generation = false;
-			//to->generation = true;
 		}
 
-		m_clonemap[srcChild->id] = dstChild;
 		m_clonemap[srcParent->id] = dstParent;
+		m_clonemap[srcChild->id] = dstChild;
 	}
 
 	if (!isVisitNode)
@@ -557,14 +575,18 @@ sGenotypeNode* cCreature::CloneGenoTypeNode(const eHierachy cloneType
 		set<sGenotypeLink*> &glinks = m_linkMap[srcNode];
 		for (auto &glink : glinks)
 		{
-			//const eHierachy type = (glink->parent == srcNode) ? eHierachy::Child : eHierachy::Parent;
-			//CloneGenoTypeNode(type, glink, glink->parent, glink->child, clone
-			//	, ignoreNodes, ignoreLinks);
-
-			if (glink->parent == srcNode)
+			if (glink->parent == srcNode) // child clone
 			{
-				CloneGenoTypeNode(eHierachy::Child, glink, glink->parent, glink->child, clone
-					, ignoreNodes, ignoreLinks);
+				CloneGenoTypeNode(generation, eHierachy::Child
+					, glink, glink->parent, glink->child, clone, ignoreNodes, ignoreLinks);
+			}
+			else if ((glink->child == srcNode) 
+				&& (glink->child->iteration >= 0)
+				&& (glink->child->iteration != glink->parent->id)
+				&& (glink->parent->iteration < 0)) // final node clone?
+			{
+				CloneGenoTypeNode(generation, eHierachy::Parent
+					, glink, glink->parent, glink->child, clone, ignoreNodes, ignoreLinks);
 			}
 		}
 	}
@@ -644,27 +666,70 @@ sGenotypeLink* cCreature::FindLink(sGenotypeNode *parent, sGenotypeNode *child)
 }
 
 
-bool cCreature::RemoveGenoTypeNode(sGenotypeNode *gnode)
+// remove genotype node and connection final node
+bool cCreature::RemoveGenoTypeNode(sGenotypeNode *gnode
+	, const bool removeFinalNode //=false
+)
 {
-	set<sGenotypeLink*> rml;
-	for (auto &glink : m_glinks)
+	set<sGenotypeNode*> rms; // remove nodes
+	rms.insert(gnode);
+
+	if (removeFinalNode && (gnode->iteration >= 0))
 	{
-		if (glink->parent == gnode)
-			rml.insert(glink);
-		if (glink->child == gnode)
-			rml.insert(glink);
+		// collect all final node
+		auto &glinks = m_linkMap[gnode];
+		for (auto &glink : glinks)
+		{
+			// final node?
+			if ((glink->child == gnode)
+				&& (gnode->iteration != glink->parent->id) // no iteration parent node
+				&& (glink->parent->iteration < 0)) 
+			{
+				// collect all connection final node
+				queue<sGenotypeNode*> q;
+				q.push(glink->parent);
+				while (!q.empty())
+				{
+					sGenotypeNode *p = q.front(); 
+					q.pop();
+					if (rms.end() != rms.find(p))
+						continue;
+					rms.insert(p);
+
+					auto &glinks2 = m_linkMap[p];
+					for (auto &glink2 : glinks2)
+					{
+						if (glink2->child == gnode)
+							continue;
+						q.push((glink2->parent == p)? glink2->child : glink2->parent);
+					}
+				}
+			}
+		}
 	}
 
-	for (auto &glink : rml)
+	for (auto &p : rms)
 	{
-		for (auto &kv : m_linkMap)
-			kv.second.erase(glink);
-		common::removevector(m_glinks, glink);
-		delete glink;
-	}
+		set<sGenotypeLink*> rml;
+		for (auto &glink : m_glinks)
+		{
+			if (glink->parent == p)
+				rml.insert(glink);
+			if (glink->child == p)
+				rml.insert(glink);
+		}
 
-	common::removevector(m_gnodes, gnode);
-	delete gnode;
+		for (auto &glink : rml)
+		{
+			for (auto &kv : m_linkMap)
+				kv.second.erase(glink);
+			common::removevector(m_glinks, glink);
+			delete glink;
+		}
+
+		common::removevector(m_gnodes, p);
+		delete p;
+	}
 	return true;
 }
 
@@ -862,6 +927,36 @@ void cCreature::MoveAllFinalNode()
 				}
 			}
 		}
+	}
+}
+
+
+// clone to last visible iteration node
+void cCreature::MoveAllFinalNode2()
+{
+	set<sGenotypeLink*> finalLinks; // final node link
+	for (auto &glink : m_glinks)
+	{
+		// find final node
+		if ((glink->child->iteration >= 0)
+			&& (glink->parent->iteration < 0)
+			&& (glink->child->iteration != glink->parent->id))
+		{
+			finalLinks.insert(glink);
+		}
+	}
+
+	for (auto &glink : finalLinks)
+	{
+		// move to child iteration parent node
+		sGenotypeNode *parent = m_gmap[glink->child->iteration];
+		if (!parent)
+			continue; // error occurred!!
+
+		sGenotypeNode *finalNode = glink->parent;
+		sGenotypeNode *invisibleIter = glink->child;
+		CloneGenoTypeNode(finalNode->generation, eHierachy::Parent, glink, parent);
+		RemoveGenoTypeNode(finalNode, true);
 	}
 }
 

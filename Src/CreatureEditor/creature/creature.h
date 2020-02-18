@@ -34,17 +34,20 @@ namespace evc
 		bool ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName);
 		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation);
 		bool GenerationGenoType(const uint generation);
-		bool GenerationGenoType2(const uint generation);
+		bool GenerationGenoType2(const uint generation, const uint maxGeneration);
 
 		bool CopyGenoType(sGenotypeNode *src, sGenotypeLink *srcLink, sGenotypeNode *dst
 			, set<sGenotypeNode*> &ignore);
 
 		enum class eHierachy {Parent, Child};
-		sGenotypeNode* CloneGenoTypeNode(sGenotypeNode *src, sGenotypeNode *dst);
-		sGenotypeNode* CloneGenoTypeNode(const eHierachy cloneType
-			, sGenotypeLink *srcLink, sGenotypeNode *dst);
+		sGenotypeNode* CloneGenoTypeNode(const uint generation
+			, sGenotypeNode *src, sGenotypeNode *dst);
+		sGenotypeNode* CloneGenoTypeNode(const uint generation
+			, const eHierachy cloneType, sGenotypeLink *srcLink, sGenotypeNode *dst);
 
-		sGenotypeNode* CloneGenoTypeNode(const eHierachy cloneType
+		sGenotypeNode* CloneGenoTypeNode(
+			const uint generation
+			, const eHierachy cloneType
 			, sGenotypeLink *srcLink
 			, sGenotypeNode *srcParent, sGenotypeNode *srcChild, sGenotypeNode *dst
 			, INOUT set<sGenotypeNode*> &ignoreNodes
@@ -53,7 +56,8 @@ namespace evc
 		sGenotypeNode* CloneGenoType(sGenotypeLink *srcLink, sGenotypeNode *dstParent);
 		sGenotypeLink* FindParentLink(sGenotypeNode *child);
 		sGenotypeLink* FindLink(sGenotypeNode *parent, sGenotypeNode *child);
-		bool RemoveGenoTypeNode(sGenotypeNode *gnode);
+		bool RemoveGenoTypeNode(sGenotypeNode *gnode
+			, const bool removeFinalNode = false);
 		void UpdateIterationId();
 
 		void GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen);
@@ -65,11 +69,13 @@ namespace evc
 		void MoveFinalNode(sGenotypeNode *curLinkNode, sGenotypeNode *movLinkNode
 			, sGenotypeNode *finalNode);
 		void MoveAllFinalNode();
+		void MoveAllFinalNode2();
 
 
 	public:
 		int m_id;
 		StrId m_name;
+		uint m_generation;
 
 		// phenotype
 		vector<cPNode*> m_nodes;
