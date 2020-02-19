@@ -35,6 +35,8 @@ namespace evc
 		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation);
 		bool GenerationGenoType(const uint generation);
 		bool GenerationGenoType2(const uint generation, const uint maxGeneration);
+		bool GenerationGenoType3(const uint generation, const uint maxGeneration
+			, const bool isRecursive =true);
 
 		bool CopyGenoType(sGenotypeNode *src, sGenotypeLink *srcLink, sGenotypeNode *dst
 			, set<sGenotypeNode*> &ignore);
@@ -72,8 +74,10 @@ namespace evc
 			, sGenotypeNode *finalNode);
 		void MoveAllFinalNode();
 		void MoveAllFinalNode2();
+		void MoveAllFinalNode3(const uint generation);
 		void CollectLinkedNode(sGenotypeNode *gnode, const set<sGenotypeNode*> &ignores
 			, OUT set<sGenotypeNode*> &out);
+		bool IsAlreadyGenerated(sGenotypeNode *gnode);
 
 
 	public:
