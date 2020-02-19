@@ -39,15 +39,17 @@ namespace evc
 		bool CopyGenoType(sGenotypeNode *src, sGenotypeLink *srcLink, sGenotypeNode *dst
 			, set<sGenotypeNode*> &ignore);
 
+		enum class eClone {Generation, Copy};
 		enum class eHierachy {Parent, Child};
-		sGenotypeNode* CloneGenoTypeNode(const uint generation
+		sGenotypeNode* CloneGenoTypeNode(const eClone cloneType, const uint generation
 			, sGenotypeNode *src, sGenotypeNode *dst);
-		sGenotypeNode* CloneGenoTypeNode(const uint generation
-			, const eHierachy cloneType, sGenotypeLink *srcLink, sGenotypeNode *dst);
+		sGenotypeNode* CloneGenoTypeNode(const eClone cloneType, const eHierachy target
+			, const uint generation, sGenotypeLink *srcLink, sGenotypeNode *dst);
 
 		sGenotypeNode* CloneGenoTypeNode(
-			const uint generation
+			const eClone copy
 			, const eHierachy cloneType
+			, const uint generation
 			, sGenotypeLink *srcLink
 			, sGenotypeNode *srcParent, sGenotypeNode *srcChild, sGenotypeNode *dst
 			, INOUT set<sGenotypeNode*> &ignoreNodes
@@ -70,6 +72,8 @@ namespace evc
 			, sGenotypeNode *finalNode);
 		void MoveAllFinalNode();
 		void MoveAllFinalNode2();
+		void CollectLinkedNode(sGenotypeNode *gnode, const set<sGenotypeNode*> &ignores
+			, OUT set<sGenotypeNode*> &out);
 
 
 	public:

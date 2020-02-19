@@ -789,6 +789,9 @@ int cGenoView::PickingNode(const int pickType, const POINT &mousePos
 // spawn select node to phenotype view
 void cGenoView::SpawnSelectNodeToPhenoTypeView()
 {
+	if (g_geno->m_selects.empty())
+		return;
+
 	evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
 	if (!gnode)
 		return;
