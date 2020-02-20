@@ -1254,6 +1254,7 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	shape.put<float>("linear damping", 0.5f);
 	shape.put<bool>("kinematic", false);
 	shape.put<int>("iteration", gnode->m_cloneId);
+	shape.put<unsigned int>("max generation", gnode->m_maxGeneration);
 
 	parent.add_child("shape", shape);
 
@@ -1582,6 +1583,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
 					const bool kinematic = vt0.second.get<bool>("kinematic", true);
 					const int iteration = vt0.second.get<int>("iteration", -1);
+					const uint maxGeneration = vt0.second.get<unsigned int>("max generation", 0);
 
 					sGenotypeNode *gnode = new sGenotypeNode;
 					gnode->id = id;
@@ -1594,7 +1596,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->linearDamping = linearDamping;
 					gnode->angularDamping = angularDamping;
 					gnode->iteration = iteration;
-					gnode->iteration_internal = -1;
+					gnode->maxGeneration = maxGeneration;
 					gnode->generation = (iteration < 0)? 0 : 1;
 					gnode->clonable = true;
 					outNode.push_back(gnode);

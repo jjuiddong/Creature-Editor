@@ -14,6 +14,7 @@ cGNode::cGNode()
 	, m_density(1.f)
 	, m_color(cColor::WHITE)
 	, m_txtColor(cColor::WHITE)
+	, m_maxGeneration(0)
 {
 }
 
@@ -63,6 +64,7 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 	SetColor(gnode.color);
 	m_txtColor = cColor::WHITE;
 	m_cloneId = gnode.iteration;
+	m_maxGeneration = gnode.maxGeneration;
 	m_gid = gnode.id;
 
 	if (gnode.iteration >= 0) // iteration node? alpha blending

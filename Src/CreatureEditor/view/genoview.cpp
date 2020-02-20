@@ -11,7 +11,7 @@ using namespace framework;
 cGenoView::cGenoView(const string &name)
 	: framework::cDockWindow(name)
 	, m_showGrid(true)
-	, m_showName(true)
+	, m_showName(false)
 	, m_showId(false)
 	, m_showJoint(true)
 	, m_popupMenuType(0)

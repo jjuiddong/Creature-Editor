@@ -283,7 +283,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render angular limit (origin axis)
-	if (phys::eJointType::Revolute == m_type)
+	if (0 && (phys::eJointType::Revolute == m_type))
 	{
 		const float axisLen = 0.2f;
 		const float axisSize = 0.01f;

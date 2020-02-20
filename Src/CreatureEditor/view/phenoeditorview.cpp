@@ -108,7 +108,7 @@ void cPhenoEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		ImGui::DragFloat("##density", &m_density, 0.001f, 0.0f, 1000.f);
 
-		ImGui::TextUnformatted("Generation    ");
+		ImGui::TextUnformatted("Generation");
 		ImGui::SameLine();
 		ImGui::DragInt("##generation", &g_pheno->m_generationCnt, 1, 0, 100);
 

@@ -209,6 +209,7 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		const Quaternion rot(Vector3(1, 0, 0), (r1 - r0).Normal()); // local -> world axis transform
 
 		// render origin axis
+		if (0)
 		{
 			const Vector3 dir = Vector3(0, 1, 0) * rot; // axis origin direction
 			const Vector3 b0 = jointPos + Vector3(-axisDis, 0, 0) * rot;
@@ -225,8 +226,8 @@ bool cJointRenderer::Render(graphic::cRenderer &renderer
 		// render current axis
 		{
 			const Vector3 dir = Vector3(0, 1, 0) * m_joint->m_rotRevolute; // axis origin local direction
-			const Matrix44 ctm0 = Transform(m_sync0->node->m_transform.rot).GetMatrix();
-			const Matrix44 ctm1 = Transform(m_sync1->node->m_transform.rot).GetMatrix();
+			const Matrix44 ctm0 = m_sync0->node->m_transform.rot.GetMatrix();
+			const Matrix44 ctm1 = m_sync1->node->m_transform.rot.GetMatrix();
 			const Matrix44 rtm0 = *(Matrix44*)m_limit.angular.rtm0 * ctm0;
 			const Matrix44 rtm1 = *(Matrix44*)m_limit.angular.rtm1 * ctm1;
 			const Vector3 b0 = jointPos + Vector3(-axisDis2, 0, 0) * rot;
@@ -526,10 +527,8 @@ void cJointRenderer::UpdateLimit()
 
 	case eJointType::Revolute:
 	{
-		const Transform tfm0(m_joint->m_actorLocal0.rot);
-		const Transform tfm1(m_joint->m_actorLocal1.rot);
-		const Matrix44 tm0 = tfm0.GetMatrix();
-		const Matrix44 tm1 = tfm1.GetMatrix();
+		const Matrix44 tm0 = m_joint->m_actorLocal0.rot.GetMatrix();
+		const Matrix44 tm1 = m_joint->m_actorLocal1.rot.GetMatrix();
 		const Matrix44 rtm0 = tm0.Inverse();
 		const Matrix44 rtm1 = tm1.Inverse();
 		m_limit.angular.isLimit = m_joint->IsAngularLimit();

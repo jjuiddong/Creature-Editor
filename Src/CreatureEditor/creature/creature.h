@@ -33,13 +33,8 @@ namespace evc
 	protected:
 		bool ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName);
 		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation);
-		bool GenerationGenoType(const uint generation);
-		bool GenerationGenoType2(const uint generation, const uint maxGeneration);
-		bool GenerationGenoType3(const uint generation, const uint maxGeneration
+		bool GenerationGenoType(const uint generation, const uint maxGeneration
 			, const bool isRecursive =true);
-
-		bool CopyGenoType(sGenotypeNode *src, sGenotypeLink *srcLink, sGenotypeNode *dst
-			, set<sGenotypeNode*> &ignore);
 
 		enum class eClone {Generation, Copy};
 		enum class eHierachy {Parent, Child};
@@ -57,24 +52,12 @@ namespace evc
 			, INOUT set<sGenotypeNode*> &ignoreNodes
 			, INOUT set<std::pair<sGenotypeNode*, sGenotypeNode*>> &ignoreLinks);
 
-		sGenotypeNode* CloneGenoType(sGenotypeLink *srcLink, sGenotypeNode *dstParent);
 		sGenotypeLink* FindParentLink(sGenotypeNode *child);
 		sGenotypeLink* FindLink(sGenotypeNode *parent, sGenotypeNode *child);
 		bool RemoveGenoTypeNode(sGenotypeNode *gnode
 			, const bool removeFinalNode = false);
-		void UpdateIterationId();
 
-		void GenerationGenotypeLink(sGenotypeNode *src, sGenotypeNode *gen);
-		void MoveFinalNodeWithCalcTm(sGenotypeNode *parent, sGenotypeNode *iter
-			, sGenotypeNode *addIter, sGenotypeNode *finalNode
-			, INOUT set<sGenotypeNode*> &visit);
-		void MoveNode(sGenotypeNode *linkNode, const Matrix44 &localTm
-			, INOUT set<sGenotypeNode*> &visit);
-		void MoveFinalNode(sGenotypeNode *curLinkNode, sGenotypeNode *movLinkNode
-			, sGenotypeNode *finalNode);
-		void MoveAllFinalNode();
-		void MoveAllFinalNode2();
-		void MoveAllFinalNode3(const uint generation);
+		void MoveAllFinalNode(const uint generation);
 		void CollectLinkedNode(sGenotypeNode *gnode, const set<sGenotypeNode*> &ignores
 			, OUT set<sGenotypeNode*> &out);
 		bool IsAlreadyGenerated(sGenotypeNode *gnode);

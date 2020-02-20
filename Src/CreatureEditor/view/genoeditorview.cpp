@@ -214,6 +214,15 @@ void cGenoEditorView::RenderSelectionInfo()
 		ImGui::SameLine();
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&m_eulerAngle, 0.1f);
 
+		if (gnode->m_cloneId >= 0)
+		{
+			ImGui::PushItemWidth(175);
+			ImGui::TextUnformatted("Max Generation");
+			ImGui::SameLine();
+			ImGui::DragInt("##max generation", (int*)&gnode->m_maxGeneration, 1, 0, 1000);
+			ImGui::PopItemWidth();
+		}
+
 		if (edit0) // position edit
 		{
 			tfm.pos.y = max(0.f, tfm.pos.y);

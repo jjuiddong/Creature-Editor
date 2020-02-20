@@ -97,6 +97,7 @@ namespace evc
 		float linearDamping;
 		float angularDamping;
 		int iteration; // iterate genotype node id
+		uint maxGeneration; // maximum generation size, 0:infinity
 		Transform transform; // dimension
 							 //           box : scale
 							 //           sphere : radius = scale.x
@@ -105,7 +106,6 @@ namespace evc
 							 //			  cylinder: radius = scale.y
 							 //			            height = scale.x	
 
-		int iteration_internal; // internal used
 		uint generation; // internal used, generation
 		bool clonable; // internal used, cloning check
 	};
