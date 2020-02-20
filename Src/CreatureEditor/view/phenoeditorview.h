@@ -29,16 +29,17 @@ protected:
 	void RenderDistanceJoint();
 	void RenderD6Joint();
 	void RenderSelectActorJointInfo(const int syncId);
-	void RenderSphericalJointSetting(phys::cJoint *joint);
-	void RenderRevoluteJointSetting(phys::cJoint *joint);
-	void RenderPrismaticJointSetting(phys::cJoint *joint);
-	void RenderDistanceJointSetting(phys::cJoint *joint);
-	void RenderD6JointSetting(phys::cJoint *joint);
+	void RenderSphericalJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
+	void RenderRevoluteJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
+	void RenderPrismaticJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
+	void RenderDistanceJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
+	void RenderD6JointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	bool CheckCancelUIJoint();
 	void CheckChangeSelection();
 	void UpdateUIJoint(phys::sSyncInfo *sync0
 		, phys::sSyncInfo *sync1, const bool editAxis
 		, const Vector3 &revoluteAxis);
+	void UpdateJointInfo(const int syncId);
 
 
 public:
@@ -48,4 +49,5 @@ public:
 	Vector3 m_eulerAngle; // roll,pitch,yaw (angle)
 	bool m_isChangeSelection; // ui information update?
 	vector<int> m_oldSelects;
+	vector<evc::sGenotypeLink> m_jointInfos; // temporal store joint
 };

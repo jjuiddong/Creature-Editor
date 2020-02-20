@@ -359,6 +359,9 @@ void cPhenoEditorView::RenderSelectActorJointInfo(const int syncId)
 	phys::cRigidActor *actor = sync->actor;
 	graphic::cNode *node = sync->node;
 
+	if (actor->m_joints.size() != m_jointInfos.size())
+		return; // error occurred!!
+
 	set<phys::cJoint*> rmJoints; // remove joints
 
 	// show all joint information contained rigid actor
@@ -366,6 +369,7 @@ void cPhenoEditorView::RenderSelectActorJointInfo(const int syncId)
 	for (uint i=0; i < actor->m_joints.size(); ++i)
 	{
 		phys::cJoint *joint = actor->m_joints[i];
+		evc::sGenotypeLink &info = m_jointInfos[i];
 
 		const ImGuiTreeNodeFlags node_flags = 0;
 		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
@@ -394,11 +398,11 @@ void cPhenoEditorView::RenderSelectActorJointInfo(const int syncId)
 			switch (joint->m_type)
 			{
 			case phys::eJointType::Fixed: break;
-			case phys::eJointType::Spherical: RenderSphericalJointSetting(joint); break;
-			case phys::eJointType::Revolute: RenderRevoluteJointSetting(joint); break;
-			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(joint); break;
-			case phys::eJointType::Distance: RenderDistanceJointSetting(joint); break;
-			case phys::eJointType::D6: RenderD6JointSetting(joint); break;
+			case phys::eJointType::Spherical: RenderSphericalJointSetting(joint, info); break;
+			case phys::eJointType::Revolute: RenderRevoluteJointSetting(joint, info); break;
+			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(joint, info); break;
+			case phys::eJointType::Distance: RenderDistanceJointSetting(joint, info); break;
+			case phys::eJointType::D6: RenderD6JointSetting(joint, info); break;
 			default:
 				assert(0);
 				break;
@@ -1124,46 +1128,27 @@ void cPhenoEditorView::RenderD6Joint()
 }
 
 
-void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
+void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
 {
 	using namespace physx;
 
-	static bool isLimit = false;
-	static PxJointAngularLimitPair limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
-	static bool isDrive = false;
-	static float driveVelocity = 0.f;
-	static bool isCycleDrive = false;
-	static float cycleDrivePeriod = 3.f;
-	static float cycleDriveVelocityAccel = 1.0f;
-
-	if (m_isChangeSelection)
-	{
-		isLimit = joint->IsAngularLimit();
-		limit = joint->GetAngularLimit();
-		isDrive = joint->IsDrive();
-		driveVelocity = joint->GetDriveVelocity();
-		isCycleDrive = joint->IsCycleDrive();
-		const Vector2 period = joint->GetCycleDrivePeriod();
-		cycleDrivePeriod = period.x;
-		cycleDriveVelocityAccel = period.y;
-	}
-
 	ImGui::Text("Angular Limit (Radian)");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::Checkbox("##Limit", &info.limit.angular.isLimit);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Lower Angle", &limit.lower, 0.001f);
-	ImGui::DragFloat("Upper Angle", &limit.upper, 0.001f);
+	ImGui::DragFloat("Lower Angle", &info.limit.angular.lower, 0.001f);
+	ImGui::DragFloat("Upper Angle", &info.limit.angular.upper, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
 	ImGui::TextUnformatted("Drive");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Drive", &isDrive);
+	ImGui::Checkbox("##Drive", &info.drive.isDrive);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Velocity", &driveVelocity, 0.001f);
+	ImGui::DragFloat("Velocity", &info.drive.velocity, 0.001f);
 
 	//const char *axisStr = "X\0Y\0Z\0\0";
 	//const static Vector3 axis[3] = { Vector3(1,0,0), Vector3(0,1,0), Vector3(0,0,1) };
@@ -1172,16 +1157,16 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	if (!isDrive)
-		isCycleDrive = false;
+	if (!info.drive.isDrive)
+		info.drive.isCycle = false;
 
 	ImGui::TextUnformatted("Cycle");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Cycle", &isCycleDrive);
+	ImGui::Checkbox("##Cycle", &info.drive.isCycle);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
-	ImGui::DragFloat("Drive Accleration", &cycleDriveVelocityAccel, 0.001f);
+	ImGui::DragFloat("Cycle Period", &info.drive.period, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &info.drive.driveAccel, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
@@ -1190,17 +1175,22 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		joint->EnableAngularLimit(isLimit);
-		if (isLimit)
+		joint->EnableAngularLimit(info.limit.angular.isLimit);
+		if (info.limit.angular.isLimit)
+		{
+			PxJointAngularLimitPair limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
+			limit.lower = info.limit.angular.lower;
+			limit.upper = info.limit.angular.upper;
 			joint->SetAngularLimit(limit);
+		}
 
-		joint->EnableDrive(isDrive);
-		if (isDrive)
-			joint->SetDriveVelocity(driveVelocity);
+		joint->EnableDrive(info.drive.isDrive);
+		if (info.drive.isDrive)
+			joint->SetDriveVelocity(info.drive.velocity);
 
-		joint->EnableCycleDrive(isDrive && isCycleDrive);
-		if (isDrive && isCycleDrive)
-			joint->SetCycleDrivePeriod(cycleDrivePeriod, cycleDriveVelocityAccel);
+		joint->EnableCycleDrive(info.drive.isDrive && info.drive.isCycle);
+		if (info.drive.isDrive && info.drive.isCycle)
+			joint->SetCycleDrivePeriod(info.drive.period, info.drive.driveAccel);
 
 		joint->m_actor0->WakeUp();
 		joint->m_actor1->WakeUp();
@@ -1209,48 +1199,30 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint)
 }
 
 
-void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
+void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
 {
 	using namespace physx;
-
-	static Vector2 limit1(-1.f, 1.f); // lower, upper
-	static Vector2 limit2(10.f, 0.0f); // stiffness, damping (spring)
-	static Vector2 limit3(3.f, 0.0f); // length
-	static bool isLimit = false;
-	static bool isSpring = true;
-
-	if (m_isChangeSelection)
-	{
-		isLimit = joint->IsLinearLimit();
-		PxJointLinearLimitPair limit(0, 0, PxSpring(0,0));
-		limit = joint->GetLinearLimit();
-		limit1.x = isLimit ? limit.lower : 0.f;
-		limit1.y = isLimit ? limit.upper : 0.f;
-		limit2.x = limit.stiffness;
-		limit2.y = limit.damping;
-		//limit3.x = ?;
-		isSpring = limit.stiffness != 0.f;
-	}
 
 	ImGui::Separator();
 	ImGui::Text("Linear Limit");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::Checkbox("##Limit", &info.limit.linear.isLimit);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Lower Limit", &limit1.x, 0.001f);
-	ImGui::DragFloat("Upper Limit", &limit1.y, 0.001f);
+	ImGui::DragFloat("Lower Limit", &info.limit.linear.lower, 0.001f);
+	ImGui::DragFloat("Upper Limit", &info.limit.linear.upper, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 	
 	ImGui::Text("Spring");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Spring", &isSpring);
+	ImGui::Checkbox("##Spring", &info.limit.linear.isSpring);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Stiffness", &limit2.x, 0.001f);
-	ImGui::DragFloat("Damping", &limit2.y, 0.001f);
-	ImGui::DragFloat("Length (linear)", &limit3.x, 0.001f);
+	ImGui::DragFloat("Stiffness", &info.limit.linear.stiffness, 0.001f);
+	ImGui::DragFloat("Damping", &info.limit.linear.damping, 0.001f);
+	ImGui::DragFloat("Length (linear)", &info.limit.linear.value, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
@@ -1267,20 +1239,23 @@ void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		joint->EnableLinearLimit(isLimit);
+		joint->EnableLinearLimit(info.limit.linear.isLimit);
 
-		if (isLimit)
+		if (info.limit.linear.isLimit)
 		{
-			if (isSpring)
+			if (info.limit.linear.isSpring)
 			{
-				joint->SetLinearLimit(PxJointLinearLimitPair(limit1.x, limit1.y
-					, physx::PxSpring(limit2.x, limit2.y)));
+				joint->SetLinearLimit(PxJointLinearLimitPair(
+					info.limit.linear.lower, info.limit.linear.upper
+					, physx::PxSpring(info.limit.linear.stiffness
+						, info.limit.linear.damping)));
 			}
 			else
 			{
 				PxTolerancesScale scale;
-				scale.length = limit3.x;
-				joint->SetLinearLimit(PxJointLinearLimitPair(scale, limit1.x, limit1.y));
+				scale.length = info.limit.linear.value;
+				joint->SetLinearLimit(PxJointLinearLimitPair(scale
+					, info.limit.linear.lower, info.limit.linear.upper));
 			}
 		}
 
@@ -1291,37 +1266,31 @@ void cPhenoEditorView::RenderPrismaticJointSetting(phys::cJoint *joint)
 }
 
 
-void cPhenoEditorView::RenderDistanceJointSetting(phys::cJoint *joint)
+void cPhenoEditorView::RenderDistanceJointSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
 {
-	static Vector2 limit(0.f, 2.f);
-	static bool isLimit = false;
-
-	if (m_isChangeSelection)
-	{
-		isLimit = joint->IsDistanceLimit();
-		limit = joint->GetDistanceLimit();
-	}
-
 	ImGui::Text("Distance Limit");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
-	ImGui::DragFloat("min distance", &limit.x, 0.001f);
-	ImGui::DragFloat("max distance", &limit.y, 0.001f);
+	ImGui::Checkbox("##Limit", &info.limit.distance.isLimit);
+	ImGui::DragFloat("min distance", &info.limit.distance.minDistance, 0.001f);
+	ImGui::DragFloat("max distance", &info.limit.distance.maxDistance, 0.001f);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
-		joint->EnableDistanceLimit(isLimit);
-		if (isLimit)
-			joint->SetDistanceLimit(limit.x, limit.y);
+		joint->EnableDistanceLimit(info.limit.distance.isLimit);
+		if (info.limit.distance.isLimit)
+			joint->SetDistanceLimit(info.limit.distance.minDistance
+				, info.limit.distance.maxDistance);
 	}
 	ImGui::PopStyleColor(3);
 }
 
 
-void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
+void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
 {
 	using namespace physx;
 
@@ -1330,58 +1299,6 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 	const char *motionStr = "Lock\0Limit\0Free\0\0";
 	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
 		, "Swing   ", "Twist", "Slerp" };
-
-	static int motionVal[6] = { 0, 0, 0, 0, 0, 0 };
-	static bool driveVal[6] = { 0, 0, 0, 0, 0, 0 };
-	struct sDriveParam
-	{
-		float stiffness;
-		float damping;
-		float forceLimit;
-		bool accel;
-	};
-	static sDriveParam driveConfigs[6] = {
-		{10.f, 0.f, PX_MAX_F32, true}, // X
-		{10.f, 0.f, PX_MAX_F32, true}, // Y
-		{10.f, 0.f, PX_MAX_F32, true}, // Z
-		{10.f, 0.f, PX_MAX_F32, true}, // Twist
-		{10.f, 0.f, PX_MAX_F32, true}, // Swing1
-		{10.f, 0.f, PX_MAX_F32, true}, // Swing2
-	};
-	static PxJointLinearLimit linearLimit(1.f, PxSpring(10.f, 0.f));
-	static PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
-	static PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
-	static bool isLinearLimit = false;
-	static bool isTwistLimit = false;
-	static bool isSwingLimit = false;
-	static Vector3 linearDriveVelocity(0, 0, 0);
-	static Vector3 angularDriveVelocity(0, 0, 0);
-
-	if (m_isChangeSelection)
-	{
-		for (int i = 0; i < 6; ++i)
-			motionVal[i] = (int)joint->GetMotion((PxD6Axis::Enum)i);
-
-		for (int i = 0; i < 6; ++i)
-		{
-			const PxD6JointDrive drive = joint->GetD6Drive((PxD6Drive::Enum)i);
-			driveConfigs[i].stiffness = drive.stiffness;
-			driveConfigs[i].damping = drive.damping;
-			driveConfigs[i].forceLimit = drive.forceLimit;
-			driveVal[i] = drive.stiffness != 0.f;
-		}
-
-		linearLimit = joint->GetD6LinearLimit();
-		twistLimit = joint->GetD6TwistLimit();
-		swingLimit = joint->GetD6SwingLimit();
-		isLinearLimit = linearLimit.stiffness != 0.f;
-		isTwistLimit = twistLimit.lower != 0.f;
-		isSwingLimit = swingLimit.yAngle != 0.f;
-
-		std::pair<Vector3, Vector3> ret = joint->GetD6DriveVelocity();
-		linearDriveVelocity = std::get<0>(ret);
-		angularDriveVelocity = std::get<1>(ret);
-	}
 
 	// Motion
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
@@ -1394,10 +1311,10 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 			ImGui::TextUnformatted(motionAxis[i]);
 			ImGui::SameLine();
 			ImGui::PushID(id++);
-			if (ImGui::Combo("##Motion", &motionVal[i], motionStr))
+			if (ImGui::Combo("##Motion", &info.limit.d6.motion[i], motionStr))
 			{
-				if (driveVal[i])
-					driveVal[i] = (0 != motionVal[i]); // motion lock -> drive lock
+				if (info.limit.d6.drive[i].isDrive) // motion lock -> drive lock
+					info.limit.d6.drive[i].isDrive = (0 != info.limit.d6.motion[i]);
 			}
 			ImGui::PopID();
 			ImGui::PopItemWidth();
@@ -1412,11 +1329,11 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 		for (int i = 0; i < 6; ++i)
 		{
 			int id = i * 1000;
-			ImGui::Checkbox(driveAxis[i], &driveVal[i]);
+			ImGui::Checkbox(driveAxis[i], &info.limit.d6.drive[i].isDrive);
 
-			if (driveVal[i])
+			if (info.limit.d6.drive[i].isDrive)
 			{
-				sDriveParam &drive = driveConfigs[i];
+				evc::sDriveParam &drive = info.limit.d6.drive[i];
 
 				ImGui::Indent(30);
 				ImGui::PushItemWidth(150);
@@ -1458,23 +1375,23 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Linear Drive Velocity");
-	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&linearDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::DragFloat3("##Linear Drive Velocity", (float*)info.limit.d6.linearVelocity, 0.001f, 0.f, 1000.f);
 	ImGui::TextUnformatted("Angular Drive Velocity");
-	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&angularDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::DragFloat3("##Angular Drive Velocity", (float*)info.limit.d6.angularVelocity, 0.001f, 0.f, 1000.f);
 	ImGui::Separator();
 
 	// linear limit
 	{
 		ImGui::TextUnformatted("Linear Limit");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Linear Limit", &isLinearLimit);
-		if (isLinearLimit)
+		ImGui::Checkbox("##Linear Limit", &info.limit.d6.linear.isLimit);
+		if (info.limit.d6.linear.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Extend", &linearLimit.value, 0.001f);
-			ImGui::DragFloat("Stiffness", &linearLimit.stiffness, 0.001f);
-			ImGui::DragFloat("Damping", &linearLimit.damping, 0.001f);
+			ImGui::DragFloat("Extend", &info.limit.d6.linear.value, 0.001f);
+			ImGui::DragFloat("Stiffness", &info.limit.d6.linear.stiffness, 0.001f);
+			ImGui::DragFloat("Damping", &info.limit.d6.linear.damping, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -1484,13 +1401,13 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 	{
 		ImGui::TextUnformatted("Twist Limit ");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Twist Limit", &isTwistLimit);
-		if (isTwistLimit)
+		ImGui::Checkbox("##Twist Limit", &info.limit.d6.twist.isLimit);
+		if (info.limit.d6.twist.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Lower Angle", &twistLimit.lower, 0.001f);
-			ImGui::DragFloat("Upper Angle", &twistLimit.upper, 0.001f);
+			ImGui::DragFloat("Lower Angle", &info.limit.d6.twist.lower, 0.001f);
+			ImGui::DragFloat("Upper Angle", &info.limit.d6.twist.upper, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -1500,13 +1417,13 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 	{
 		ImGui::TextUnformatted("Swing Limit");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Swing Limit", &isSwingLimit);
-		if (isSwingLimit)
+		ImGui::Checkbox("##Swing Limit", &info.limit.d6.swing.isLimit);
+		if (info.limit.d6.swing.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Y Angle", &swingLimit.yAngle, 0.001f);
-			ImGui::DragFloat("Z Angle", &swingLimit.zAngle, 0.001f);
+			ImGui::DragFloat("Y Angle", &info.limit.d6.swing.yAngle, 0.001f);
+			ImGui::DragFloat("Z Angle", &info.limit.d6.swing.zAngle, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -1522,53 +1439,58 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint)
 	if (ImGui::Button("Apply Option"))
 	{
 		for (int i = 0; i < 6; ++i)
-			joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
+			joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)info.limit.d6.motion[i]);
 
 		for (int i = 0; i < 6; ++i)
 		{
-			if (driveVal[i])
+			if (info.limit.d6.drive[i].isDrive)
 			{
 				joint->SetD6Drive((PxD6Drive::Enum)i
-					, physx::PxD6JointDrive(driveConfigs[i].stiffness
-						, driveConfigs[i].damping
-						, driveConfigs[i].forceLimit
-						, driveConfigs[i].accel));
+					, physx::PxD6JointDrive(info.limit.d6.drive[i].stiffness
+						, info.limit.d6.drive[i].damping
+						, info.limit.d6.drive[i].forceLimit
+						, info.limit.d6.drive[i].accel));
 			}
 		}
 
-		if (isLinearLimit)
+		if (info.limit.d6.linear.isLimit)
+		{
+			const PxJointLinearLimit linearLimit(info.limit.d6.linear.value
+				, PxSpring(info.limit.d6.linear.stiffness, info.limit.d6.linear.damping));
 			joint->SetD6LinearLimit(linearLimit);
-		if (isTwistLimit)
+		}
+		if (info.limit.d6.twist.isLimit)
+		{
+			PxJointAngularLimitPair twistLimit(info.limit.d6.twist.lower
+				, info.limit.d6.twist.upper);
 			joint->SetD6TwistLimit(twistLimit);
-		if (isSwingLimit)
+		}
+		if (info.limit.d6.swing.isLimit)
+		{
+			PxJointLimitCone swingLimit(info.limit.d6.swing.yAngle
+				, info.limit.d6.swing.zAngle);
 			joint->SetD6SwingLimit(swingLimit);
+		}
 
-		joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
+		joint->SetD6DriveVelocity(*(Vector3*)info.limit.d6.linearVelocity
+			, *(Vector3*)info.limit.d6.angularVelocity);
 	}
 	ImGui::PopStyleColor(3);
 }
 
 
-void cPhenoEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
+void cPhenoEditorView::RenderSphericalJointSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
 {
 	using namespace physx;
 
-	static bool isLimit = false;
-	static PxJointLimitCone limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
-
-	if (m_isChangeSelection)
-	{
-		isLimit = joint->IsConeLimit();
-		limit = joint->GetConeLimit();
-	}
-
 	ImGui::Text("Limit Cone (Radian)");
 	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &isLimit);
+	ImGui::Checkbox("##Limit", &info.limit.cone.isLimit);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Y Angle", &limit.yAngle, 0.001f);
-	ImGui::DragFloat("Z Angle", &limit.zAngle, 0.001f);
+	ImGui::DragFloat("Y Angle", &info.limit.cone.yAngle, 0.001f);
+	ImGui::DragFloat("Z Angle", &info.limit.cone.zAngle, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
@@ -1582,8 +1504,11 @@ void cPhenoEditorView::RenderSphericalJointSetting(phys::cJoint *joint)
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
 	if (ImGui::Button("Apply Option"))
 	{
+		PxJointLimitCone limit(-PxPi / 2.f, PxPi / 2.f, 0.01f);
+		limit.yAngle = info.limit.cone.yAngle;
+		limit.zAngle = info.limit.cone.zAngle;
 		joint->SetConeLimit(limit);
-		joint->EnableConeLimit(isLimit);
+		joint->EnableConeLimit(info.limit.cone.isLimit);
 
 		joint->m_actor0->WakeUp();
 		joint->m_actor1->WakeUp();
@@ -1693,6 +1618,8 @@ void cPhenoEditorView::CheckChangeSelection()
 $change:
 	m_isChangeSelection = true;
 	m_oldSelects = g_pheno->m_selects;
+	if (!g_pheno->m_selects.empty())
+		UpdateJointInfo(*g_pheno->m_selects.begin());
 }
 
 
@@ -1759,5 +1686,139 @@ void cPhenoEditorView::UpdateUIJoint(phys::sSyncInfo *sync0
 				g_pheno->m_uiJointRenderer.GetPivotWorldTransform(1).pos) / 2.f;
 			g_pheno->m_uiJointRenderer.SetPivotPosByRevoluteAxis(revoluteAxis, jointPos);
 		}
+	}
+}
+
+
+// update joint information to genotype link information
+void cPhenoEditorView::UpdateJointInfo(const int syncId)
+{
+	using namespace physx;
+	using namespace phys;
+
+	phys::cPhysicsSync *physSync = g_pheno->m_physSync;
+	phys::sSyncInfo *sync = physSync->FindSyncInfo(syncId);
+	if (!sync)
+		return;
+	if (!sync->actor)
+		return;
+
+	m_jointInfos.clear();
+
+	phys::cRigidActor *actor = sync->actor;
+	for (uint i = 0; i < actor->m_joints.size(); ++i)
+	{
+		phys::cJoint *joint = actor->m_joints[i];
+
+		evc::sGenotypeLink glink;
+		switch (joint->m_type)
+		{
+		case eJointType::Fixed:
+		{
+			glink.type = eJointType::Fixed;
+		}
+		break;
+
+		case eJointType::Spherical:
+		{
+			glink.type = eJointType::Spherical;
+			const physx::PxJointLimitCone limit = joint->GetConeLimit();
+			glink.limit.cone.isLimit = joint->IsConeLimit();
+			glink.limit.cone.yAngle = limit.yAngle;
+			glink.limit.cone.zAngle = limit.zAngle;
+		}
+		break;
+
+		case eJointType::Revolute:
+		{
+			glink.type = eJointType::Revolute;
+			const physx::PxJointAngularLimitPair limit = joint->GetAngularLimit();
+			glink.limit.angular.isLimit = joint->IsAngularLimit();
+			glink.limit.angular.lower = limit.lower;
+			glink.limit.angular.upper = limit.upper;
+
+			glink.drive.isDrive = joint->IsDrive();
+			glink.drive.velocity = joint->GetDriveVelocity();
+			glink.drive.maxVelocity = joint->GetDriveVelocity();
+			glink.drive.isCycle = joint->IsCycleDrive();
+			const Vector2 cycle = joint->GetCycleDrivePeriod();
+			glink.drive.period = cycle.x;
+			glink.drive.driveAccel = cycle.y;
+		}
+		break;
+
+		case eJointType::Prismatic:
+		{
+			glink.type = eJointType::Prismatic;
+			const physx::PxJointLinearLimitPair limit = joint->GetLinearLimit();
+			glink.limit.linear.isLimit = joint->IsLinearLimit();
+			glink.limit.linear.isSpring = limit.stiffness != 0.f;
+			glink.limit.linear.value = 0.f;
+			glink.limit.linear.lower = limit.lower;
+			glink.limit.linear.upper = limit.upper;
+			glink.limit.linear.stiffness = limit.stiffness;
+			glink.limit.linear.damping = limit.damping;
+			glink.limit.linear.contactDistance = limit.contactDistance;
+			glink.limit.linear.bounceThreshold = limit.bounceThreshold;
+		}
+		break;
+
+		case eJointType::Distance:
+		{
+			glink.type = eJointType::Distance;
+			glink.limit.distance.isLimit = joint->IsDistanceLimit();
+			const Vector2 limit = joint->GetDistanceLimit();
+			glink.limit.distance.minDistance = limit.x;
+			glink.limit.distance.maxDistance = limit.y;
+		}
+		break;
+
+		case eJointType::D6:
+		{
+			glink.type = eJointType::D6;
+
+			for (int i = 0; i < 6; ++i)
+				glink.limit.d6.motion[i] = (int)joint->GetMotion((PxD6Axis::Enum)i);
+
+			for (int i = 0; i < 6; ++i)
+			{
+				const PxD6JointDrive drive = joint->GetD6Drive((PxD6Drive::Enum)i);
+				glink.limit.d6.drive[i].isDrive = drive.stiffness != 0.f;
+				glink.limit.d6.drive[i].stiffness = drive.stiffness;
+				glink.limit.d6.drive[i].damping = drive.damping;
+				glink.limit.d6.drive[i].forceLimit = drive.forceLimit;
+			}
+
+			const PxJointLinearLimit linearLimit = joint->GetD6LinearLimit();
+			const PxJointAngularLimitPair twistLimit = joint->GetD6TwistLimit();
+			const PxJointLimitCone swingLimit = joint->GetD6SwingLimit();
+
+			glink.limit.d6.linear.isLimit = linearLimit.stiffness != 0.f;
+			glink.limit.d6.linear.value = linearLimit.value;
+			glink.limit.d6.linear.stiffness = linearLimit.stiffness;
+			glink.limit.d6.linear.damping = linearLimit.damping;
+			glink.limit.d6.linear.contactDistance = linearLimit.contactDistance;
+			glink.limit.d6.linear.bounceThreshold = linearLimit.bounceThreshold;
+
+			glink.limit.d6.twist.isLimit = twistLimit.lower != 0.f;
+			glink.limit.d6.twist.lower = twistLimit.lower;
+			glink.limit.d6.twist.upper = twistLimit.upper;
+
+			glink.limit.d6.swing.isLimit = swingLimit.yAngle != 0.f;
+			glink.limit.d6.swing.yAngle = swingLimit.yAngle;
+			glink.limit.d6.swing.zAngle = swingLimit.zAngle;
+
+			const std::pair<Vector3, Vector3> ret = joint->GetD6DriveVelocity();
+			*(Vector3*)glink.limit.d6.linearVelocity = std::get<0>(ret);
+			*(Vector3*)glink.limit.d6.angularVelocity = std::get<1>(ret);
+		}
+		break;
+
+		default:
+			assert(0);
+			break;
+		}
+
+		m_jointInfos.push_back(glink);
 	}
 }
