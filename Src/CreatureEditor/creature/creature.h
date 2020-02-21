@@ -24,6 +24,7 @@ namespace evc
 		
 		bool Write(const StrPath &fileName);
 
+		void Update(const float deltaSeconds);
 		bool SetKinematic(const bool isKinematic);
 		void SetTransform(const Transform &tfm);
 		bool GetSyncIds(OUT vector<int> &out);

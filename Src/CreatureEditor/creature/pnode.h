@@ -9,6 +9,9 @@
 
 namespace evc
 {
+	class cNeuralNet;
+	interface iSensor;
+	interface iEffector;
 
 	class cPNode
 	{
@@ -17,7 +20,14 @@ namespace evc
 		virtual ~cPNode();
 
 		bool Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode);
+		bool InitializeNN(const uint numHidden, const uint neuronsPerHiddenLayer
+			, const vector<double> &weights);
+		bool Update(const float deltaSeconds);
 
+		bool AddSensor(iSensor *sensor);
+		bool RemoveSensor(iSensor *sensor);
+		bool AddEffector(iEffector *effector);
+		bool RemoveEffector(iEffector *effector);
 		void Clear();
 
 
@@ -27,8 +37,11 @@ namespace evc
 		StrId m_name;
 		phys::cRigidActor *m_actor; // reference
 		graphic::cNode *m_node; // reference
-		
 		vector<cPNode*> m_children;
+
+		cNeuralNet *m_nn;
+		vector<iSensor*> m_sensors;
+		vector<iEffector*> m_effectors;
 	};
 
 }

@@ -4,6 +4,7 @@
 #include "phenoeditorview.h"
 #include "genoeditorview.h"
 #include "genoview.h"
+#include "../creature/creature.h"
 
 using namespace graphic;
 using namespace framework;
@@ -92,6 +93,9 @@ void c3DView::OnUpdate(const float deltaSeconds)
 	for (auto &p : g_pheno->m_physSync->m_syncs)
 		if (p->joint)
 			p->joint->Update(deltaSeconds);
+
+	for (auto &p : g_pheno->m_creatures)
+		p->Update(deltaSeconds);
 }
 
 

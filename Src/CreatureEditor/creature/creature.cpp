@@ -71,6 +71,13 @@ bool cCreature::Write(const StrPath &fileName)
 
 
 
+void cCreature::Update(const float deltaSeconds)
+{
+	for (auto &p : m_nodes)
+		p->Update(deltaSeconds);
+}
+
+
 bool cCreature::SetKinematic(const bool isKinematic)
 {
 	for (auto &p : m_nodes)
@@ -167,6 +174,31 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 			continue;
 
 		evc::CreatePhenoTypeJoint(*p, pnode0, pnode1, generation);
+	}
+
+	// initialize neural network
+	if (!m_nodes.empty())
+	{
+		cPNode *pnode = m_nodes[0];
+
+		set<phys::cJoint*> joints;
+		for (auto &p : m_nodes)
+			for (auto &j : p->m_actor->m_joints)
+				joints.insert(j);
+
+		for (auto &j : joints)
+		{
+			cAngularSensor *sensor = new cAngularSensor();
+			sensor->Create(j);
+			pnode->AddSensor(sensor);
+			
+			cMuscleEffector *effector = new cMuscleEffector();
+			effector->Create(j);
+			pnode->AddEffector(effector);
+		}
+
+		vector<double> weights;
+		pnode->InitializeNN(1, joints.size(), weights);
 	}
 }
 
