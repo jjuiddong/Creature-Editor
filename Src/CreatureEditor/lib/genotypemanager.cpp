@@ -15,6 +15,7 @@ cGenoTypeManager::cGenoTypeManager()
 	, m_physics(nullptr)
 	, m_physSync(nullptr)
 	, m_orbitId(-1)
+	, m_saveFileName("filename.gnt")
 {
 }
 

@@ -2,6 +2,8 @@
 #include "stdafx.h"
 #include "3dview.h"
 #include "phenoeditorview.h"
+#include "genoeditorview.h"
+#include "genoview.h"
 
 using namespace graphic;
 using namespace framework;
@@ -1040,7 +1042,7 @@ void c3DView::OnWheelMove(const float delta, const POINT mousePt)
 	GetMainCamera().Zoom(ray.dir, (delta < 0) ? -zoomLen : zoomLen);
 
 	// active phenotype editor view
-	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_peditorView);
+	m_owner->SetActiveWindow(g_global->m_peditorView);
 }
 
 
@@ -1133,7 +1135,7 @@ void c3DView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 		return;
 
 	// active phenotype editor view
-	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_peditorView);
+	m_owner->SetActiveWindow(g_global->m_peditorView);
 
 	switch (button)
 	{
@@ -1309,6 +1311,16 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::S: if (!m_showSaveDialog) g_pheno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
 		case sf::Keyboard::H: if (!m_showSaveDialog) g_pheno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
 		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
+
+		case sf::Keyboard::Tab:
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				// active genotype view
+				m_owner->SetActiveWindow(g_global->m_genoView);
+				m_owner->SetActiveWindow(g_global->m_geditorView);
+				m_owner->SetFocus(g_global->m_genoView);
+			}
+			break;
 
 		case sf::Keyboard::Escape:
 			g_pheno->m_orbitId = -1;

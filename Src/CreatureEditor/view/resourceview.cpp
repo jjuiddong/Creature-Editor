@@ -143,6 +143,7 @@ void cResourceView::LoadGenotypeView(const StrPath &fileName)
 	const Plane ground(Vector3(0, 1, 0), 0);
 	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 	g_geno->ReadCreatureFile(fileName, targetPos);
+	g_geno->m_saveFileName = fileName.GetFileName(); // update save file dialog filename
 }
 
 

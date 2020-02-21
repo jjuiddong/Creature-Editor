@@ -669,7 +669,7 @@ void cPhenoEditorView::RenderRevoluteJoint()
 	ImGui::TextUnformatted("Cycle");
 	ImGui::SameLine();
 	ImGui::Checkbox("##Cycle", &isCycleDrive);
-	ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
+	//ImGui::DragFloat("Cycle Period", &cycleDrivePeriod, 0.001f);
 	ImGui::DragFloat("Drive Accleration", &cycleDriveVelocityAccel, 0.001f);
 
 	if (ImGui::Button("Pivot Setting"))
@@ -1165,7 +1165,7 @@ void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint
 	ImGui::Checkbox("##Cycle", &info.drive.isCycle);
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("Cycle Period", &info.drive.period, 0.001f);
+	//ImGui::DragFloat("Cycle Period", &info.drive.period, 0.001f);
 	ImGui::DragFloat("Drive Accleration", &info.drive.driveAccel, 0.001f);
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);

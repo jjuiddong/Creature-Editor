@@ -78,6 +78,9 @@ public:
 	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;
 
+	// save filename
+	StrPath m_saveFileName;
+
 	// link
 	evc::cGLink *m_selLink; // reference
 	bool m_showUILink;

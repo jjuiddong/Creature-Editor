@@ -3,6 +3,8 @@
 #include "genoview.h"
 #include "3dview.h"
 #include "../creature/gnode.h"
+#include "genoeditorview.h"
+#include "phenoeditorview.h"
 
 using namespace graphic;
 using namespace framework;
@@ -401,7 +403,7 @@ void cGenoView::RenderSaveDialog()
 		ImGui::Text("FileName : ");
 		ImGui::SameLine();
 
-		static StrPath fileName("filename.gnt");
+		StrPath &fileName = g_geno->m_saveFileName;
 
 		bool isSave = false;
 		const int flags = ImGuiInputTextFlags_AutoSelectAll
@@ -919,7 +921,7 @@ void cGenoView::OnWheelMove(const float delta, const POINT mousePt)
 	GetMainCamera().Zoom(ray.dir, (delta < 0) ? -zoomLen : zoomLen);
 
 	// active genotype editor view
-	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_geditorView);
+	m_owner->SetActiveWindow(g_global->m_geditorView);
 }
 
 
@@ -1011,7 +1013,7 @@ void cGenoView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt
 		return;
 
 	// active genotype editor view
-	m_owner->SetActiveWindow((framework::cDockWindow*)g_global->m_geditorView);
+	m_owner->SetActiveWindow(g_global->m_geditorView);
 
 	switch (button)
 	{
@@ -1174,6 +1176,16 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::S: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::SCALE; break;
 		case sf::Keyboard::H: if (!m_showSaveDialog && (m_popupMenuState != 2)) g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None; break;
 		case sf::Keyboard::F5: g_pheno->RefreshResourceView(); break;
+
+		case sf::Keyboard::Tab:
+			if (::GetAsyncKeyState(VK_CONTROL))
+			{
+				// active phenotype view
+				m_owner->SetActiveWindow(g_global->m_3dView);
+				m_owner->SetActiveWindow(g_global->m_peditorView);
+				m_owner->SetFocus(g_global->m_3dView);
+			}
+			break;
 
 		case sf::Keyboard::Escape:
 			g_geno->m_orbitId = -1;

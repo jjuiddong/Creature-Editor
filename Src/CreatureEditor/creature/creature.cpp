@@ -354,13 +354,13 @@ sGenotypeNode* cCreature::CloneGenoTypeNode(
 			// reverse scale (child -> parent)
 			const Vector3 nscale = Vector3(1.f / scale.x, 1.f / scale.y, 1.f / scale.z);
 			newScale = dst->transform.scale * nscale;
-			if (newScale.Length() < 0.1f)
+			if (newScale.Length() < 0.3f)
 				return nullptr; // ignore too small dimension object
 		}
 		else if ((to->iteration >= 0) && (cloneType == eClone::Generation))
 		{
 			newScale = dst->transform.scale * scale;
-			if (newScale.Length() < 0.1f)
+			if (newScale.Length() < 0.3f)
 				return nullptr; // ignore too small dimension object
 		}
 

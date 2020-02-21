@@ -482,14 +482,17 @@ void cGenoEditorView::RenderSphericalJoint()
 		return;
 
 	static evc::sConeLimit limit = { false, PxPi / 2.f, PxPi / 2.f };
-	ImGui::Text("Limit Cone (Radian)");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Checkbox("Limit Cone (Radian)", &limit.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
 	ImGui::DragFloat("Y Limit Angle", &limit.yAngle, 0.001f);
 	ImGui::DragFloat("Z Limit Angle", &limit.zAngle, 0.001f);
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
 
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
+	ImGui::Spacing();
 
 	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
 
@@ -536,28 +539,31 @@ void cGenoEditorView::RenderRevoluteJoint()
 	static evc::sAngularLimit limit = { false, -PxPi / 2.f, PxPi / 2.f };
 	static evc::sDriveInfo drive = { false, 1.f, false, 1.f, 1.f, 1.f};
 
-	ImGui::Text("Angular Limit (Radian)");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::Checkbox("Angular Limit (Radian)", &limit.isLimit);
+	ImGui::Indent(30);
+	ImGui::PushItemWidth(150);
 	ImGui::DragFloat("Lower Limit Angle", &limit.lower, 0.001f);
 	ImGui::DragFloat("Upper Limit Angle", &limit.upper, 0.001f);
+	ImGui::Unindent(30);
 
-	ImGui::TextUnformatted("Drive");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Drive", &drive.isDrive);
+	ImGui::Checkbox("Drive", &drive.isDrive);
+	ImGui::Indent(30);
 	ImGui::DragFloat("Velocity", &drive.velocity, 0.001f);
-
-	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr);
+	ImGui::Unindent(30);
 
 	if (!drive.isDrive)
 		drive.isCycle = false;
 
-	ImGui::TextUnformatted("Cycle");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Cycle", &drive.isCycle);
-	ImGui::DragFloat("Cycle Period", &drive.period, 0.001f);
+	ImGui::Checkbox("Cycle", &drive.isCycle);
+	ImGui::Indent(30);
+	//ImGui::DragFloat("Cycle Period", &drive.period, 0.001f);
 	ImGui::DragFloat("Drive Accleration", &drive.driveAccel, 0.001f);
+	ImGui::Unindent(30);
+	ImGui::PopItemWidth();
+
+	static int axisIdx = 0;
+	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr);
+	ImGui::Spacing();
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -619,20 +625,23 @@ void cGenoEditorView::RenderPrismaticJoint()
 	};
 	static float length = 3.f;
 
-	ImGui::Text("Linear Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::PushItemWidth(150);
+	ImGui::Checkbox("Linear Limit", &limit.isLimit);
+	ImGui::Indent(30);
 	ImGui::DragFloat("Lower Limit", &limit.lower, 0.001f);
 	ImGui::DragFloat("Upper Limit", &limit.upper, 0.001f);
-	ImGui::Text("Spring");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Spring", &limit.isSpring);
+	ImGui::Unindent(30);
+	ImGui::Checkbox("Spring", &limit.isSpring);
+	ImGui::Indent(30);
 	ImGui::DragFloat("Stiffness", &limit.stiffness, 0.001f);
 	ImGui::DragFloat("Damping", &limit.damping, 0.001f);
 	ImGui::DragFloat("Length (linear)", &length, 0.001f);
+	ImGui::Unindent(30);
+	ImGui::PopItemWidth();
 
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Axis", &axisIdx, g_axisStr);
+	ImGui::Spacing();
 
 	if (ImGui::Button("Pivot Setting"))
 	{
@@ -700,23 +709,15 @@ void cGenoEditorView::RenderDistanceJoint()
 
 	static evc::sDistanceLimit limit = { false, 0.f, 2.f };
 
-	ImGui::Text("Distance Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
+	ImGui::PushItemWidth(150);
+	ImGui::Checkbox("Distance Limit", &limit.isLimit);
+	ImGui::Indent(30);
 	ImGui::DragFloat("min distance", &limit.minDistance, 0.001f);
 	ImGui::DragFloat("max distance", &limit.maxDistance, 0.001f);
+	ImGui::Unindent(30);
+	ImGui::PopItemWidth();
 
-	static int axisIdx = 0;
-	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
-
-	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
-
-	if (ImGui::Button("Pivot Setting"))
-	{
-		g_geno->ChangeEditMode(eGenoEditMode::Pivot0);
-		g_geno->m_selLink = &g_geno->m_uiLink;
-		g_geno->m_gizmo.m_type = graphic::eGizmoEditType::None;
-	}
+	UpdateUILink(gnode0, gnode1, false, Vector3(1,0,0));
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -758,31 +759,15 @@ void cGenoEditorView::RenderD6Joint()
 	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
 		, "Swing   ", "Twist", "Slerp" };
 
-	static int motionVal[6] = { 0, 0, 0, 0, 0, 0 };
-	static bool driveVal[6] = { 0, 0, 0, 0, 0, 0 };
-	struct sDriveParam
-	{
-		float stiffness;
-		float damping;
-		float forceLimit;
-		bool accel;
+	static evc::sD6Limit limit;
+	static evc::sDriveParam driveConfigs[6] = {
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // X
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // Y
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // Z
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // Twist
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // Swing1
+		{false, 10.f, 0.f, PX_MAX_F32, true}, // Swing2
 	};
-	static sDriveParam driveConfigs[6] = {
-		{10.f, 0.f, PX_MAX_F32, true}, // X
-		{10.f, 0.f, PX_MAX_F32, true}, // Y
-		{10.f, 0.f, PX_MAX_F32, true}, // Z
-		{10.f, 0.f, PX_MAX_F32, true}, // Twist
-		{10.f, 0.f, PX_MAX_F32, true}, // Swing1
-		{10.f, 0.f, PX_MAX_F32, true}, // Swing2
-	};
-	static PxJointLinearLimit linearLimit(1.f, PxSpring(10.f, 0.f));
-	static PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
-	static PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
-	static bool isLinearLimit = false;
-	static bool isTwistLimit = false;
-	static bool isSwingLimit = false;
-	static Vector3 linearDriveVelocity(0, 0, 0);
-	static Vector3 angularDriveVelocity(0, 0, 0);
 
 	// Motion
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
@@ -795,10 +780,10 @@ void cGenoEditorView::RenderD6Joint()
 			ImGui::TextUnformatted(motionAxis[i]);
 			ImGui::SameLine();
 			ImGui::PushID(id++);
-			if (ImGui::Combo("##Motion", &motionVal[i], motionStr))
+			if (ImGui::Combo("##Motion", &limit.motion[i], motionStr))
 			{
-				if (driveVal[i])
-					driveVal[i] = (0 != motionVal[i]); // motion lock -> drive lock
+				if (driveConfigs[i].isDrive)
+					driveConfigs[i].isDrive = (0 != limit.motion[i]); // motion lock -> drive lock
 			}
 			ImGui::PopID();
 			ImGui::PopItemWidth();
@@ -812,13 +797,13 @@ void cGenoEditorView::RenderD6Joint()
 	{
 		for (int i = 0; i < 6; ++i)
 		{
+			evc::sDriveParam &drive = driveConfigs[i];
+
 			int id = i * 1000;
-			ImGui::Checkbox(driveAxis[i], &driveVal[i]);
+			ImGui::Checkbox(driveAxis[i], &drive.isDrive);
 
-			if (driveVal[i])
+			if (drive.isDrive)
 			{
-				sDriveParam &drive = driveConfigs[i];
-
 				ImGui::Indent(30);
 				ImGui::PushItemWidth(150);
 
@@ -859,23 +844,23 @@ void cGenoEditorView::RenderD6Joint()
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Linear Drive Velocity");
-	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&linearDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&limit.linearVelocity, 0.001f, 0.f, 1000.f);
 	ImGui::TextUnformatted("Angular Drive Velocity");
-	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&angularDriveVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&limit.angularVelocity, 0.001f, 0.f, 1000.f);
 	ImGui::Separator();
 
 	// linear limit
 	{
 		ImGui::TextUnformatted("Linear Limit");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Linear Limit", &isLinearLimit);
-		if (isLinearLimit)
+		ImGui::Checkbox("##Linear Limit", &limit.linear.isLimit);
+		if (limit.linear.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Extend", &linearLimit.value, 0.001f);
-			ImGui::DragFloat("Stiffness", &linearLimit.stiffness, 0.001f);
-			ImGui::DragFloat("Damping", &linearLimit.damping, 0.001f);
+			ImGui::DragFloat("Extend", &limit.linear.value, 0.001f);
+			ImGui::DragFloat("Stiffness", &limit.linear.stiffness, 0.001f);
+			ImGui::DragFloat("Damping", &limit.linear.damping, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -885,13 +870,13 @@ void cGenoEditorView::RenderD6Joint()
 	{
 		ImGui::TextUnformatted("Twist Limit ");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Twist Limit", &isTwistLimit);
-		if (isTwistLimit)
+		ImGui::Checkbox("##Twist Limit", &limit.twist.isLimit);
+		if (limit.twist.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Lower Angle", &twistLimit.lower, 0.001f);
-			ImGui::DragFloat("Upper Angle", &twistLimit.upper, 0.001f);
+			ImGui::DragFloat("Lower Angle", &limit.twist.lower, 0.001f);
+			ImGui::DragFloat("Upper Angle", &limit.twist.upper, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -901,13 +886,13 @@ void cGenoEditorView::RenderD6Joint()
 	{
 		ImGui::TextUnformatted("Swing Limit");
 		ImGui::SameLine();
-		ImGui::Checkbox("##Swing Limit", &isSwingLimit);
-		if (isSwingLimit)
+		ImGui::Checkbox("##Swing Limit", &limit.swing.isLimit);
+		if (limit.swing.isLimit)
 		{
 			ImGui::Indent(30);
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Y Angle", &swingLimit.yAngle, 0.001f);
-			ImGui::DragFloat("Z Angle", &swingLimit.zAngle, 0.001f);
+			ImGui::DragFloat("Y Angle", &limit.swing.yAngle, 0.001f);
+			ImGui::DragFloat("Z Angle", &limit.swing.zAngle, 0.001f);
 			ImGui::PopItemWidth();
 			ImGui::Unindent(30);
 		}
@@ -937,32 +922,7 @@ void cGenoEditorView::RenderD6Joint()
 		g_geno->AddGLink(link);
 
 		for (int i = 0; i < 6; ++i)
-			link->m_limit.d6.motion[i] = motionVal[i];
-
-		for (int i = 0; i < 6; ++i)
-		{
-			link->m_limit.d6.drive[i].isDrive = driveVal[i];
-			link->m_limit.d6.drive[i].stiffness = driveConfigs[i].stiffness;
-			link->m_limit.d6.drive[i].damping = driveConfigs[i].damping;
-			link->m_limit.d6.drive[i].forceLimit = driveConfigs[i].forceLimit;
-			link->m_limit.d6.drive[i].accel = driveConfigs[i].accel;
-		}
-
-		link->m_limit.d6.linear.isLimit = isLinearLimit;
-		link->m_limit.d6.linear.value = linearLimit.value;
-		link->m_limit.d6.linear.stiffness = linearLimit.stiffness;
-		link->m_limit.d6.linear.damping = linearLimit.damping;
-
-		link->m_limit.d6.twist.isLimit = isTwistLimit;
-		link->m_limit.d6.twist.lower = twistLimit.lower;
-		link->m_limit.d6.twist.upper = twistLimit.upper;
-
-		link->m_limit.d6.swing.isLimit = isSwingLimit;
-		link->m_limit.d6.swing.yAngle = swingLimit.yAngle;
-		link->m_limit.d6.swing.zAngle = swingLimit.zAngle;
-
-		*(Vector3*)link->m_limit.d6.linearVelocity = linearDriveVelocity;
-		*(Vector3*)link->m_limit.d6.angularVelocity = angularDriveVelocity;
+			link->m_limit.d6.drive[i] = driveConfigs[i];
 		
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
@@ -981,39 +941,58 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 	{
 		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
+		{
 			if (g_axis[i] == link->m_revoluteAxis)
+			{
 				axisIdx = i;
+				break;
+			}
+		}
 	}
 
+	int id = (int)link;
+
 	ImGui::Separator();
-	ImGui::Text("Angular Limit (Radian)");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &link->m_limit.angular.isLimit);
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Angular Limit (Radian)", &link->m_limit.angular.isLimit);
+	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
+	ImGui::PushID(id++);
 	ImGui::DragFloat("Lower Angle", &link->m_limit.angular.lower, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
 	ImGui::DragFloat("Upper Angle", &link->m_limit.angular.upper, 0.001f);
+	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
-	ImGui::TextUnformatted("Drive");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Drive", &link->m_drive.isDrive);
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Drive", &link->m_drive.isDrive);
+	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
+	ImGui::PushID(id++);
 	ImGui::DragFloat("Velocity", &link->m_drive.velocity, 0.001f);
+	ImGui::PopID();
+	ImGui::Unindent(30);
 
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Cycle", &link->m_drive.isCycle);
+	ImGui::PopID();
+	ImGui::Indent(30);
+	//ImGui::DragFloat("Cycle Period", &link->m_drive.period, 0.001f);
+	ImGui::PushID(id++);
+	ImGui::DragFloat("Drive Accleration", &link->m_drive.driveAccel, 0.001f);
+	ImGui::PopID();
+	ImGui::PopItemWidth();
+	ImGui::Unindent(30);
+
+	ImGui::PushID(id++);
 	if (ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr))
 		link->m_revoluteAxis = g_axis[axisIdx];
+	ImGui::PopID();
 
-	ImGui::TextUnformatted("Cycle");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Cycle", &link->m_drive.isCycle);
-	ImGui::DragFloat("Cycle Period", &link->m_drive.period, 0.001f);
-	ImGui::DragFloat("Drive Accleration", &link->m_drive.driveAccel, 0.001f);
-
-	ImGui::PopItemWidth();
-	ImGui::Unindent(30);
 }
 
 
@@ -1030,36 +1009,53 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 	{
 		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
+		{
 			if (g_axis[i] == link->m_revoluteAxis)
+			{
 				axisIdx = i;
+				break;
+			}
+		}
 	}
 
 	bool isEdit = false;
+	int id = (int)link;
 
 	ImGui::Separator();
-	ImGui::Text("Linear Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &linear.isLimit);
-	ImGui::Indent(30);
+
 	ImGui::PushItemWidth(150);
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Linear Limit", &linear.isLimit);
+	ImGui::PopID();
+	ImGui::Indent(30);
+	ImGui::PushID(id++);
 	isEdit |= ImGui::DragFloat("Lower Limit", &linear.lower, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
 	isEdit |= ImGui::DragFloat("Upper Limit", &linear.upper, 0.001f);
-	ImGui::PopItemWidth();
+	ImGui::PopID();
 	ImGui::Unindent(30);
 
-	ImGui::Text("Spring");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Spring", &linear.isSpring);
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Spring", &linear.isSpring);
+	ImGui::PopID();
 	ImGui::Indent(30);
-	ImGui::PushItemWidth(150);
+	ImGui::PushID(id++);
 	isEdit |= ImGui::DragFloat("Stiffness", &linear.stiffness, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
 	isEdit |= ImGui::DragFloat("Damping", &linear.damping, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
 	isEdit |= ImGui::DragFloat("Length (linear)", &length, 0.001f);
+	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
+	ImGui::PushID(id++);
 	if (ImGui::Combo("Axis", &axisIdx, g_axisStr))
 		link->SetRevoluteAxis(g_axis[axisIdx]);
+	ImGui::PopID();
 
 	ImGui::Spacing();
 	ImGui::Spacing();
@@ -1091,264 +1087,171 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 
 void cGenoEditorView::RenderDistanceJointSetting(evc::cGLink *link)
 {
-	static evc::sDistanceLimit limit = { false, 0.f, 2.f };
-
-	if (m_isChangeSelection)
-	{
-		limit = link->m_limit.distance;
-	}
+	int id = (int)link;
 
 	ImGui::Separator();
-	ImGui::Text("Distance Limit");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &limit.isLimit);
-	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
-	ImGui::DragFloat("min distance", &limit.minDistance, 0.001f);
-	ImGui::DragFloat("max distance", &limit.maxDistance, 0.001f);
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Distance Limit", &link->m_limit.distance.isLimit);
+	ImGui::PopID();
+	ImGui::Indent(30);
+	ImGui::PushID(id++);
+	ImGui::DragFloat("min distance", &link->m_limit.distance.minDistance, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
+	ImGui::DragFloat("max distance", &link->m_limit.distance.maxDistance, 0.001f);
+	ImGui::PopID();
 	ImGui::Unindent(30);
 	ImGui::PopItemWidth();
 
 	ImGui::Spacing();
-	//ImGui::Separator();
 	ImGui::Spacing();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Apply Option"))
-	{
-		link->m_limit.distance = limit;
-	}
-	ImGui::PopStyleColor(3);
 }
 
 
 void cGenoEditorView::RenderD6JointSetting(evc::cGLink *link)
 {
-	//using namespace physx;
+	using namespace physx;
 
-	//const char *motionAxis[6] = { "X         ", "Y         ", "Z          "
-	//	, "Twist   ", "Swing1", "Swing2" };
-	//const char *motionStr = "Lock\0Limit\0Free\0\0";
-	//const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
-	//	, "Swing   ", "Twist", "Slerp" };
+	const char *motionAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Twist   ", "Swing1", "Swing2" };
+	const char *motionStr = "Lock\0Limit\0Free\0\0";
+	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
+		, "Swing   ", "Twist", "Slerp" };
 
-	//static int motionVal[6] = { 0, 0, 0, 0, 0, 0 };
-	//static bool driveVal[6] = { 0, 0, 0, 0, 0, 0 };
-	//struct sDriveParam
-	//{
-	//	float stiffness;
-	//	float damping;
-	//	float forceLimit;
-	//	bool accel;
-	//};
-	//static sDriveParam driveConfigs[6] = {
-	//	{10.f, 0.f, PX_MAX_F32, true}, // X
-	//	{10.f, 0.f, PX_MAX_F32, true}, // Y
-	//	{10.f, 0.f, PX_MAX_F32, true}, // Z
-	//	{10.f, 0.f, PX_MAX_F32, true}, // Twist
-	//	{10.f, 0.f, PX_MAX_F32, true}, // Swing1
-	//	{10.f, 0.f, PX_MAX_F32, true}, // Swing2
-	//};
-	//static PxJointLinearLimit linearLimit(1.f, PxSpring(10.f, 0.f));
-	//static PxJointAngularLimitPair twistLimit(-PxPi / 2.f, PxPi / 2.f);
-	//static PxJointLimitCone swingLimit(-PxPi / 2.f, PxPi / 2.f);
-	//static bool isLinearLimit = false;
-	//static bool isTwistLimit = false;
-	//static bool isSwingLimit = false;
-	//static Vector3 linearDriveVelocity(0, 0, 0);
-	//static Vector3 angularDriveVelocity(0, 0, 0);
+	evc::sD6Limit &limit = link->m_limit.d6;
 
-	//if (m_isChangeSelection)
-	//{
-	//	for (int i = 0; i < 6; ++i)
-	//		motionVal[i] = (int)joint->GetMotion((PxD6Axis::Enum)i);
-
-	//	for (int i = 0; i < 6; ++i)
-	//	{
-	//		const PxD6JointDrive drive = joint->GetD6Drive((PxD6Drive::Enum)i);
-	//		driveConfigs[i].stiffness = drive.stiffness;
-	//		driveConfigs[i].damping = drive.damping;
-	//		driveConfigs[i].forceLimit = drive.forceLimit;
-	//		driveVal[i] = drive.stiffness != 0.f;
-	//	}
-
-	//	linearLimit = joint->GetD6LinearLimit();
-	//	twistLimit = joint->GetD6TwistLimit();
-	//	swingLimit = joint->GetD6SwingLimit();
-	//	isLinearLimit = linearLimit.stiffness != 0.f;
-	//	isTwistLimit = twistLimit.lower != 0.f;
-	//	isSwingLimit = swingLimit.yAngle != 0.f;
-
-	//	std::pair<Vector3, Vector3> ret = joint->GetD6DriveVelocity();
-	//	linearDriveVelocity = std::get<0>(ret);
-	//	angularDriveVelocity = std::get<1>(ret);
-	//}
-
-	//// Motion
-	//ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
-	//if (ImGui::TreeNode("Motion"))
-	//{
-	//	for (int i = 0; i < 6; ++i)
-	//	{
-	//		int id = i * 100;
-	//		ImGui::PushItemWidth(200);
-	//		ImGui::TextUnformatted(motionAxis[i]);
-	//		ImGui::SameLine();
-	//		ImGui::PushID(id++);
-	//		if (ImGui::Combo("##Motion", &motionVal[i], motionStr))
-	//		{
-	//			if (driveVal[i])
-	//				driveVal[i] = (0 != motionVal[i]); // motion lock -> drive lock
-	//		}
-	//		ImGui::PopID();
-	//		ImGui::PopItemWidth();
-	//	}
-	//	ImGui::TreePop();
-	//}
-	//ImGui::Separator();
-	//// Drive
-	//ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
-	//if (ImGui::TreeNode("Drive"))
-	//{
-	//	for (int i = 0; i < 6; ++i)
-	//	{
-	//		int id = i * 1000;
-	//		ImGui::Checkbox(driveAxis[i], &driveVal[i]);
-
-	//		if (driveVal[i])
-	//		{
-	//			sDriveParam &drive = driveConfigs[i];
-
-	//			ImGui::Indent(30);
-	//			ImGui::PushItemWidth(150);
-
-	//			ImGui::TextUnformatted("Stiffness   ");
-	//			ImGui::SameLine();
-	//			ImGui::PushID(id++);
-	//			ImGui::DragFloat("##Stiffness", &drive.stiffness);
-	//			ImGui::PopID();
-
-	//			ImGui::TextUnformatted("Dampping");
-	//			ImGui::SameLine();
-	//			ImGui::PushID(id++);
-	//			ImGui::DragFloat("##Dampping", &drive.damping);
-	//			ImGui::PopID();
-
-	//			ImGui::TextUnformatted("Force Limit");
-	//			ImGui::SameLine();
-	//			ImGui::PushID(id++);
-	//			ImGui::DragFloat("##Force Limit", &drive.forceLimit);
-	//			ImGui::PopID();
-
-	//			ImGui::TextUnformatted("Accel");
-	//			ImGui::SameLine();
-	//			ImGui::PushID(id++);
-	//			ImGui::Checkbox("##Accel", &drive.accel);
-	//			ImGui::PopID();
-
-	//			ImGui::PopItemWidth();
-	//			ImGui::Unindent(30);
-
-	//			ImGui::Separator();
-	//		}//~drive
-
-	//		ImGui::Spacing();
-	//	}//~for drive axis 6
-	//	ImGui::TreePop();
-	//}//~drive tree node
-
-	//ImGui::Separator();
-	//ImGui::TextUnformatted("Linear Drive Velocity");
-	//ImGui::DragFloat3("##Linear Drive Velocity", (float*)&linearDriveVelocity, 0.001f, 0.f, 1000.f);
-	//ImGui::TextUnformatted("Angular Drive Velocity");
-	//ImGui::DragFloat3("##Angular Drive Velocity", (float*)&angularDriveVelocity, 0.001f, 0.f, 1000.f);
-	//ImGui::Separator();
-
-	//// linear limit
-	//{
-	//	ImGui::TextUnformatted("Linear Limit");
-	//	ImGui::SameLine();
-	//	ImGui::Checkbox("##Linear Limit", &isLinearLimit);
-	//	if (isLinearLimit)
-	//	{
-	//		ImGui::Indent(30);
-	//		ImGui::PushItemWidth(150);
-	//		ImGui::DragFloat("Extend", &linearLimit.value, 0.001f);
-	//		ImGui::DragFloat("Stiffness", &linearLimit.stiffness, 0.001f);
-	//		ImGui::DragFloat("Damping", &linearLimit.damping, 0.001f);
-	//		ImGui::PopItemWidth();
-	//		ImGui::Unindent(30);
-	//	}
-	//}
-
-	//// twist limit
-	//{
-	//	ImGui::TextUnformatted("Twist Limit ");
-	//	ImGui::SameLine();
-	//	ImGui::Checkbox("##Twist Limit", &isTwistLimit);
-	//	if (isTwistLimit)
-	//	{
-	//		ImGui::Indent(30);
-	//		ImGui::PushItemWidth(150);
-	//		ImGui::DragFloat("Lower Angle", &twistLimit.lower, 0.001f);
-	//		ImGui::DragFloat("Upper Angle", &twistLimit.upper, 0.001f);
-	//		ImGui::PopItemWidth();
-	//		ImGui::Unindent(30);
-	//	}
-	//}
-
-	//// swing limit
-	//{
-	//	ImGui::TextUnformatted("Swing Limit");
-	//	ImGui::SameLine();
-	//	ImGui::Checkbox("##Swing Limit", &isSwingLimit);
-	//	if (isSwingLimit)
-	//	{
-	//		ImGui::Indent(30);
-	//		ImGui::PushItemWidth(150);
-	//		ImGui::DragFloat("Y Angle", &swingLimit.yAngle, 0.001f);
-	//		ImGui::DragFloat("Z Angle", &swingLimit.zAngle, 0.001f);
-	//		ImGui::PopItemWidth();
-	//		ImGui::Unindent(30);
-	//	}
-	//}
-
-	//ImGui::Spacing();
-	//ImGui::Separator();
-	//ImGui::Spacing();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
-	if (ImGui::Button("Apply Option"))
+	// Motion
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Motion"))
 	{
-		//for (int i = 0; i < 6; ++i)
-		//	joint->SetMotion((PxD6Axis::Enum)i, (PxD6Motion::Enum)motionVal[i]);
-
-		//for (int i = 0; i < 6; ++i)
-		//{
-		//	if (driveVal[i])
-		//	{
-		//		joint->SetD6Drive((PxD6Drive::Enum)i
-		//			, physx::PxD6JointDrive(driveConfigs[i].stiffness
-		//				, driveConfigs[i].damping
-		//				, driveConfigs[i].forceLimit
-		//				, driveConfigs[i].accel));
-		//	}
-		//}
-
-		//if (isLinearLimit)
-		//	joint->SetD6LinearLimit(linearLimit);
-		//if (isTwistLimit)
-		//	joint->SetD6TwistLimit(twistLimit);
-		//if (isSwingLimit)
-		//	joint->SetD6SwingLimit(swingLimit);
-
-		//joint->SetD6DriveVelocity(linearDriveVelocity, angularDriveVelocity);
+		for (int i = 0; i < 6; ++i)
+		{
+			int id = i * 100;
+			ImGui::PushItemWidth(200);
+			ImGui::TextUnformatted(motionAxis[i]);
+			ImGui::SameLine();
+			ImGui::PushID(id++);
+			if (ImGui::Combo("##Motion", &limit.motion[i], motionStr))
+			{
+				if (limit.drive[i].isDrive)
+					limit.drive[i].isDrive = (0 != limit.motion[i]); // motion lock -> drive lock
+			}
+			ImGui::PopID();
+			ImGui::PopItemWidth();
+		}
+		ImGui::TreePop();
 	}
-	ImGui::PopStyleColor(3);
+	ImGui::Separator();
+	// Drive
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
+	if (ImGui::TreeNode("Drive"))
+	{
+		for (int i = 0; i < 6; ++i)
+		{
+			evc::sDriveParam &drive = limit.drive[i];
+
+			int id = i * 1000;
+			ImGui::Checkbox(driveAxis[i], &drive.isDrive);
+
+			if (drive.isDrive)
+			{
+				ImGui::Indent(30);
+				ImGui::PushItemWidth(150);
+
+				ImGui::TextUnformatted("Stiffness   ");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Stiffness", &drive.stiffness);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Dampping");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Dampping", &drive.damping);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Force Limit");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::DragFloat("##Force Limit", &drive.forceLimit);
+				ImGui::PopID();
+
+				ImGui::TextUnformatted("Accel");
+				ImGui::SameLine();
+				ImGui::PushID(id++);
+				ImGui::Checkbox("##Accel", &drive.accel);
+				ImGui::PopID();
+
+				ImGui::PopItemWidth();
+				ImGui::Unindent(30);
+
+				ImGui::Separator();
+			}//~drive
+
+			ImGui::Spacing();
+		}//~for drive axis 6
+		ImGui::TreePop();
+	}//~drive tree node
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Linear Drive Velocity");
+	ImGui::DragFloat3("##Linear Drive Velocity", (float*)&limit.linearVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::TextUnformatted("Angular Drive Velocity");
+	ImGui::DragFloat3("##Angular Drive Velocity", (float*)&limit.angularVelocity, 0.001f, 0.f, 1000.f);
+	ImGui::Separator();
+
+	// linear limit
+	{
+		ImGui::TextUnformatted("Linear Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Linear Limit", &limit.linear.isLimit);
+		if (limit.linear.isLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Extend", &limit.linear.value, 0.001f);
+			ImGui::DragFloat("Stiffness", &limit.linear.stiffness, 0.001f);
+			ImGui::DragFloat("Damping", &limit.linear.damping, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// twist limit
+	{
+		ImGui::TextUnformatted("Twist Limit ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Twist Limit", &limit.twist.isLimit);
+		if (limit.twist.isLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Lower Angle", &limit.twist.lower, 0.001f);
+			ImGui::DragFloat("Upper Angle", &limit.twist.upper, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	// swing limit
+	{
+		ImGui::TextUnformatted("Swing Limit");
+		ImGui::SameLine();
+		ImGui::Checkbox("##Swing Limit", &limit.swing.isLimit);
+		if (limit.swing.isLimit)
+		{
+			ImGui::Indent(30);
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Y Angle", &limit.swing.yAngle, 0.001f);
+			ImGui::DragFloat("Z Angle", &limit.swing.zAngle, 0.001f);
+			ImGui::PopItemWidth();
+			ImGui::Unindent(30);
+		}
+	}
+
+	ImGui::Spacing();
+	ImGui::Spacing();
 }
 
 
@@ -1356,13 +1259,19 @@ void cGenoEditorView::RenderSphericalJointSetting(evc::cGLink *link)
 {
 	using namespace physx;
 
-	ImGui::Text("Limit Cone (Radian)");
-	ImGui::SameLine();
-	ImGui::Checkbox("##Limit", &link->m_limit.cone.isLimit);
+	int id = (int)link;
+
+	ImGui::PushID(id++);
+	ImGui::Checkbox("Limit Cone (Radian)", &link->m_limit.cone.isLimit);
+	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
+	ImGui::PushID(id++);
 	ImGui::DragFloat("Y Limit Angle", &link->m_limit.cone.yAngle, 0.001f);
+	ImGui::PopID();
+	ImGui::PushID(id++);
 	ImGui::DragFloat("Z Limit Angle", &link->m_limit.cone.zAngle, 0.001f);
+	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
