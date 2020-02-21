@@ -65,5 +65,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/centipede4.jpg?raw=true)
 - Centiped4
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/centipede5.jpg?raw=true)
-- Spider2
+- Spider1
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/spider2.jpg?raw=true)
