@@ -42,6 +42,7 @@ namespace evc
 		cNeuralNet *m_nn;
 		vector<iSensor*> m_sensors;
 		vector<iEffector*> m_effectors;
+		uint m_inputSize;
 	};
 
 }

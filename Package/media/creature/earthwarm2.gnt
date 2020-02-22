@@ -1,0 +1,98 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Capsule",
+                "id": "11194",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "7.789821 3.000000 -11.456000",
+                "dim": "0.220144 0.185584 0.185584",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Capsule",
+                "id": "11188",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "8.617036 3.000000 -11.455585",
+                "dim": "0.558069 0.185584 0.185584",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Capsule iter",
+                "id": "11190",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "9.868007 3.000000 -11.455585",
+                "dim": "0.558069 0.185584 0.185584",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "11188",
+                "max generation": "0"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "11188",
+                "shape id1": "11190",
+                "jointpos": "8.865329 3.000000 -9.519978",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "1.000000 0.000000 0.000000",
+                "pivot len0": "0.62548542",
+                "pivot dir1": "-1.000000 0.000000 0.000000",
+                "pivot len1": "0.62548542",
+                "drive": "true",
+                "drive velocity": "1",
+                "cycle": "true",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "true",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "true",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            },
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "11194",
+                "shape id1": "11188",
+                "jointpos": "8.203428 3.000000 -11.455793",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "drive": "true",
+                "drive velocity": "1",
+                "cycle": "false",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "true",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "true",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            }
+        }
+    }
+}

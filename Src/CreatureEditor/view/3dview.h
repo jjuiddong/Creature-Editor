@@ -39,6 +39,9 @@ protected:
 	int PickingRigidActor(const int pickType, const POINT &mousePos
 		, OUT float *outDistance = nullptr);
 
+	void DeleteConnectJointAll();
+	void DeleteSelectCreature();
+
 	void UpdateLookAt();
 	void OnWheelMove(const float delta, const POINT mousePt);
 	void OnMouseMove(const POINT mousePt);

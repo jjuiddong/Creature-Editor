@@ -634,26 +634,27 @@ void c3DView::RenderPopupMenu()
 
 		if (ImGui::MenuItem("Delete All Joint", "J", false, true))
 		{
-			// remove connection joint
-			set<phys::cJoint*> rms;
-			for (auto id : g_pheno->m_selects)
-				if (phys::cRigidActor *actor = g_pheno->FindRigidActorFromSyncId(id))
-					for (auto &j : actor->m_joints)
-						rms.insert(j);
-
-			vector<phys::cRigidActor*> wakeups;
-			for (auto *j : rms)
-			{
-				wakeups.push_back(j->m_actor0);
-				wakeups.push_back(j->m_actor1);
-				g_pheno->m_physSync->RemoveSyncInfo(j);
-			}
-
-			// wakeup
-			for (auto *actor : wakeups)
-				if (actor)
-					actor->WakeUp();
+			DeleteConnectJointAll();
 		}
+
+		// check creature selection
+		bool isSelectCreature = false;
+		for (auto id : g_pheno->m_selects)
+		{
+			if (g_pheno->FindCreatureContainNode(id))
+			{
+				isSelectCreature = true;
+				break;
+			}
+		}
+		if (isSelectCreature)
+		{
+			if (ImGui::MenuItem("Delete Creature", "D", false, true))
+			{
+				DeleteSelectCreature();
+			}
+		}
+
 		ImGui::EndPopup();
 	}
 	else if (ImGui::BeginPopup("New PopupMenu"))
@@ -999,6 +1000,38 @@ int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 	}
 
 	return minId;
+}
+
+
+void c3DView::DeleteConnectJointAll()
+{
+	// remove connection joint
+	set<phys::cJoint*> rms;
+	for (auto id : g_pheno->m_selects)
+		if (phys::cRigidActor *actor = g_pheno->FindRigidActorFromSyncId(id))
+			for (auto &j : actor->m_joints)
+				rms.insert(j);
+
+	vector<phys::cRigidActor*> wakeups;
+	for (auto *j : rms)
+	{
+		wakeups.push_back(j->m_actor0);
+		wakeups.push_back(j->m_actor1);
+		g_pheno->m_physSync->RemoveSyncInfo(j);
+	}
+
+	// wakeup
+	for (auto *actor : wakeups)
+		if (actor)
+			actor->WakeUp();
+}
+
+
+void c3DView::DeleteSelectCreature()
+{
+	for (auto id : g_pheno->m_selects)
+		if (evc::cCreature *creature = g_pheno->FindCreatureContainNode(id))
+			g_pheno->RemoveCreature(creature);
 }
 
 
@@ -1446,31 +1479,22 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		{
 			if (m_popupMenuState == 2)
 			{
-				// remove connection joint
-				set<phys::cJoint*> rms;
-				for (auto id : g_pheno->m_selects)
-					if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(id))
-						if (sync && sync->actor)
-							for (auto &j : sync->actor->m_joints)
-								rms.insert(j);
-
-				vector<phys::cRigidActor*> wakeups;
-				for (auto *j : rms)
-				{
-					wakeups.push_back(j->m_actor0);
-					wakeups.push_back(j->m_actor1);
-					g_pheno->m_physSync->RemoveSyncInfo(j);
-				}
-
-				// wake up
-				for (auto *actor : wakeups)
-					if (actor)
-						actor->WakeUp();
-
+				DeleteConnectJointAll();
 				m_popupMenuState = 3; // close popup
 			}
 		}
 		break;
+
+		case sf::Keyboard::D: // delete select creature
+		{
+			if (m_popupMenuState == 2)
+			{
+				DeleteSelectCreature();
+				m_popupMenuState = 3; // close popup
+			}			
+		}
+		break;
+
 		}
 		break;
 

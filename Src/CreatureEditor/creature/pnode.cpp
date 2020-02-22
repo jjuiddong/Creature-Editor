@@ -8,6 +8,7 @@ using namespace evc;
 cPNode::cPNode()
 	: m_id(common::GenerateId())
 	, m_actor(nullptr)
+	, m_inputSize(0)
 {
 }
 
@@ -45,6 +46,8 @@ bool cPNode::InitializeNN(const uint numHidden, const uint neuronsPerHiddenLayer
 	if (!weights.empty())
 		m_nn->PutWeights(weights);
 
+	m_inputSize = numInputs;
+
 	return true;
 }
 
@@ -55,7 +58,7 @@ bool cPNode::Update(const float deltaSeconds)
 	RETV(!m_nn, false);
 
 	vector<double> input;
-	input.reserve(m_sensors.size());
+	input.reserve(m_inputSize);
 	for (auto &p : m_sensors)
 	{
 		const vector<double> &output = p->GetOutput();
@@ -112,7 +115,13 @@ bool cPNode::RemoveEffector(iEffector *effector)
 
 void cPNode::Clear()
 {
-	g_evc->m_sync->RemoveSyncInfo(m_actor);
+	if (m_actor)
+	{
+		vector<phys::cJoint*> joints = m_actor->m_joints;
+		for (auto &joint : joints)
+			g_evc->m_sync->RemoveSyncInfo(joint);
+		g_evc->m_sync->RemoveSyncInfo(m_actor);
+	}
 
 	for (auto &p : m_children)
 		delete p;

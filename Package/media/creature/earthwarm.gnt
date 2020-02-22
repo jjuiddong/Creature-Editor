@@ -1,0 +1,62 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Capsule iter",
+                "id": "10079",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "1.250971 3.000000 0.000000",
+                "dim": "0.558069 0.185584 0.185584",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "10077",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Capsule",
+                "id": "10077",
+                "type": "Dynamic",
+                "shape": "Capsule",
+                "pos": "0.000000 3.000000 0.000000",
+                "dim": "0.558069 0.185584 0.185584",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10077",
+                "shape id1": "10079",
+                "jointpos": "0.625486 3.000000 0.000000",
+                "revolute rot": "0.000000 0.000000 0.707107 0.707107",
+                "pivot dir0": "1.000000 0.000000 0.000000",
+                "pivot len0": "0.625485718",
+                "pivot dir1": "-1.000000 0.000000 0.000000",
+                "pivot len1": "0.625485718",
+                "drive": "true",
+                "drive velocity": "1",
+                "cycle": "true",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "true",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "true",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            }
+        }
+    }
+}

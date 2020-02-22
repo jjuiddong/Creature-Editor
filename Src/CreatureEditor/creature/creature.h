@@ -68,6 +68,7 @@ namespace evc
 		int m_id;
 		StrId m_name;
 		uint m_generation;
+		bool m_isNN; // neural network simulation
 
 		// phenotype
 		vector<cPNode*> m_nodes;

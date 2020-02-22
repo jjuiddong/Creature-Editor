@@ -55,9 +55,6 @@
     <ClCompile Include="creature\glink.cpp">
       <Filter>creature</Filter>
     </ClCompile>
-    <ClCompile Include="creature\angularsensor.cpp">
-      <Filter>creature</Filter>
-    </ClCompile>
     <ClCompile Include="creature\muscleeffector.cpp">
       <Filter>creature</Filter>
     </ClCompile>
@@ -135,6 +132,12 @@
       <Filter>creature</Filter>
     </ClInclude>
     <ClInclude Include="creature\neuralnet.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\velocitysensor.h">
+      <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="creature\limitsensor.h">
       <Filter>creature</Filter>
     </ClInclude>
   </ItemGroup>

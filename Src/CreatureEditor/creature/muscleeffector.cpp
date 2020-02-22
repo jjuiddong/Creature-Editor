@@ -33,7 +33,8 @@ void cMuscleEffector::Signal(const float deltaSeconds, const double signal)
 	{
 		m_incT = 0.f;
 
-		m_joint->SetDriveVelocity( common::clamp2((float)signal*10.f, -3.f, 3.f));
+		//m_joint->SetDriveVelocity( common::clamp2((float)signal*50.f, -3.f, 3.f));
+		m_joint->SetDriveVelocity((signal < 0.f)? -3.f : 3.f);
 		m_joint->m_actor0->WakeUp();
 		m_joint->m_actor1->WakeUp();
 	}

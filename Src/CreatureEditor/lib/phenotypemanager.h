@@ -25,6 +25,8 @@ public:
 
 	// creature
 	bool AddCreature(evc::cCreature *creature);
+	evc::cCreature* FindCreatureContainNode(const int syncId);
+	bool RemoveCreature(evc::cCreature *creature);
 	bool ReadPhenoTypeFile(const StrPath &fileName, const Vector3 &pos);
 	bool ReadCreatureFile(const StrPath &fileName, const Vector3 &pos);
 
@@ -57,6 +59,7 @@ public:
 	bool RefreshResourceView();
 
 	graphic::cRenderer& GetRenderer();
+	void ClearCreature();
 	void Clear();
 
 
@@ -97,6 +100,7 @@ public:
 
 	// creatures
 	vector<evc::cCreature*> m_creatures;
+	map<int, evc::cCreature*> m_creatureMap; // fast search map, reference
 
 	// generation
 	int m_generationCnt;

@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "phenoeditorview.h"
+#include "../creature/creature.h"
 
 using namespace graphic;
 
@@ -51,6 +52,16 @@ void cPhenoEditorView::OnRender(const float deltaSeconds)
 	{
 		if (ImGui::Button("Pause Simulation"))
 			g_pheno->m_physics->Pause();
+	}
+	ImGui::PopStyleColor(3);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.1f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.1f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0, 1));
+	ImGui::SameLine(250);
+	if (ImGui::Button("Clear"))
+	{
+		g_pheno->ClearCreature();
 	}
 	ImGui::PopStyleColor(3);
 
@@ -204,6 +215,13 @@ void cPhenoEditorView::RenderSelectionInfo()
 					g_pheno->UpdateActorDimension(actor, isKinematic);
 				}
 			}
+		}
+
+		if (evc::cCreature *creature = g_pheno->FindCreatureContainNode(selSyncId))
+		{
+			ImGui::TextUnformatted("Neural Network     ");
+			ImGui::SameLine();
+			ImGui::Checkbox("##Neural Network", &creature->m_isNN);
 		}
 
 		// edit position

@@ -12,6 +12,7 @@ cCreature::cCreature(const StrId &name //="creature"
 	: m_id(common::GenerateId())
 	, m_name(name)
 	, m_generation(0)
+	, m_isNN(true)
 {
 }
 
@@ -73,8 +74,9 @@ bool cCreature::Write(const StrPath &fileName)
 
 void cCreature::Update(const float deltaSeconds)
 {
-	for (auto &p : m_nodes)
-		p->Update(deltaSeconds);
+	if (m_isNN)
+		for (auto &p : m_nodes)
+			p->Update(deltaSeconds);
 }
 
 
@@ -188,9 +190,13 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 
 		for (auto &j : joints)
 		{
-			cAngularSensor *sensor = new cAngularSensor();
-			sensor->Create(j);
-			pnode->AddSensor(sensor);
+			cAngularSensor *AngleSen = new cAngularSensor();
+			AngleSen->Create(j);
+			pnode->AddSensor(AngleSen);
+
+			cLimitSensor *limitSen = new cLimitSensor();
+			limitSen->Create(j);
+			pnode->AddSensor(limitSen);
 			
 			cMuscleEffector *effector = new cMuscleEffector();
 			effector->Create(j);
@@ -198,7 +204,7 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		}
 
 		vector<double> weights;
-		pnode->InitializeNN(1, joints.size(), weights);
+		pnode->InitializeNN(2, joints.size(), weights);
 	}
 }
 

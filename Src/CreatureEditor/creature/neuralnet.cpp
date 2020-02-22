@@ -6,7 +6,7 @@ using namespace evc;
 
 //------------------------------------------------------------------------
 // sNeuron, sNeuronLayer
-const double dBias = 1.f;
+const double dBias = 0.f;
 
 sNeuron::sNeuron(uint numInputs0)
 	: numInputs(numInputs0 + 1)

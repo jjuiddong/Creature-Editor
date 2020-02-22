@@ -13,6 +13,8 @@ using namespace common;
 #include "creature/effector.h"
 #include "creature/sensor.h"
 #include "creature/angularsensor.h"
+#include "creature/limitsensor.h"
+#include "creature/velocitysensor.h"
 #include "creature/muscleeffector.h"
 #include "creature/neuralnet.h"
 #include "creature/gnode.h"

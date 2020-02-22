@@ -155,7 +155,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="creatureeditor.cpp" />
-    <ClCompile Include="creature\angularsensor.cpp" />
     <ClCompile Include="creature\creature.cpp" />
     <ClCompile Include="creature\evc.cpp" />
     <ClCompile Include="creature\generator.cpp" />
@@ -190,12 +189,14 @@
     <ClInclude Include="creature\genotype.h" />
     <ClInclude Include="creature\glink.h" />
     <ClInclude Include="creature\gnode.h" />
+    <ClInclude Include="creature\limitsensor.h" />
     <ClInclude Include="creature\muscleeffector.h" />
     <ClInclude Include="creature\neuralnet.h" />
     <ClInclude Include="creature\parser\GenotypeParser.h" />
     <ClInclude Include="creature\parser\GenotypeScanner.h" />
     <ClInclude Include="creature\pnode.h" />
     <ClInclude Include="creature\sensor.h" />
+    <ClInclude Include="creature\velocitysensor.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="lib\genotypemanager.h" />
     <ClInclude Include="lib\jointrenderer.h" />

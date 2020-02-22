@@ -17,7 +17,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_pairSyncId0(-1)
 	, m_pairSyncId1(-1)
 	, m_fixJointSelection(false)
-	, m_generationCnt(0)
+	, m_generationCnt(1)
 	, m_orbitId(-1)
 {
 }
@@ -77,6 +77,42 @@ ePhenoEditMode cPhenoTypeManager::GetEditMode()
 bool cPhenoTypeManager::AddCreature(evc::cCreature *creature)
 {
 	m_creatures.push_back(creature);
+	return true;
+}
+
+
+// find creature by contain creature node id (syncid)
+evc::cCreature* cPhenoTypeManager::FindCreatureContainNode(const int syncId)
+{
+	auto it = m_creatureMap.find(syncId);
+	if (m_creatureMap.end() != it)
+		return it->second;
+
+	if (phys::cRigidActor *actor = FindRigidActorFromSyncId(syncId))
+	{
+		for (auto &creature : m_creatures)
+		{
+			for (auto &pnode : creature->m_nodes)
+			{
+				if (pnode->m_actor == actor)
+				{
+					m_creatureMap[syncId] = creature;
+					return creature;
+				}
+			}
+		}
+	}
+	return nullptr;
+}
+
+
+bool cPhenoTypeManager::RemoveCreature(evc::cCreature *creature)
+{
+	if (m_creatures.end() == find(m_creatures.begin(), m_creatures.end(), creature))
+		return false; // not exist
+
+	common::removevector(m_creatures, creature);
+	delete creature;
 	return true;
 }
 
@@ -526,6 +562,15 @@ bool cPhenoTypeManager::SetRigidActorColor(const int syncId, const graphic::cCol
 graphic::cRenderer& cPhenoTypeManager::GetRenderer()
 {
 	return g_global->m_3dView->GetRenderer();
+}
+
+
+void cPhenoTypeManager::ClearCreature()
+{
+	for (auto &p : m_creatures)
+		delete p;
+	m_creatures.clear();
+	m_creatureMap.clear();
 }
 
 
