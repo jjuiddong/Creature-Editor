@@ -21,6 +21,9 @@ cPNode::~cPNode()
 // create from genotype node struct
 bool cPNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 {
+	m_gid = gnode.id;
+	m_name = gnode.name;
+	m_gnode = &gnode;
 	return true;
 }
 
@@ -41,7 +44,7 @@ bool cPNode::InitializeNN(const uint numHidden, const uint neuronsPerHiddenLayer
 	if (numInputs == 0)
 		return false;
 
-	m_nn = new cNeuralNet(numInputs, m_effectors.size()
+	m_nn = new ai::cNeuralNet(numInputs, m_effectors.size()
 		, numHidden, neuronsPerHiddenLayer);
 	if (!weights.empty())
 		m_nn->PutWeights(weights);

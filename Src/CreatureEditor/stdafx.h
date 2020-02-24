@@ -4,6 +4,7 @@
 using namespace common;
 #include "../../../Common/Graphic11/graphic11.h"
 #include "../../../Common/Framework11/framework11.h"
+#include "../../../Common/AI/ai.h"
 #include "../../../Common/Physics/physics.h"
 
 
@@ -16,17 +17,19 @@ using namespace common;
 #include "creature/limitsensor.h"
 #include "creature/velocitysensor.h"
 #include "creature/muscleeffector.h"
-#include "creature/neuralnet.h"
 #include "creature/gnode.h"
 #include "creature/pnode.h"
 #include "creature/glink.h"
+#include "creature/creature.h"
 #include "lib/jointrenderer.h"
 #include "lib/phenotypemanager.h"
 #include "lib/genotypemanager.h"
+#include "lib/nnmanager.h"
 #include "global.h"
 
 
 extern cGlobal *g_global;
 extern cPhenoTypeManager *g_pheno;
 extern cGenoTypeManager *g_geno;
+extern cNNManager *g_nn;
 extern framework::cGameMain2 *g_application;

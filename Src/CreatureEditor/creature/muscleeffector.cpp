@@ -19,6 +19,7 @@ cMuscleEffector::~cMuscleEffector()
 bool cMuscleEffector::Create(phys::cJoint *joint)
 {
 	m_joint = joint;
+	m_type = eEffectorType::Muscle;
 	return true;
 }
 

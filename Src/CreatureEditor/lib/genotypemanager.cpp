@@ -4,10 +4,7 @@
 #include "../view/genoview.h"
 #include "../view/genoeditorview.h"
 #include "../view/resourceview.h"
-#include "../creature/creature.h"
-#include "../creature/gnode.h"
-#include "../creature/glink.h"
-
+//
 
 cGenoTypeManager::cGenoTypeManager()
 	: m_mode(eGenoEditMode::Normal)

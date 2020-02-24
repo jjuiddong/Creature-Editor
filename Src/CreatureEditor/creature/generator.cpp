@@ -656,8 +656,7 @@ cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
 			sync->actor->SetMass(gnode.mass);
 
 		cPNode *pnode = new cPNode();
-		pnode->m_gid = gnode.id;
-		pnode->m_name = gnode.name;
+		pnode->Create(renderer, gnode);
 		pnode->m_actor = sync->actor;
 		pnode->m_node = sync->node;
 		return pnode;

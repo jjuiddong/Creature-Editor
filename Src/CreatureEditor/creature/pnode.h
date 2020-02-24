@@ -37,9 +37,10 @@ namespace evc
 		StrId m_name;
 		phys::cRigidActor *m_actor; // reference
 		graphic::cNode *m_node; // reference
+		const sGenotypeNode *m_gnode; // reference
 		vector<cPNode*> m_children;
 
-		cNeuralNet *m_nn;
+		ai::cNeuralNet *m_nn;
 		vector<iSensor*> m_sensors;
 		vector<iEffector*> m_effectors;
 		uint m_inputSize;

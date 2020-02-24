@@ -4,7 +4,6 @@
 #include "../view/3dview.h"
 #include "../view/phenoeditorview.h"
 #include "../view/resourceview.h"
-#include "../creature/creature.h"
 
 
 cPhenoTypeManager::cPhenoTypeManager()
@@ -303,6 +302,8 @@ bool cPhenoTypeManager::SelectObject(const int syncId
 		phys::sSyncInfo *sync = FindSyncInfo(m_selects[0]);
 		if (sync && sync->node)
 			m_gizmo.SetControlNode(sync->node);
+
+		g_nn->SetCurrentCreature(FindCreatureContainNode(m_selects[0]));
 	}
 
 	return true;

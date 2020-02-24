@@ -19,6 +19,7 @@ namespace evc
 
 		bool Create(phys::cJoint *joint) {
 			m_joint = joint;
+			m_type = eSensorType::Velocity;
 			return true;
 		}
 

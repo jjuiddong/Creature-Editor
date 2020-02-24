@@ -38,15 +38,15 @@ namespace evc
 			, const bool isRecursive =true);
 
 		enum class eClone {Generation, Copy};
-		enum class eHierachy {Parent, Child};
+		enum class eHierarchy {Parent, Child};
 		sGenotypeNode* CloneGenoTypeNode(const eClone cloneType, const uint generation
 			, sGenotypeNode *src, sGenotypeNode *dst);
-		sGenotypeNode* CloneGenoTypeNode(const eClone cloneType, const eHierachy target
+		sGenotypeNode* CloneGenoTypeNode(const eClone cloneType, const eHierarchy target
 			, const uint generation, sGenotypeLink *srcLink, sGenotypeNode *dst);
 
 		sGenotypeNode* CloneGenoTypeNode(
 			const eClone copy
-			, const eHierachy cloneType
+			, const eHierarchy cloneType
 			, const uint generation
 			, sGenotypeLink *srcLink
 			, sGenotypeNode *srcParent, sGenotypeNode *srcChild, sGenotypeNode *dst

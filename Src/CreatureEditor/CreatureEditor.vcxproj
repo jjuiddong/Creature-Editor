@@ -161,19 +161,20 @@
     <ClCompile Include="creature\glink.cpp" />
     <ClCompile Include="creature\gnode.cpp" />
     <ClCompile Include="creature\muscleeffector.cpp" />
-    <ClCompile Include="creature\neuralnet.cpp" />
     <ClCompile Include="creature\parser\GenotypeParser.cpp" />
     <ClCompile Include="creature\parser\GenotypeScanner.cpp" />
     <ClCompile Include="creature\pnode.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="lib\genotypemanager.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp" />
+    <ClCompile Include="lib\nnmanager.cpp" />
     <ClCompile Include="lib\phenotypemanager.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="view\3dview.cpp" />
+    <ClCompile Include="view\nnview.cpp" />
     <ClCompile Include="view\phenoeditorview.cpp" />
     <ClCompile Include="view\genoeditorview.cpp" />
     <ClCompile Include="view\genoview.cpp" />
@@ -191,7 +192,6 @@
     <ClInclude Include="creature\gnode.h" />
     <ClInclude Include="creature\limitsensor.h" />
     <ClInclude Include="creature\muscleeffector.h" />
-    <ClInclude Include="creature\neuralnet.h" />
     <ClInclude Include="creature\parser\GenotypeParser.h" />
     <ClInclude Include="creature\parser\GenotypeScanner.h" />
     <ClInclude Include="creature\pnode.h" />
@@ -200,9 +200,11 @@
     <ClInclude Include="global.h" />
     <ClInclude Include="lib\genotypemanager.h" />
     <ClInclude Include="lib\jointrenderer.h" />
+    <ClInclude Include="lib\nnmanager.h" />
     <ClInclude Include="lib\phenotypemanager.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="view\3dview.h" />
+    <ClInclude Include="view\nnview.h" />
     <ClInclude Include="view\phenoeditorview.h" />
     <ClInclude Include="view\genoeditorview.h" />
     <ClInclude Include="view\genoview.h" />
@@ -210,6 +212,9 @@
     <ClInclude Include="view\simulationview.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\AI\AI.vcxproj">
+      <Project>{c7f9eba2-b553-483b-bc34-d25f1c718255}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Common\Common\Common.vcxproj">
       <Project>{ef9ca22d-0c8f-42e9-ab66-98bc1a640f10}</Project>
     </ProjectReference>

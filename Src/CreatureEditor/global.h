@@ -11,8 +11,10 @@ class cGenoEditorView;
 class cResourceView;
 class cSimulationView;
 class cGenoView;
+class cNNView;
 class cPhenoTypeManager;
 class cGenoTypeManager;
+class cNNManager;
 
 namespace evc { class cCreature; }
 
@@ -31,6 +33,7 @@ public:
 public:
 	c3DView *m_3dView; // reference
 	cGenoView *m_genoView; // reference
+	cNNView *m_nnView; // reference
 	cPhenoEditorView *m_peditorView; // reference
 	cGenoEditorView *m_geditorView; // reference
 	cResourceView *m_resourceView; // reference
@@ -39,4 +42,5 @@ public:
 	phys::cPhysicsSync *m_physSync;
 	cPhenoTypeManager *m_pheno; // reference
 	cGenoTypeManager *m_geno; // reference
+	cNNManager *m_nn; // reference
 };

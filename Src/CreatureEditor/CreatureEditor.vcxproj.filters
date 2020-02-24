@@ -58,8 +58,11 @@
     <ClCompile Include="creature\muscleeffector.cpp">
       <Filter>creature</Filter>
     </ClCompile>
-    <ClCompile Include="creature\neuralnet.cpp">
-      <Filter>creature</Filter>
+    <ClCompile Include="view\nnview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\nnmanager.cpp">
+      <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -131,14 +134,17 @@
     <ClInclude Include="creature\muscleeffector.h">
       <Filter>creature</Filter>
     </ClInclude>
-    <ClInclude Include="creature\neuralnet.h">
-      <Filter>creature</Filter>
-    </ClInclude>
     <ClInclude Include="creature\velocitysensor.h">
       <Filter>creature</Filter>
     </ClInclude>
     <ClInclude Include="creature\limitsensor.h">
       <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="view\nnview.h">
+      <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\nnmanager.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

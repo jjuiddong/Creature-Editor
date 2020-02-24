@@ -8,10 +8,12 @@
 #include "view/simulationview.h"
 #include "view/genoview.h"
 #include "view/genoeditorview.h"
+#include "view/nnview.h"
 
 cGlobal *g_global = nullptr;
 cPhenoTypeManager *g_pheno = nullptr;
 cGenoTypeManager *g_geno = nullptr;
+cNNManager *g_nn = nullptr;
 
 using namespace graphic;
 using namespace framework;
@@ -44,6 +46,7 @@ cViewer::~cViewer()
 {
 	SAFE_DELETE(g_geno);
 	SAFE_DELETE(g_pheno);
+	SAFE_DELETE(g_nn);
 	SAFE_DELETE(g_global);
 }
 
@@ -79,6 +82,10 @@ bool cViewer::OnInit()
 	if (!g_geno->Init(m_renderer, &g_global->m_physics, g_global->m_physSync))
 		return false;
 
+	g_nn = new cNNManager();
+	if (!g_nn->Init(m_renderer))
+		return false;
+
 	c3DView *p3dView = new c3DView("3D View");
 	p3dView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, NULL);
 	bool result = p3dView->Init(m_renderer);
@@ -87,6 +94,11 @@ bool cViewer::OnInit()
 	cGenoView *genoView = new cGenoView("GenoType View");
 	genoView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, p3dView);
 	result = genoView->Init(m_renderer);
+	assert(result);
+
+	cNNView *nnView = new cNNView("Neural Net");
+	nnView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, p3dView);
+	result = nnView->Init(m_renderer);
 	assert(result);
 
 	cPhenoEditorView *peditView = new cPhenoEditorView("Pheno Type");
@@ -109,7 +121,10 @@ bool cViewer::OnInit()
 	g_global->m_resourceView = resourceView;
 	g_global->m_simView = simView;
 	g_global->m_genoView = genoView;
+	g_global->m_nnView = nnView;
 	g_global->m_pheno = g_pheno;
+	g_global->m_geno = g_geno;
+	g_global->m_nn = g_nn;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

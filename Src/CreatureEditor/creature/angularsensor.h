@@ -19,13 +19,13 @@ namespace evc
 
 		bool Create(phys::cJoint *joint) {
 			m_joint = joint;
+			m_type = eSensorType::Angular;
 			return true;
 		}
 
 		// iSensor iterface override
 		virtual const vector<double>& GetOutput() override {
 			RETV(!m_joint, m_output);
-			//m_output[0] = m_joint->GetRelativeAngle() * 4.f;
 			m_output[0] = m_joint->m_curAngle * 4.f;
 			return m_output;
 		}
