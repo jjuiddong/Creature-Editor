@@ -69,3 +69,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/spider2.jpg?raw=true)
 - EarthWarm NeuralNet
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/earthwarm%20nn.jpg?raw=true)
+- Neural Network View
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/earthwarm%20nn%20vis.jpg?raw=true)
