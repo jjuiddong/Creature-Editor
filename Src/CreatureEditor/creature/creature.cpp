@@ -204,7 +204,7 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		}
 
 		vector<double> weights;
-		pnode->InitializeNN(2, joints.size(), weights);
+		pnode->InitializeNN(3, joints.size(), weights);
 	}
 }
 

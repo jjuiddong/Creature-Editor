@@ -31,6 +31,7 @@ namespace evc
 		}
 
 		virtual uint GetOutputCount() override {return m_output.size();}
+		virtual phys::cJoint* GetJoint() override {return m_joint;}
 
 
 	public:

@@ -19,6 +19,7 @@ namespace evc
 
 		bool Create(phys::cJoint *joint) {
 			m_joint = joint;
+			m_type = eSensorType::Limit;
 			return true;
 		}
 
@@ -35,7 +36,7 @@ namespace evc
 		}
 
 		virtual uint GetOutputCount() override { return m_output.size(); }
-
+		virtual phys::cJoint* GetJoint() override { return m_joint; }
 
 	public:
 		phys::cJoint *m_joint; // reference

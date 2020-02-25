@@ -26,6 +26,9 @@ protected:
 		, const bool isBuildShadowMap
 		, const XMMATRIX &parentTm = graphic::XMIdentity
 	);
+	void RenderSensor();
+	void RenderEffector();
+	void RenderNeuralNetwork();
 	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 		, const XMMATRIX &tm);
 	//void RenderPopupMenu();
@@ -59,6 +62,10 @@ public:
 	graphic::cSkyBoxCube m_skybox;
 	graphic::cBezierLine m_bezier;
 	graphic::cBillboard m_billboard;
+	graphic::cCircle2D m_circle;
+	graphic::cLine2D m_line2D;
+	graphic::cLine2DList m_line2DList;
+
 	evc::cCreature *m_curCreature;
 	Vector3 m_creatureOffsetPos;
 
@@ -68,6 +75,7 @@ public:
 	bool m_showJoint;
 	bool m_showSensor;
 	bool m_showEffector;
+	bool m_showNN;
 
 	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close

@@ -22,6 +22,8 @@ cNNView::cNNView(const string &name)
 	, m_curCreature(nullptr)
 	, m_showSensor(true)
 	, m_showEffector(true)
+	, m_showNN(true)
+	, m_line2DList(1024)
 {
 }
 
@@ -66,6 +68,9 @@ bool cNNView::Init(cRenderer &renderer)
 	m_bezier.Create(renderer, 20, cColor::GREEN);
 	m_billboard.Create(renderer, BILLBOARD_TYPE::ALL_AXIS, 0.02f, 0.02f, Vector3::Zeroes
 		, "white.dds");
+	m_circle.Create(renderer, Vector3(0, 0, 0), 1.f, 20, cColor::WHITE);
+	m_line2D.Create(renderer);
+	m_line2DList.Create(renderer);
 
 	return true;
 }
@@ -163,6 +168,8 @@ void cNNView::RenderScene(graphic::cRenderer &renderer
 		const Transform &tfm = creature->m_nodes[0]->m_gnode->transform;
 		m_creatureOffsetPos = -tfm.pos;
 		m_creatureOffsetPos.y = 0.f;
+		g_nn->m_orbitId = creature->m_nodes[0]->m_id;
+		g_nn->m_orbitTarget = tfm.pos;
 	}
 
 	// render phenotype node
@@ -178,164 +185,192 @@ void cNNView::RenderScene(graphic::cRenderer &renderer
 		node->m_transform = tmp;
 	}
 
-	// render sensor
-	if (m_showSensor)
-	{
-		m_bezier.SetColor(cColor::GREEN);
-		m_billboard.SetColor(cColor::GREEN);
-
-		for (auto &p : creature->m_nodes)
-		{
-			Vector3 p0 = p->m_gnode->transform.pos;
-			p0 += m_creatureOffsetPos;
-
-			for (auto &sensor : p->m_sensors)
-			{
-				switch (sensor->m_type)
-				{
-				case evc::eSensorType::Angular:
-					if (evc::cAngularSensor *ang = dynamic_cast<evc::cAngularSensor*>(sensor))
-					{
-						Vector3 p1 = ang->m_joint->m_origPos;
-						p1 += m_creatureOffsetPos;
-						Vector3 p2 = p0 + Vector3(0, 1, 0);
-						Vector3 p3 = p1 + Vector3(0, 1, 0);
-						m_bezier.SetLine(p0, p2, p3, p1, 0.005f);
-						m_bezier.Render(renderer);
-
-						m_billboard.m_transform.pos = p1 + Vector3(-0.02f,0,0);
-						m_billboard.Render(renderer);
-					}
-					break;
-
-				default:
-					assert(0);
-					break;
-				}
-			}
-		}
-	}
-
-	// render effector
-	if (m_showEffector)
-	{
-		m_bezier.SetColor(cColor::RED);
-		m_billboard.SetColor(cColor::RED);
-
-		for (auto &p : creature->m_nodes)
-		{
-			Vector3 p0 = p->m_gnode->transform.pos;
-			p0 += m_creatureOffsetPos;
-
-			for (auto &effector : p->m_effectors)
-			{
-				switch (effector->m_type)
-				{
-				case evc::eEffectorType::Muscle:
-					if (evc::cMuscleEffector *eff = dynamic_cast<evc::cMuscleEffector*>(effector))
-					{
-						Vector3 p1 = eff->m_joint->m_origPos;
-						p1 += m_creatureOffsetPos;
-						Vector3 p2 = p0 + Vector3(0.1f, 1, 0);
-						Vector3 p3 = p1 + Vector3(0.1f, 1, 0);
-						m_bezier.SetLine(p0, p2, p3, p1, 0.005f);
-						m_bezier.Render(renderer);
-
-						m_billboard.m_transform.pos = p1 + Vector3(0.02f, 0, 0);
-						m_billboard.Render(renderer);
-					}
-					break;
-
-				default:
-					assert(0);
-					break;
-				}
-			}
-		}
-	}
-
-	// render sensor mark
 	renderer.GetDevContext()->OMSetDepthStencilState(renderer.m_renderState.DepthNone(), 0);
 	if (m_showSensor)
-	{
-		m_billboard.SetColor(cColor::GREEN);
-
-		for (auto &p : creature->m_nodes)
-		{
-			for (auto &sensor : p->m_sensors)
-			{
-				switch (sensor->m_type)
-				{
-				case evc::eSensorType::Angular:
-					if (evc::cAngularSensor *ang = dynamic_cast<evc::cAngularSensor*>(sensor))
-					{
-						Vector3 p1 = ang->m_joint->m_origPos;
-						p1 += m_creatureOffsetPos;
-						m_billboard.m_transform.pos = p1 + Vector3(-0.02f, 0, 0);
-						m_billboard.Render(renderer);
-					}
-					break;
-
-				default:
-					assert(0);
-					break;
-				}
-			}
-		}
-	}
-
-	// render effector mark
+		RenderSensor();
 	if (m_showEffector)
-	{
-		m_billboard.SetColor(cColor::RED);
-
-		for (auto &p : creature->m_nodes)
-		{
-			for (auto &effector : p->m_effectors)
-			{
-				switch (effector->m_type)
-				{
-				case evc::eEffectorType::Muscle:
-					if (evc::cMuscleEffector *eff = dynamic_cast<evc::cMuscleEffector*>(effector))
-					{
-						Vector3 p1 = eff->m_joint->m_origPos;
-						p1 += m_creatureOffsetPos;
-						m_billboard.m_transform.pos = p1 + Vector3(0.02f, 0, 0);
-						m_billboard.Render(renderer);
-					}
-					break;
-
-				default:
-					assert(0);
-					break;
-				}
-			}
-		}
-	}
+		RenderEffector();
+	if (m_showNN)
+		RenderNeuralNetwork();
 	renderer.GetDevContext()->OMSetDepthStencilState(renderer.m_renderState.DepthDefault(), 0);
-
-	//if (m_showJoint)
-	//{
-	//	for (auto &p : g_geno->m_glinks)
-	//	{
-	//		p->SetTechnique(techiniqName.c_str());
-	//		p->Render(renderer, parentTm, (m_showName || m_showId) ? eRenderFlag::TEXT : 0);
-	//	}
-	//}
 
 	if (!isBuildShadowMap)
 	{
 		//m_gridLine.Render(renderer);
 		RenderSelectModel(renderer, false, parentTm);
 	}
+}
 
-	// joint edit mode?
-	// hight revolute axis when mouse hover
-	//if (g_geno->GetEditMode() == eGenoEditMode::JointEdit)
-	//{
-	//	const Ray ray = GetMainCamera().GetRay((int)m_mousePos.x, (int)m_mousePos.y);
-	//	g_geno->m_uiLink.m_highlightRevoluteAxis = g_geno->m_uiLink.Picking(ray, eNodeType::MODEL);
-	//}
+
+// render sensor
+void cNNView::RenderSensor()
+{
+	cRenderer &renderer = GetRenderer();
+	evc::cCreature *creature = g_nn->m_creature;
+
+	m_bezier.SetColor(cColor::GREEN);
+	m_billboard.SetColor(cColor::GREEN);
+	const Vector3 right = m_camera.GetRight();
+
+	for (auto &p : creature->m_nodes)
+	{
+		Vector3 p0 = p->m_gnode->transform.pos;
+		p0 += m_creatureOffsetPos;
+
+		map<phys::cJoint*, int> cntMap;
+		for (auto &sensor : p->m_sensors)
+		{
+			switch (sensor->m_type)
+			{
+			case evc::eSensorType::Angular:
+			case evc::eSensorType::Limit:
+				if (phys::cJoint *joint = sensor->GetJoint())
+				{
+					const int cnt = cntMap[joint]++;
+
+					Vector3 p1 = joint->m_origPos;
+					p1 += m_creatureOffsetPos;
+
+					const Vector3 offset = right * 0.05f * cnt;
+					Vector3 p2 = p0 + Vector3(0, 1, 0) + offset;
+					Vector3 p3 = p1 + Vector3(0, 1, 0) + offset;
+					m_bezier.SetLine(p0, p2, p3, p1 + offset, 0.005f);
+					m_bezier.Render(renderer);
+
+					m_billboard.m_transform.pos = p1 + offset;
+					m_billboard.Render(renderer);
+				}
+				break;
+
+			default:
+				assert(0);
+				break;
+			}
+		}
+	}
+}
+
+
+// render effector
+void cNNView::RenderEffector()
+{
+	cRenderer &renderer = GetRenderer();
+	evc::cCreature *creature = g_nn->m_creature;
+
+	m_bezier.SetColor(cColor::VIOLET);
+	m_billboard.SetColor(cColor::VIOLET);
+	const Vector3 right = m_camera.GetRight();
+
+	for (auto &p : creature->m_nodes)
+	{
+		Vector3 p0 = p->m_gnode->transform.pos;
+		p0 += m_creatureOffsetPos;
+
+		for (auto &effector : p->m_effectors)
+		{
+			switch (effector->m_type)
+			{
+			case evc::eEffectorType::Muscle:
+				if (evc::cMuscleEffector *eff = dynamic_cast<evc::cMuscleEffector*>(effector))
+				{
+					Vector3 p1 = eff->m_joint->m_origPos;
+					p1 += m_creatureOffsetPos;
+					const Vector3 offset = right * 0.05f * -1.f;
+					Vector3 p2 = p0 + Vector3(0.1f, 1, 0);
+					Vector3 p3 = p1 + Vector3(0.1f, 1, 0);
+					m_bezier.SetLine(p0, p2, p3, p1 + offset, 0.005f);
+					m_bezier.Render(renderer);
+
+					m_billboard.m_transform.pos = p1 + offset;
+					m_billboard.Render(renderer);
+				}
+				break;
+
+			default:
+				assert(0);
+				break;
+			}
+		}
+	}
+}
+
+
+// render fully connected neural network
+void cNNView::RenderNeuralNetwork()
+{
+	cRenderer &renderer = GetRenderer();
+	evc::cCreature *creature = g_nn->m_creature;
+
+	ai::cNeuralNet *nn = creature->m_nodes[0]->m_nn;
+	RET(!nn);
+	RET(nn->m_layers.empty());
+	RET(nn->m_layers[0].neurons.empty());
+	RET(nn->m_layers[0].neurons[0].weight.empty());
+
+	const Vector2 offset(50, 45);
+	const float w = m_viewRect.Width() - (offset.x * 1.3f);
+	const float h = m_viewRect.Height() - (offset.y * 1.3f);
+	const float hr = h / nn->m_layers[0].neurons[0].numInputs;
+	const float cr = min(hr / 4.f, 10.f); // circle radius
+	const float ngap = min((hr - (cr*2.f)) * 2.f, cr * 4.f); // neuron gap
+	const float wr = w / (float)nn->m_layers.size();
+	const float lgap = min(400.f, wr); // layer gap
+
+	// render weight line
+	m_line2DList.ClearLine();
+	for (uint i = 0; i < nn->m_layers.size(); ++i)
+	{
+		if ((i + 1) == (nn->m_layers.size()))
+			break;
+
+		ai::sNeuronLayer &layer = nn->m_layers[i];
+		ai::sNeuronLayer &nlayer = nn->m_layers[i+1]; // next layer
+		// center align offset
+		const Vector2 offset1(0, (h / 2.f) - ((layer.neurons[0].numInputs * ngap) / 2.f));
+		const Vector2 offset2(0, (h / 2.f) - ((nlayer.neurons[0].numInputs * ngap) / 2.f));
+		for (uint k = 0; k < layer.numNeurons; ++k)
+		{
+			ai::sNeuron &neuron = layer.neurons[k];
+
+			const Vector2 p1 = Vector2((i + 1) * lgap, k * ngap) + offset + offset2;
+			for (uint m = 0; m < neuron.weight.size(); ++m)
+			{
+				const Vector2 p0 = Vector2(i * lgap, m * ngap) + offset + offset1;
+
+				//-1.f ~ +1.f scaling
+				const float c = max(0.f, (float)((neuron.result[m] + 1.f) / 2.f));
+				Vector4 color(c, c, c, 1.f);
+				m_line2DList.AddLine(p0, p1, 0.5f, cColor(color));
+			}
+		}
+	}
+	m_line2DList.Render(renderer);
+
+	// render neuron (optimize)
+	{
+		cShader11 *shader = renderer.m_shaderMgr.FindShader(graphic::eVertexType::POSITION_RHW);
+		assert(shader);
+		shader->SetTechnique("Unlit");
+		shader->Begin();
+		shader->BeginPass(renderer, 0);
+
+		renderer.m_cbMaterial.m_v->diffuse = Vector4(1,1,1,1).GetVectorXM();
+		renderer.m_cbMaterial.Update(renderer, 2);
+
+		for (uint i=0; i < nn->m_layers.size(); ++i)
+		{
+			ai::sNeuronLayer &layer = nn->m_layers[i];
+			// center align offset
+			const Vector2 offset2(0, (h / 2.f) - ((layer.neurons[0].numInputs * ngap) / 2.f));
+			for (uint k = 0; k < layer.neurons[0].numInputs; ++k)
+			{
+				const Vector2 pos = Vector2(i * lgap, k * ngap) + offset + offset2;
+				m_circle.SetPos(pos);
+				m_circle.m_transform.scale = Vector3::Ones * cr;
+				m_circle.Render2(renderer);
+			}
+		}
+	}
 }
 
 
@@ -441,8 +476,10 @@ void cNNView::OnRender(const float deltaSeconds)
 		ImGui::Checkbox("sensor", &m_showSensor);
 		ImGui::SameLine();
 		ImGui::Checkbox("effector", &m_showEffector);
+		ImGui::SameLine();
+		ImGui::Checkbox("nn", &m_showNN);
 
-		if (g_geno->m_orbitId >= 0)
+		if (g_nn->m_orbitId >= 0)
 		{
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
