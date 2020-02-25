@@ -64,6 +64,9 @@
     <ClCompile Include="lib\nnmanager.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="view\evolutionview.cpp">
+      <Filter>view</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -145,6 +148,9 @@
     </ClInclude>
     <ClInclude Include="lib\nnmanager.h">
       <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="view\evolutionview.h">
+      <Filter>view</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

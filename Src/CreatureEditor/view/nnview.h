@@ -76,6 +76,7 @@ public:
 	bool m_showSensor;
 	bool m_showEffector;
 	bool m_showNN;
+	bool m_showPhenotype;
 
 	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close

@@ -12,6 +12,7 @@ class cResourceView;
 class cSimulationView;
 class cGenoView;
 class cNNView;
+class cEvolutionView;
 class cPhenoTypeManager;
 class cGenoTypeManager;
 class cNNManager;
@@ -38,6 +39,7 @@ public:
 	cGenoEditorView *m_geditorView; // reference
 	cResourceView *m_resourceView; // reference
 	cSimulationView *m_simView; // reference
+	cEvolutionView *m_evoView; // reference
 	phys::cPhysicsEngine m_physics;
 	phys::cPhysicsSync *m_physSync;
 	cPhenoTypeManager *m_pheno; // reference

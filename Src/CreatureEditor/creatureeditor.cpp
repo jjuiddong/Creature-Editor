@@ -9,6 +9,8 @@
 #include "view/genoview.h"
 #include "view/genoeditorview.h"
 #include "view/nnview.h"
+#include "view/evolutionview.h"
+
 
 cGlobal *g_global = nullptr;
 cPhenoTypeManager *g_pheno = nullptr;
@@ -114,6 +116,9 @@ bool cViewer::OnInit()
 
 	cSimulationView *simView = new cSimulationView("Simulation");
 	simView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, resourceView, 0.5f);
+
+	cEvolutionView *evoView = new cEvolutionView("Evolution");
+	evoView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, simView);
 
 	g_global->m_3dView = p3dView;
 	g_global->m_peditorView = peditView;

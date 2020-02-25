@@ -23,6 +23,7 @@ cNNView::cNNView(const string &name)
 	, m_showSensor(true)
 	, m_showEffector(true)
 	, m_showNN(true)
+	, m_showPhenotype(true)
 	, m_line2DList(1024)
 {
 }
@@ -173,22 +174,25 @@ void cNNView::RenderScene(graphic::cRenderer &renderer
 	}
 
 	// render phenotype node
-	for (auto &p : creature->m_nodes)
+	if (m_showPhenotype)
 	{
-		graphic::cNode *node = p->m_node;
-		const Transform tmp = node->m_transform;
-		node->m_transform = p->m_gnode->transform;
-		node->m_transform.pos += m_creatureOffsetPos;
+		for (auto &p : creature->m_nodes)
+		{
+			graphic::cNode *node = p->m_node;
+			const Transform tmp = node->m_transform;
+			node->m_transform = p->m_gnode->transform;
+			node->m_transform.pos += m_creatureOffsetPos;
 
-		node->SetTechnique(techiniqName.c_str());
-		node->Render(renderer, parentTm, (m_showName || m_showId) ? eRenderFlag::TEXT : 0);
-		node->m_transform = tmp;
+			node->SetTechnique(techiniqName.c_str());
+			node->Render(renderer, parentTm, (m_showName || m_showId) ? eRenderFlag::TEXT : 0);
+			node->m_transform = tmp;
+		}
 	}
 
 	renderer.GetDevContext()->OMSetDepthStencilState(renderer.m_renderState.DepthNone(), 0);
-	if (m_showSensor)
+	if (m_showPhenotype && m_showSensor)
 		RenderSensor();
-	if (m_showEffector)
+	if (m_showPhenotype && m_showEffector)
 		RenderEffector();
 	if (m_showNN)
 		RenderNeuralNetwork();
@@ -322,6 +326,9 @@ void cNNView::RenderNeuralNetwork()
 	{
 		if ((i + 1) == (nn->m_layers.size()))
 			break;
+		
+		// color scale
+		const bool isOutput = false;// (i + 2) == (nn->m_layers.size());
 
 		ai::sNeuronLayer &layer = nn->m_layers[i];
 		ai::sNeuronLayer &nlayer = nn->m_layers[i+1]; // next layer
@@ -338,7 +345,16 @@ void cNNView::RenderNeuralNetwork()
 				const Vector2 p0 = Vector2(i * lgap, m * ngap) + offset + offset1;
 
 				//-1.f ~ +1.f scaling
-				const float c = max(0.f, (float)((neuron.result[m] + 1.f) / 2.f));
+				float c = 0.f;
+				if (isOutput)
+				{
+					c = (neuron.result[m] < 0.f)? 0.f : 1.f;
+				}
+				else
+				{
+					c = max(0.f, (float)((neuron.result[m] + 1.f) / 2.f));
+				}
+
 				Vector4 color(c, c, c, 1.f);
 				m_line2DList.AddLine(p0, p1, 0.5f, cColor(color));
 			}
@@ -473,6 +489,8 @@ void cNNView::OnRender(const float deltaSeconds)
 		//ImGui::Checkbox("joint", &m_showJoint);
 
 		//ImGui::SameLine();
+		ImGui::Checkbox("phenotype", &m_showPhenotype);
+		ImGui::SameLine();
 		ImGui::Checkbox("sensor", &m_showSensor);
 		ImGui::SameLine();
 		ImGui::Checkbox("effector", &m_showEffector);
@@ -1385,10 +1403,15 @@ void cNNView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::Tab:
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
-				// active phenotype view
-				//m_owner->SetActiveWindow(g_global->m_3dView);
-				//m_owner->SetActiveWindow(g_global->m_peditorView);
-				//m_owner->SetFocus(g_global->m_3dView);
+				framework::cDockWindow *wnd = m_owner->SetActiveNextTabWindow(this);
+				if (wnd)
+				{
+					if (wnd->m_name == "3D View")
+						m_owner->SetActiveWindow(g_global->m_peditorView);
+					else if (wnd->m_name == "GenoType View")
+						m_owner->SetActiveWindow(g_global->m_geditorView);
+					m_owner->SetFocus(wnd);
+				}
 			}
 			break;
 

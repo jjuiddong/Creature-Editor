@@ -1180,10 +1180,15 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 		case sf::Keyboard::Tab:
 			if (::GetAsyncKeyState(VK_CONTROL))
 			{
-				// active phenotype view
-				m_owner->SetActiveWindow(g_global->m_3dView);
-				m_owner->SetActiveWindow(g_global->m_peditorView);
-				m_owner->SetFocus(g_global->m_3dView);
+				framework::cDockWindow *wnd = m_owner->SetActiveNextTabWindow(this);
+				if (wnd)
+				{
+					if (wnd->m_name == "3D View")
+						m_owner->SetActiveWindow(g_global->m_peditorView);
+					else if (wnd->m_name == "GenoType View")
+						m_owner->SetActiveWindow(g_global->m_geditorView);
+					m_owner->SetFocus(wnd);
+				}
 			}
 			break;
 
