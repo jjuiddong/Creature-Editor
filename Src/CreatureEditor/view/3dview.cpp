@@ -15,7 +15,7 @@ c3DView::c3DView(const string &name)
 	, m_showGrid(true)
 	, m_showReflection(true)
 	, m_showShadow(true)
-	, m_showJoint(true)
+	, m_showJoint(false)
 	, m_groundPlane(nullptr)
 	, m_showSaveDialog(false)
 	, m_popupMenuState(0)
@@ -50,7 +50,8 @@ bool c3DView::Init(cRenderer &renderer)
 	cViewport dvp;
 	dvp.Create(0, 0, 1024, 1024, 0, 1);
 	m_depthBuff.Create(renderer, dvp, false);
-	m_gridLine.Create(renderer, 200, 200, 1.f, 1.f
+	//m_gridLine.Create(renderer, 200, 200, 1.f, 1.f
+	m_gridLine.Create(renderer, 1000, 1000, 1.f, 1.f
 		, (eVertexType::POSITION | eVertexType::COLOR)
 		, cColor(0.6f, 0.6f, 0.6f, 0.5f)
 		, cColor(0.f, 0.f, 0.f, 0.5f)
@@ -88,6 +89,7 @@ bool c3DView::Init(cRenderer &renderer)
 
 void c3DView::OnUpdate(const float deltaSeconds)
 {
+	g_evo->Update(deltaSeconds);
 	g_global->m_physics.PreUpdate(deltaSeconds);
 
 	for (auto &p : g_pheno->m_physSync->m_syncs)
@@ -1331,7 +1333,7 @@ void c3DView::OnEventProc(const sf::Event &evt)
 	{
 	case sf::Event::KeyPressed:
 		if ((m_owner->GetFocus() != this)
-			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resourceView))
+			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resView))
 			break;
 
 		switch (evt.key.cmd)

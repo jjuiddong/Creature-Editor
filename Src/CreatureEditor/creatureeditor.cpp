@@ -16,6 +16,7 @@ cGlobal *g_global = nullptr;
 cPhenoTypeManager *g_pheno = nullptr;
 cGenoTypeManager *g_geno = nullptr;
 cNNManager *g_nn = nullptr;
+cEvolutionManager *g_evo = nullptr;
 
 using namespace graphic;
 using namespace framework;
@@ -49,6 +50,7 @@ cViewer::~cViewer()
 	SAFE_DELETE(g_geno);
 	SAFE_DELETE(g_pheno);
 	SAFE_DELETE(g_nn);
+	SAFE_DELETE(g_evo);
 	SAFE_DELETE(g_global);
 }
 
@@ -88,6 +90,10 @@ bool cViewer::OnInit()
 	if (!g_nn->Init(m_renderer))
 		return false;
 
+	g_evo = new cEvolutionManager();
+	if (!g_evo->Init())
+		return false;
+
 	c3DView *p3dView = new c3DView("3D View");
 	p3dView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, NULL);
 	bool result = p3dView->Init(m_renderer);
@@ -114,22 +120,23 @@ bool cViewer::OnInit()
 	resourceView->Create(eDockState::DOCKWINDOW, eDockSlot::BOTTOM, this, p3dView, 0.2f
 		, framework::eDockSizingOption::PIXEL);
 
-	cSimulationView *simView = new cSimulationView("Simulation");
-	simView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, resourceView, 0.5f);
-
 	cEvolutionView *evoView = new cEvolutionView("Evolution");
-	evoView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, simView);
+	evoView->Create(eDockState::DOCKWINDOW, eDockSlot::RIGHT, this, resourceView, 0.5f);
+
+	cSimulationView *simView = new cSimulationView("Simulation");
+	simView->Create(eDockState::DOCKWINDOW, eDockSlot::TAB, this, evoView);
 
 	g_global->m_3dView = p3dView;
 	g_global->m_peditorView = peditView;
 	g_global->m_geditorView = geditView;
-	g_global->m_resourceView = resourceView;
+	g_global->m_resView = resourceView;
 	g_global->m_simView = simView;
 	g_global->m_genoView = genoView;
 	g_global->m_nnView = nnView;
 	g_global->m_pheno = g_pheno;
 	g_global->m_geno = g_geno;
 	g_global->m_nn = g_nn;
+	g_global->m_evo = g_evo;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

@@ -121,7 +121,7 @@ void cPhenoEditorView::RenderSpawnTransform()
 
 		ImGui::TextUnformatted("Generation");
 		ImGui::SameLine();
-		ImGui::DragInt("##generation", &g_pheno->m_generationCnt, 1, 0, 100);
+		ImGui::InputInt("##generation", &g_pheno->m_generationCnt, 1, 1);
 
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.9f, 0, 1));

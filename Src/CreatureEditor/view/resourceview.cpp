@@ -10,6 +10,7 @@ using namespace graphic;
 cResourceView::cResourceView(const StrId &name)
 	: framework::cDockWindow(name)
 	, m_selectFileIdx(-1)
+	, m_dirPath("./media/creature/")
 {
 	//UpdateResourceFiles();
 }
@@ -71,7 +72,7 @@ void cResourceView::OnRender(const float deltaSeconds)
 					if (ImGui::IsMouseDoubleClicked(0))
 					{
 						// create creature
-						const StrPath fileName = StrPath("./media/creature/") + str;
+						const StrPath fileName = m_dirPath + str;
 						LoadPhenotypeView(fileName);
 						//LoadGenotypeView(fileName);
 
@@ -102,8 +103,7 @@ void cResourceView::RenderPopupMenu()
 		{
 			if (m_fileList.size() > (uint)m_selectFileIdx)
 			{
-				const StrPath fileName = StrPath("./media/creature/") 
-					+ m_fileList[m_selectFileIdx];
+				const StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
 				LoadPhenotypeView(fileName);
 			}
 		}
@@ -111,8 +111,7 @@ void cResourceView::RenderPopupMenu()
 		{
 			if (m_fileList.size() > (uint)m_selectFileIdx)
 			{
-				const StrPath fileName = StrPath("./media/creature/")
-					+ m_fileList[m_selectFileIdx];
+				const StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
 				LoadGenotypeView(fileName);
 			}
 		}
@@ -155,9 +154,22 @@ void cResourceView::UpdateResourceFiles()
 	list<string> exts;
 	exts.push_back(".pnt");
 	exts.push_back(".gnt");
-	const StrPath dir = StrPath("./media/creature/").GetFullFileName();
+	const StrPath dir = m_dirPath.GetFullFileName();
 	common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
 
 	m_fileList.reserve(fileList.size());
 	std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_fileList));
+}
+
+
+// return select file list, file name
+StrPath cResourceView::GetSelectFileName()
+{
+	if (m_selectFileIdx < 0)
+		return "";
+	if (m_selectFileIdx >= (int)m_fileList.size())
+		return "";
+
+	StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
+	return fileName;
 }

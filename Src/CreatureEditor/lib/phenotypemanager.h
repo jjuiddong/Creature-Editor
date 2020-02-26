@@ -28,7 +28,10 @@ public:
 	evc::cCreature* FindCreatureContainNode(const int syncId);
 	bool RemoveCreature(evc::cCreature *creature);
 	bool ReadPhenoTypeFile(const StrPath &fileName, const Vector3 &pos);
-	bool ReadCreatureFile(const StrPath &fileName, const Vector3 &pos);
+
+	enum eSpawnFlag {Lock=0x01, Unlock=0x02, UnSelect=0x04};
+	evc::cCreature* ReadCreatureFile(const StrPath &fileName, const Vector3 &pos
+		, const int spawnFlags = 0);
 
 	// spawn object
 	void SpawnBox(const Vector3 &pos);

@@ -37,7 +37,7 @@ public:
 	cNNView *m_nnView; // reference
 	cPhenoEditorView *m_peditorView; // reference
 	cGenoEditorView *m_geditorView; // reference
-	cResourceView *m_resourceView; // reference
+	cResourceView *m_resView; // reference
 	cSimulationView *m_simView; // reference
 	cEvolutionView *m_evoView; // reference
 	phys::cPhysicsEngine m_physics;
@@ -45,4 +45,5 @@ public:
 	cPhenoTypeManager *m_pheno; // reference
 	cGenoTypeManager *m_geno; // reference
 	cNNManager *m_nn; // reference
+	cEvolutionManager *m_evo; // reference
 };

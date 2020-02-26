@@ -1159,7 +1159,7 @@ void cGenoView::OnEventProc(const sf::Event &evt)
 	{
 	case sf::Event::KeyPressed:
 		if ((m_owner->GetFocus() != this)
-			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resourceView))
+			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resView))
 			break;
 		
 		switch (evt.key.cmd)

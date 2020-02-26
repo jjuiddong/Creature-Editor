@@ -14,6 +14,7 @@ public:
 	virtual void OnUpdate(const float deltaSeconds) override;
 	virtual void OnRender(const float deltaSeconds) override;
 	void UpdateResourceFiles();
+	StrPath GetSelectFileName();
 
 
 protected:
@@ -23,6 +24,7 @@ protected:
 
 
 public:
+	StrPath m_dirPath; // ./media/creatures/
 	vector<string> m_fileList;
 	int m_selectFileIdx;
 };

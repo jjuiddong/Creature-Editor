@@ -37,16 +37,19 @@ bool cPhenoTypeManager::Init(graphic::cRenderer &renderer
 	m_groundGridPlaneId = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
 
 	// wall
-	const float wall = 100.f;
-	const float h = 2.5f;
-	m_physSync->SpawnBox(renderer, Transform(Vector3(wall, h, 0), Vector3(0.5f, h, wall))
-		, 1.f, true, "wall");
-	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, wall), Vector3(wall, h, 0.5f))
-		, 1.f, true, "wall");
-	m_physSync->SpawnBox(renderer, Transform(Vector3(-wall, h, 0), Vector3(0.5f, h, wall))
-		, 1.f, true, "wall");
-	m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, -wall), Vector3(wall, h, 0.5f))
-		, 1.f, true, "wall");
+	if (0)
+	{
+		const float wall = 100.f;
+		const float h = 2.5f;
+		m_physSync->SpawnBox(renderer, Transform(Vector3(wall, h, 0), Vector3(0.5f, h, wall))
+			, 1.f, true, "wall");
+		m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, wall), Vector3(wall, h, 0.5f))
+			, 1.f, true, "wall");
+		m_physSync->SpawnBox(renderer, Transform(Vector3(-wall, h, 0), Vector3(0.5f, h, wall))
+			, 1.f, true, "wall");
+		m_physSync->SpawnBox(renderer, Transform(Vector3(0, h, -wall), Vector3(wall, h, 0.5f))
+			, 1.f, true, "wall");
+	}
 	//~wall
 
 	m_gizmo.Create(renderer);
@@ -151,33 +154,54 @@ bool cPhenoTypeManager::ReadPhenoTypeFile(const StrPath &fileName
 
 
 // read creature from phenotype file
-bool cPhenoTypeManager::ReadCreatureFile(const StrPath &fileName
-	, const Vector3 &pos)
+// spawnFlags : composite eSpawnFlag
+evc::cCreature* cPhenoTypeManager::ReadCreatureFile(const StrPath &fileName
+	, const Vector3 &pos
+	, const int spawnFlags //= 0
+)
 {
 	evc::cCreature *creature = new evc::cCreature();
 	creature->Read(GetRenderer(), fileName, Transform(pos));
 	AddCreature(creature);
 
 	// unlock actor
-	if (!m_isSpawnLock)
-		creature->SetKinematic(false);
-
-	// selection
-	vector<int> syncIds;
-	creature->GetSyncIds(syncIds);
-	if (!syncIds.empty())
+	if (spawnFlags & eSpawnFlag::Lock)
 	{
-		m_mode = ePhenoEditMode::Normal;
-		m_gizmo.SetControlNode(nullptr);
-		m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
-		m_selJoint = nullptr;
-		ClearSelection();
-
-		for (auto id : syncIds)
-			g_pheno->SelectObject(id);
+		creature->SetKinematic(true);
+	}
+	else if (spawnFlags & eSpawnFlag::Unlock)
+	{
+		creature->SetKinematic(false);
+	}
+	else
+	{
+		if (!m_isSpawnLock)
+			creature->SetKinematic(false);
 	}
 
-	return true;
+	if (spawnFlags & eSpawnFlag::UnSelect)
+	{
+		// nothing~
+	}
+	else
+	{
+		// selection
+		vector<int> syncIds;
+		creature->GetSyncIds(syncIds);
+		if (!syncIds.empty())
+		{
+			m_mode = ePhenoEditMode::Normal;
+			m_gizmo.SetControlNode(nullptr);
+			m_gizmo.LockEditType(graphic::eGizmoEditType::SCALE, false);
+			m_selJoint = nullptr;
+			ClearSelection();
+
+			for (auto id : syncIds)
+				g_pheno->SelectObject(id);
+		}
+	}
+
+	return creature;
 }
 
 
@@ -526,7 +550,7 @@ bool cPhenoTypeManager::UpdateAllConnectionActorTransform(phys::cRigidActor *act
 // resource view wrapping function
 bool cPhenoTypeManager::RefreshResourceView()
 {
-	g_global->m_resourceView->UpdateResourceFiles();
+	g_global->m_resView->UpdateResourceFiles();
 	return true;
 }
 

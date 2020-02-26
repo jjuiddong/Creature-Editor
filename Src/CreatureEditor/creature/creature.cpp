@@ -120,6 +120,34 @@ bool cCreature::GetSyncIds(OUT vector<int> &out)
 }
 
 
+// return consist of neural network weight genome
+ai::sGenome cCreature::GetGenome() const
+{
+	ai::sGenome genome;
+
+	if (m_nodes.empty())
+		return genome;
+	if (!m_nodes[0]->m_nn)
+		return genome;
+
+	genome.fitness = 0.f;
+	genome.chromo = m_nodes[0]->m_nn->GetWeights();
+	return genome;
+}
+
+
+// update neural network genome
+bool cCreature::SetGenome(const ai::sGenome &genome)
+{
+	if (m_nodes.empty())
+		return false;
+	if (!m_nodes[0]->m_nn)
+		return false;
+	m_nodes[0]->m_nn->PutWeights(genome.chromo);
+	return true;
+}
+
+
 // read genotype file
 bool cCreature::ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName)
 {

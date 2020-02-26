@@ -67,6 +67,9 @@
     <ClCompile Include="view\evolutionview.cpp">
       <Filter>view</Filter>
     </ClCompile>
+    <ClCompile Include="lib\evolutionmanager.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -151,6 +154,9 @@
     </ClInclude>
     <ClInclude Include="view\evolutionview.h">
       <Filter>view</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\evolutionmanager.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -178,3 +178,19 @@ void cSimulationView::RenderUnlockActorList()
 		ImGui::TreePop();
 	}
 }
+
+
+void cSimulationView::OnEventProc(const sf::Event &evt)
+{
+	if ((GetFocus() == this)
+		&& (evt.type == sf::Event::KeyPressed)
+		&& (evt.key.cmd == sf::Keyboard::Tab))
+	{
+		if (::GetAsyncKeyState(VK_CONTROL))
+		{
+			framework::cDockWindow *wnd = m_owner->SetActiveNextTabWindow(this);
+			if (wnd)
+				m_owner->SetFocus(wnd);
+		}
+	}
+}

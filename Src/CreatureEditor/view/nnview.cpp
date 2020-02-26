@@ -328,7 +328,7 @@ void cNNView::RenderNeuralNetwork()
 			break;
 		
 		// color scale
-		const bool isOutput = false;// (i + 2) == (nn->m_layers.size());
+		//const bool isOutput = false;// (i + 2) == (nn->m_layers.size());
 
 		ai::sNeuronLayer &layer = nn->m_layers[i];
 		ai::sNeuronLayer &nlayer = nn->m_layers[i+1]; // next layer
@@ -346,14 +346,14 @@ void cNNView::RenderNeuralNetwork()
 
 				//-1.f ~ +1.f scaling
 				float c = 0.f;
-				if (isOutput)
-				{
-					c = (neuron.result[m] < 0.f)? 0.f : 1.f;
-				}
-				else
-				{
+				//if (isOutput)
+				//{
+				//	c = (neuron.result[m] < 0.f)? 0.f : 1.f;
+				//}
+				//else
+				//{
 					c = max(0.f, (float)((neuron.result[m] + 1.f) / 2.f));
-				}
+				//}
 
 				Vector4 color(c, c, c, 1.f);
 				m_line2DList.AddLine(p0, p1, 0.5f, cColor(color));
@@ -1382,7 +1382,7 @@ void cNNView::OnEventProc(const sf::Event &evt)
 	{
 	case sf::Event::KeyPressed:
 		if ((m_owner->GetFocus() != this)
-			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resourceView))
+			&& (m_owner->GetFocus() != (framework::cDockWindow*)g_global->m_resView))
 			break;
 
 		switch (evt.key.cmd)

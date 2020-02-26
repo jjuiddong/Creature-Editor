@@ -28,6 +28,8 @@ namespace evc
 		bool SetKinematic(const bool isKinematic);
 		void SetTransform(const Transform &tfm);
 		bool GetSyncIds(OUT vector<int> &out);
+		ai::sGenome GetGenome() const;
+		bool SetGenome(const ai::sGenome &genome);
 		void Clear();
 
 
@@ -68,12 +70,12 @@ namespace evc
 		int m_id;
 		StrId m_name;
 		uint m_generation;
-		bool m_isNN; // neural network simulation
+		bool m_isNN; // neural network simulation?
 
-		// phenotype
+		// phenotype node
 		vector<cPNode*> m_nodes;
 
-		// DNA, genotype
+		// DNA, genotype node
 		vector<sGenotypeNode*> m_gnodes;
 		vector<sGenotypeLink*> m_glinks;
 		map<int, sGenotypeNode*> m_gmap; // key: sGenotypeNode id (reference)
