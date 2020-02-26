@@ -1,6 +1,8 @@
 # Creature-Editor
 Creature Editor With VS2017 C++, DX11, ImGui, PhysX
  - Physics base Structure and Creature Procedural Modeling Tool
+ - Neural Network Joint Control
+ - Genetic Algorithm
 - First
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/first.jpg?raw=true)
 - Gizmo Edit
@@ -73,3 +75,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/earthwarm%20nn%20vis.jpg?raw=true)
 - Neural Network weight, neuron, calc info
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/earthwarm%20nn%20vis2.jpg?raw=true)
+- Genetic Algorithm
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/evolution.jpg?raw=true)
