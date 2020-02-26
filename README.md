@@ -77,3 +77,5 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/earthwarm%20nn%20vis2.jpg?raw=true)
 - Genetic Algorithm
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/evolution.jpg?raw=true)
+- Genetic Algorithm monitoring
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/evolution2.jpg?raw=true)
