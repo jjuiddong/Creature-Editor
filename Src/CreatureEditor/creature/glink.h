@@ -86,6 +86,11 @@ namespace evc
 			sD6Limit d6;
 		};
 		sLimit m_limit;
+		bool m_isAngularSensor;
+		bool m_isLimitSensor;
+		bool m_isVelocitySensor;
+		bool m_isAccelSensor;
+		bool m_isContactSensor;
 	};
 
 }

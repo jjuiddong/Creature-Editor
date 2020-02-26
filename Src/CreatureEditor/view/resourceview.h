@@ -18,6 +18,7 @@ public:
 
 
 protected:
+	bool RenderFileList(ImGuiTextFilter &filter);
 	void RenderPopupMenu();
 	void LoadPhenotypeView(const StrPath &fileName);
 	void LoadGenotypeView(const StrPath &fileName);

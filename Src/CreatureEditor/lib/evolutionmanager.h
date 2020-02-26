@@ -13,6 +13,7 @@ struct sEvolutionParam
 	uint epochSize;
 	float epochTime;
 	uint generation;
+	uint grabBestFit;
 };
 
 
@@ -42,8 +43,14 @@ public:
 
 	eState m_state;
 	sEvolutionParam m_param;
-	int m_curEpochSize;
+	uint m_curEpochSize;
 	float m_incT;
 	ai::cGeneticAlgorithm m_genetic;
 	map<evc::cCreature*, sCreatureData> m_creatures; // reference
+
+	// evolution monitoring graph
+	int m_graphIdx;
+	float m_avrGraph[64]; // fitness average
+	float m_fitnessGraph[64]; // best fitness
+	float m_grabBestAvrGraph[64]; // grab best fitness average
 };

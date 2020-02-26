@@ -15,6 +15,11 @@ cGLink::cGLink()
 	, m_gnode1(nullptr)
 	, m_highlightRevoluteAxis(false)
 	, m_type(phys::eJointType::Fixed)
+	, m_isAngularSensor(false)
+	, m_isLimitSensor(false)
+	, m_isVelocitySensor(false)
+	, m_isAccelSensor(false)
+	, m_isContactSensor(false)
 {
 }
 

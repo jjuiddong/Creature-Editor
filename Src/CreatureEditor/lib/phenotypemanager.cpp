@@ -17,6 +17,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_pairSyncId1(-1)
 	, m_fixJointSelection(false)
 	, m_generationCnt(1)
+	, m_nnLayerCnt(3)
 	, m_orbitId(-1)
 {
 }
@@ -592,6 +593,7 @@ graphic::cRenderer& cPhenoTypeManager::GetRenderer()
 
 void cPhenoTypeManager::ClearCreature()
 {
+	m_gizmo.SetControlNode(nullptr);
 	for (auto &p : m_creatures)
 		delete p;
 	m_creatures.clear();

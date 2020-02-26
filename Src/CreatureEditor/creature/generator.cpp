@@ -1293,6 +1293,12 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 	j.put("pivot dir1", text.c_str());
 	j.put("pivot len1", glink->m_pivots[1].len);
 
+	j.put("angular sensor", glink->m_isAngularSensor);
+	j.put("limit sensor", glink->m_isLimitSensor);
+	j.put("contact sensor", glink->m_isContactSensor);
+	j.put("accel sensor", glink->m_isAccelSensor);
+	j.put("velocity sensor", glink->m_isVelocitySensor);
+
 	switch (glink->m_type)
 	{
 	case phys::eJointType::Fixed: break;
@@ -1623,6 +1629,11 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					const Vector3 pivotDir1 = ParseVector3(pivotDirStr1);
 					const float pivotLen0 = vt0.second.get<float>("pivot len0");
 					const float pivotLen1 = vt0.second.get<float>("pivot len1");
+					const bool isAngularSensor = vt0.second.get<bool>("angular sensor", true);
+					const bool isLimitSensor = vt0.second.get<bool>("limit sensor", true);
+					const bool isContactSensor = vt0.second.get<bool>("contact sensor", false);
+					const bool isAccelSensor = vt0.second.get<bool>("accel sensor", false);
+					const bool isVelocitySensor = vt0.second.get<bool>("velocity sensor", false);
 
 					auto it0 = gnodes.find(actorId0);
 					auto it1 = gnodes.find(actorId1);
@@ -1655,6 +1666,11 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					glink->pivots[0].len = (pivot0 - tfm0.pos).Length();
 					glink->pivots[1].dir = (pivot1 - tfm1.pos).Normal() * tfm1.rot.Inverse();
 					glink->pivots[1].len = (pivot1 - tfm1.pos).Length();
+					glink->isAngularSensor = isAngularSensor;
+					glink->isLimitSensor = isLimitSensor;
+					glink->isContactSensor = isContactSensor;
+					glink->isAccelSensor = isAccelSensor;
+					glink->isVelocitySensor = isVelocitySensor;
 
 					switch (type)
 					{

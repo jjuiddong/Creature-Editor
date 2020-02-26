@@ -135,6 +135,12 @@ namespace evc
 		sLimit limit;
 		sDriveInfo drive; // revolute joint
 		sPivot pivots[2]; // gnode0,1
+
+		bool isAngularSensor;
+		bool isLimitSensor;
+		bool isVelocitySensor;
+		bool isAccelSensor;
+		bool isContactSensor;
 	};
 
 }

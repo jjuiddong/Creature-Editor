@@ -123,6 +123,12 @@ void cPhenoEditorView::RenderSpawnTransform()
 		ImGui::SameLine();
 		ImGui::InputInt("##generation", &g_pheno->m_generationCnt, 1, 1);
 
+		ImGui::PushItemWidth(180);
+		ImGui::TextUnformatted("NeuralNet Layer");
+		ImGui::SameLine();
+		ImGui::InputInt("##NeuralNet Layer", &g_pheno->m_nnLayerCnt, 1, 1);
+		ImGui::PopItemWidth();
+
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.6f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.9f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0, 1));

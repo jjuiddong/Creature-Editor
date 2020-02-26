@@ -21,4 +21,5 @@ public:
 	int m_epochSize;
 	float m_epochTime;
 	int m_generation;
+	int m_grabBestFit;
 };

@@ -7,6 +7,7 @@ cEvolutionManager::cEvolutionManager()
 	: m_state(eState::Wait)
 	, m_curEpochSize(0)
 	, m_incT(0.f)
+	, m_graphIdx(0)
 {
 }
 
@@ -32,6 +33,11 @@ bool cEvolutionManager::RunEvolution(const sEvolutionParam &param)
 	m_param = param;
 	m_curEpochSize = 0;
 	m_genetic.InitGenome();
+	m_creatures.clear();
+	m_graphIdx = 0;
+	ZeroMemory(m_fitnessGraph, sizeof(m_fitnessGraph));
+	ZeroMemory(m_avrGraph, sizeof(m_avrGraph));
+	ZeroMemory(m_grabBestAvrGraph, sizeof(m_grabBestAvrGraph));
 	
 	g_pheno->m_generationCnt = param.generation;
 	SpawnCreatures();
@@ -77,6 +83,10 @@ bool cEvolutionManager::Update(const float deltaSeconds)
 	// next generation
 	if (m_incT > m_param.epochTime)
 	{
+		m_genetic.InitGenome();
+
+		double avr = 0.f;
+		double bestFit = FLT_MIN;
 		for (auto &creature : g_pheno->m_creatures)
 		{
 			if (creature->m_nodes.empty())
@@ -94,14 +104,43 @@ bool cEvolutionManager::Update(const float deltaSeconds)
 			const Vector3 p1 = creature->m_nodes[0]->m_node->m_transform.pos;
 			const float dist = Vector3(p0.x, 0.f, p0.z).Distance(Vector3(p1.x, 0, p1.z));
 			genome.fitness = dist;
+
+			// fitness graph
+			avr += dist;
+			if (bestFit < genome.fitness)
+				bestFit = genome.fitness;
 			
 			m_genetic.AddGenome(genome);
 		}
 
-		m_genetic.Epoch();
+		m_fitnessGraph[m_graphIdx] = (float)bestFit;
+		m_avrGraph[m_graphIdx] = (float)(avr / g_pheno->m_creatures.size());
 
+		m_genetic.Epoch(m_param.grabBestFit); // next generation
+
+		double bestAvr = 0.f;
+		for (uint i = 0; i < m_param.grabBestFit; ++i)
+			bestAvr += m_genetic.m_genomes[i].fitness;
+
+		if (m_param.grabBestFit > 0)
+			m_grabBestAvrGraph[m_graphIdx] = (float)(bestAvr / (double)m_param.grabBestFit);
+		++m_graphIdx;
+
+		// finish evolution?
+		if (m_curEpochSize >= m_param.epochSize)
+		{
+			m_state = eState::Wait;
+			return true;
+		}
+
+
+		m_creatures.clear();
 		g_pheno->ClearCreature();
 		SpawnCreatures(m_genetic.GetGenomes());
+
+		if (g_nn->m_creature)
+			g_nn->SetCurrentCreature(g_pheno->m_creatures.empty()?
+				nullptr : g_pheno->m_creatures[0]);
 
 		++m_curEpochSize;
 		m_incT = 0.f;

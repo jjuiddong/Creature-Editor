@@ -553,6 +553,7 @@ void c3DView::OnRender(const float deltaSeconds)
 	RenderPopupMenu();
 	RenderTooltip();
 	RenderSaveDialog();
+	RenderEvolutionGraph();
 }
 
 
@@ -816,6 +817,44 @@ void c3DView::RenderSaveDialog()
 
 	if (!isOpen)
 		m_showSaveDialog = false;
+}
+
+
+// render evolution graph
+void c3DView::RenderEvolutionGraph()
+{
+	RET(cEvolutionManager::eState::Run != g_evo->m_state);
+
+	ImVec2 pos = ImGui::GetCursorScreenPos();
+
+	const float width = min(m_viewRect.Width(), 220.f);
+	const float height = min(m_viewRect.Height(), 320.f);
+	bool isOpen = true;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
+		| ImGuiWindowFlags_NoBackground
+		;
+
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+	ImGui::SetNextWindowPos(ImVec2(m_viewRect.right - width, (float)m_viewPos.y));
+	ImGui::SetNextWindowSize(ImVec2(width, height));
+	if (ImGui::Begin("Evolution Graph", &isOpen, flags))
+	{
+		const ImVec4 bgColor = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(bgColor.x, bgColor.y, bgColor.z, 0.3f));
+
+		ImGui::PlotLines("##Average", g_evo->m_avrGraph, IM_ARRAYSIZE(g_evo->m_avrGraph)
+			, g_evo->m_graphIdx, "Fitness Average", 0.f, 10.f, ImVec2(width-20.f,100));
+
+		ImGui::PlotLines("##BestFit", g_evo->m_fitnessGraph, IM_ARRAYSIZE(g_evo->m_fitnessGraph)
+			, g_evo->m_graphIdx, "Best Fitness", 0.f, 20.f, ImVec2(width - 20.f, 100));
+
+		ImGui::PlotLines("##GrabBestFit Average", g_evo->m_grabBestAvrGraph, IM_ARRAYSIZE(g_evo->m_grabBestAvrGraph)
+			, g_evo->m_graphIdx, "Grab Best Fitness Average", 0.f, 20.f, ImVec2(width - 20.f, 100));
+
+		ImGui::PopStyleColor();
+	}
+	ImGui::End();
+	ImGui::PopStyleColor();
 }
 
 

@@ -169,14 +169,14 @@ bool cCreature::ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fi
 		m_linkMap[glink->child].insert(glink);
 	}
 
-	LoadFromGenoType(renderer, g_pheno->m_generationCnt);
+	LoadFromGenoType(renderer, g_pheno->m_generationCnt, g_pheno->m_nnLayerCnt);
 	return true;
 }
 
 
 // create phenotype node from genotype node
 void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
-	, const uint generation)
+	, const uint generation, const uint neuralNetLayerCnt)
 {
 	// clear phenotype node
 	for (auto &p : m_nodes)
@@ -232,7 +232,7 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		}
 
 		vector<double> weights;
-		pnode->InitializeNN(3, joints.size(), weights);
+		pnode->InitializeNN(neuralNetLayerCnt, joints.size(), weights);
 	}
 }
 

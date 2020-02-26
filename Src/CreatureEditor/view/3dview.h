@@ -29,6 +29,7 @@ protected:
 	void RenderPopupMenu();
 	void RenderTooltip();
 	void RenderSaveDialog();
+	void RenderEvolutionGraph();
 	void RenderReflectionMap(graphic::cRenderer &renderer);
 	void UpdateSelectModelTransform(const bool isGizmoEdit);
 	void UpdateSelectModelTransform_RigidActor();

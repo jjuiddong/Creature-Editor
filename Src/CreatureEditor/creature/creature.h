@@ -35,7 +35,8 @@ namespace evc
 
 	protected:
 		bool ReadGenoTypeFile(graphic::cRenderer &renderer, const StrPath &fileName);
-		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation);
+		void LoadFromGenoType(graphic::cRenderer &renderer, const uint generation
+			, const uint neuralNetLayerCnt );
 		bool GenerationGenoType(const uint generation, const uint maxGeneration
 			, const bool isRecursive =true);
 

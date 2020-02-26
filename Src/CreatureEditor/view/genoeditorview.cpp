@@ -409,6 +409,13 @@ void cGenoEditorView::RenderLinkInfo()
 			ImGui::SameLine();
 			if (ImGui::Combo("##joint type", &idx, jointType))
 				g_geno->m_uiLink.m_type = (phys::eJointType::Enum)idx;
+
+			ImGui::Checkbox("Angular Sensor", &g_geno->m_uiLink.m_isAngularSensor);
+			ImGui::Checkbox("Limit Sensor", &g_geno->m_uiLink.m_isLimitSensor);
+			ImGui::Checkbox("Contact Sensor", &g_geno->m_uiLink.m_isContactSensor);
+			ImGui::Checkbox("Accel Sensor", &g_geno->m_uiLink.m_isAccelSensor);
+			ImGui::Checkbox("Velocity Sensor", &g_geno->m_uiLink.m_isVelocitySensor);
+
 			ImGui::Separator();
 
 			switch ((phys::eJointType::Enum)idx)

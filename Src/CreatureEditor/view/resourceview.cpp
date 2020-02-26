@@ -41,54 +41,66 @@ void cResourceView::OnRender(const float deltaSeconds)
 		UpdateResourceFiles();
 	ImGui::PopStyleColor(3);
 
-	int i = 0;
-	bool isOpenPopup = false;
-
-	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
-	if (ImGui::TreeNode((void*)0, "Creature Files"))
-	{
-		ImGui::Columns(4, "texturecolumns5", false);
-		for (auto &str : m_fileList)
-		{
-			const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow 
-				| ImGuiTreeNodeFlags_OpenOnDoubleClick
-				| ImGuiTreeNodeFlags_Leaf 
-				| ImGuiTreeNodeFlags_NoTreePushOnOpen
-				| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
-
-			if (filter.PassFilter(str.c_str()))
-			{
-				ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
-
-				if (ImGui::IsItemClicked(1))
-				{
-					m_selectFileIdx = i;
-					isOpenPopup = true;
-				}
-
-				if (ImGui::IsItemClicked())
-				{
-					m_selectFileIdx = i;
-					if (ImGui::IsMouseDoubleClicked(0))
-					{
-						// create creature
-						const StrPath fileName = m_dirPath + str;
-						LoadPhenotypeView(fileName);
-						//LoadGenotypeView(fileName);
-
-					}//~IsDoubleClicked
-				}//~IsItemClicked
-				ImGui::NextColumn();
-			}//~PassFilter
-			++i;
-		}
-		ImGui::TreePop();
-	}
-
+	const bool isOpenPopup = RenderFileList(filter);
 	if (isOpenPopup)
 		ImGui::OpenPopup("PopupMenu");
 
 	RenderPopupMenu();
+}
+
+
+// return popup menu window?
+bool cResourceView::RenderFileList(ImGuiTextFilter &filter)
+{
+	bool isOpenPopup = false;
+
+	if (ImGui::BeginChild("Resource FileList", ImVec2(0,0), true))
+	{
+		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
+		if (ImGui::TreeNode((void*)0, "Creature Files"))
+		{
+			ImGui::Columns(4, "texturecolumns5", false);
+			int i = 0;
+			for (auto &str : m_fileList)
+			{
+				const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
+					| ImGuiTreeNodeFlags_OpenOnDoubleClick
+					| ImGuiTreeNodeFlags_Leaf
+					| ImGuiTreeNodeFlags_NoTreePushOnOpen
+					| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
+
+				if (filter.PassFilter(str.c_str()))
+				{
+					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
+
+					if (ImGui::IsItemClicked(1))
+					{
+						m_selectFileIdx = i;
+						isOpenPopup = true;
+					}
+
+					if (ImGui::IsItemClicked())
+					{
+						m_selectFileIdx = i;
+						if (ImGui::IsMouseDoubleClicked(0))
+						{
+							// create creature
+							const StrPath fileName = m_dirPath + str;
+							LoadPhenotypeView(fileName);
+							//LoadGenotypeView(fileName);
+
+						}//~IsDoubleClicked
+					}//~IsItemClicked
+					ImGui::NextColumn();
+				}//~PassFilter
+				++i;
+			}
+			ImGui::TreePop();
+		}
+	}
+	ImGui::EndChild();
+
+	return isOpenPopup;
 }
 
 

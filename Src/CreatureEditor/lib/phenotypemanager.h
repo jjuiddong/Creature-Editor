@@ -107,4 +107,5 @@ public:
 
 	// generation
 	int m_generationCnt;
+	int m_nnLayerCnt;
 };
