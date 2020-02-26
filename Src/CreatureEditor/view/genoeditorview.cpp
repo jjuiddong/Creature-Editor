@@ -150,9 +150,9 @@ void cGenoEditorView::RenderSelectionInfo()
 			m_eulerAngle = Vector3(RAD2ANGLE(rpy.x), RAD2ANGLE(rpy.y), RAD2ANGLE(rpy.z));
 		}
 
-		if (gnode->m_cloneId >= 0)
+		if (gnode->m_prop.iteration >= 0)
 		{
-			ImGui::Text("ID                %d (%d)", gnode->m_id, gnode->m_cloneId);
+			ImGui::Text("ID                %d (%d)", gnode->m_id, gnode->m_prop.iteration);
 		}
 		else
 		{
@@ -173,7 +173,7 @@ void cGenoEditorView::RenderSelectionInfo()
 		bool edit1_1 = false;
 		float radius = 0.f, halfHeight = 0.f, height = 0.f; // capsule,cylinder info
 		Vector2 dim;
-		switch (gnode->m_shape)
+		switch (gnode->m_prop.shape)
 		{
 		case phys::eShapeType::Box:
 			ImGui::TextUnformatted("Dim           ");
@@ -214,12 +214,12 @@ void cGenoEditorView::RenderSelectionInfo()
 		ImGui::SameLine();
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&m_eulerAngle, 0.1f);
 
-		if (gnode->m_cloneId >= 0)
+		if (gnode->m_prop.iteration >= 0)
 		{
 			ImGui::PushItemWidth(175);
 			ImGui::TextUnformatted("Max Generation");
 			ImGui::SameLine();
-			ImGui::DragInt("##max generation", (int*)&gnode->m_maxGeneration, 1, 0, 1000);
+			ImGui::DragInt("##max generation", (int*)&gnode->m_prop.maxGeneration, 1, 0, 1000);
 			ImGui::PopItemWidth();
 		}
 
@@ -232,7 +232,7 @@ void cGenoEditorView::RenderSelectionInfo()
 		if (edit1 || edit1_1) // scale edit
 		{
 			// change 3d model dimension
-			switch (gnode->m_shape)
+			switch (gnode->m_prop.shape)
 			{
 			case phys::eShapeType::Box:
 				gnode->m_transform = 
@@ -283,7 +283,7 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 		if (ImGui::TreeNodeEx((void*)((int)glink + i), node_flags, "link-%d", i + 1))
 		{
 			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6" };
-			ImGui::Text("%s Joint (Link to %d)", jointStr[(int)glink->m_type]
+			ImGui::Text("%s Joint (Link to %d)", jointStr[(int)glink->m_prop.type]
 				, ((glink->m_gnode0 == gnode)? glink->m_gnode1->m_id : glink->m_gnode0->m_id));
 
 			if (ImGui::Button("Pivot Setting"))
@@ -302,7 +302,7 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 				g_geno->ChangeEditMode(eGenoEditMode::Normal);
 			}
 
-			switch (glink->m_type)
+			switch (glink->m_prop.type)
 			{
 			case phys::eJointType::Fixed: break;
 			case phys::eJointType::Spherical: RenderSphericalJointSetting(glink); break;
@@ -377,12 +377,12 @@ void cGenoEditorView::RenderLinkInfo()
 				&& (g_geno->GetEditMode() != eGenoEditMode::Revolute)
 				&& (g_geno->GetEditMode() != eGenoEditMode::JointEdit))
 			{
-				if ((gnode0->m_cloneId >= 0) && (gnode1->m_cloneId >= 0))
+				if ((gnode0->m_prop.iteration >= 0) && (gnode1->m_prop.iteration >= 0))
 					return; // no connection iteration node each other
 
 				// check iteration node
 				// iteration node always child role
-				if (gnode0->m_cloneId >= 0)
+				if (gnode0->m_prop.iteration >= 0)
 				{
 					g_geno->m_pairId0 = id1;
 					g_geno->m_pairId1 = id0;
@@ -408,13 +408,13 @@ void cGenoEditorView::RenderLinkInfo()
 			ImGui::TextUnformatted("Joint");
 			ImGui::SameLine();
 			if (ImGui::Combo("##joint type", &idx, jointType))
-				g_geno->m_uiLink.m_type = (phys::eJointType::Enum)idx;
+				g_geno->m_uiLink.m_prop.type = (phys::eJointType::Enum)idx;
 
-			ImGui::Checkbox("Angular Sensor", &g_geno->m_uiLink.m_isAngularSensor);
-			ImGui::Checkbox("Limit Sensor", &g_geno->m_uiLink.m_isLimitSensor);
-			ImGui::Checkbox("Contact Sensor", &g_geno->m_uiLink.m_isContactSensor);
-			ImGui::Checkbox("Accel Sensor", &g_geno->m_uiLink.m_isAccelSensor);
-			ImGui::Checkbox("Velocity Sensor", &g_geno->m_uiLink.m_isVelocitySensor);
+			ImGui::Checkbox("Angular Sensor", &g_geno->m_uiLink.m_prop.isAngularSensor);
+			ImGui::Checkbox("Limit Sensor", &g_geno->m_uiLink.m_prop.isLimitSensor);
+			ImGui::Checkbox("Contact Sensor", &g_geno->m_uiLink.m_prop.isContactSensor);
+			ImGui::Checkbox("Accel Sensor", &g_geno->m_uiLink.m_prop.isAccelSensor);
+			ImGui::Checkbox("Velocity Sensor", &g_geno->m_uiLink.m_prop.isVelocitySensor);
 
 			ImGui::Separator();
 
@@ -524,7 +524,7 @@ void cGenoEditorView::RenderSphericalJoint()
 		evc::cGLink *link = new evc::cGLink();
 		link->CreateSpherical(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
-		link->m_limit.cone = limit;
+		link->m_prop.limit.cone = limit;
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
@@ -594,11 +594,11 @@ void cGenoEditorView::RenderRevoluteJoint()
 
 		evc::cGLink *link = new evc::cGLink();
 		link->CreateRevolute(gnode0, pivot0.pos, gnode1, pivot1.pos
-			, g_geno->m_uiLink.m_revoluteAxis);
+			, g_geno->m_uiLink.m_prop.revoluteAxis);
 		g_geno->AddGLink(link);
 
-		link->m_limit.angular = limit;
-		link->m_drive = drive;
+		link->m_prop.limit.angular = limit;
+		link->m_prop.drive = drive;
 
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
@@ -672,7 +672,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 
 		evc::cGLink *link = new evc::cGLink();
 		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos
-			, g_geno->m_uiLink.m_revoluteAxis);
+			, g_geno->m_uiLink.m_prop.revoluteAxis);
 		g_geno->AddGLink(link);
 
 		PxJointLinearLimitPair temp(0, 0, PxSpring(0, 0));
@@ -694,7 +694,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 		limit.damping = temp.damping;
 		limit.contactDistance = temp.contactDistance;
 		limit.bounceThreshold = temp.bounceThreshold;
-		link->m_limit.linear = limit;
+		link->m_prop.limit.linear = limit;
 
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
@@ -740,7 +740,7 @@ void cGenoEditorView::RenderDistanceJoint()
 		evc::cGLink *link = new evc::cGLink();
 		link->CreateDistance(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
-		link->m_limit.distance = limit;
+		link->m_prop.limit.distance = limit;
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
 	}
@@ -929,7 +929,7 @@ void cGenoEditorView::RenderD6Joint()
 		g_geno->AddGLink(link);
 
 		for (int i = 0; i < 6; ++i)
-			link->m_limit.d6.drive[i] = driveConfigs[i];
+			link->m_prop.limit.d6.drive[i] = driveConfigs[i];
 		
 		g_geno->AutoSave();
 		g_geno->ChangeEditMode(eGenoEditMode::Normal);
@@ -949,7 +949,7 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
 		{
-			if (g_axis[i] == link->m_revoluteAxis)
+			if (g_axis[i] == link->m_prop.revoluteAxis)
 			{
 				axisIdx = i;
 				break;
@@ -961,43 +961,43 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 
 	ImGui::Separator();
 	ImGui::PushID(id++);
-	ImGui::Checkbox("Angular Limit (Radian)", &link->m_limit.angular.isLimit);
+	ImGui::Checkbox("Angular Limit (Radian)", &link->m_prop.limit.angular.isLimit);
 	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Lower Angle", &link->m_limit.angular.lower, 0.001f);
+	ImGui::DragFloat("Lower Angle", &link->m_prop.limit.angular.lower, 0.001f);
 	ImGui::PopID();
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Upper Angle", &link->m_limit.angular.upper, 0.001f);
+	ImGui::DragFloat("Upper Angle", &link->m_prop.limit.angular.upper, 0.001f);
 	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
 	ImGui::PushID(id++);
-	ImGui::Checkbox("Drive", &link->m_drive.isDrive);
+	ImGui::Checkbox("Drive", &link->m_prop.drive.isDrive);
 	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Velocity", &link->m_drive.velocity, 0.001f);
+	ImGui::DragFloat("Velocity", &link->m_prop.drive.velocity, 0.001f);
 	ImGui::PopID();
 	ImGui::Unindent(30);
 
 	ImGui::PushID(id++);
-	ImGui::Checkbox("Cycle", &link->m_drive.isCycle);
+	ImGui::Checkbox("Cycle", &link->m_prop.drive.isCycle);
 	ImGui::PopID();
 	ImGui::Indent(30);
 	//ImGui::DragFloat("Cycle Period", &link->m_drive.period, 0.001f);
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Drive Accleration", &link->m_drive.driveAccel, 0.001f);
+	ImGui::DragFloat("Drive Accleration", &link->m_prop.drive.driveAccel, 0.001f);
 	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
 
 	ImGui::PushID(id++);
 	if (ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr))
-		link->m_revoluteAxis = g_axis[axisIdx];
+		link->m_prop.revoluteAxis = g_axis[axisIdx];
 	ImGui::PopID();
 
 }
@@ -1010,14 +1010,14 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 	static float length = 3.f;
 	static int axisIdx = 0;
 
-	evc::sLinearLimit &linear = link->m_limit.linear;
+	evc::sLinearLimit &linear = link->m_prop.limit.linear;
 
 	if (m_isChangeSelection)
 	{
 		axisIdx = ARRAYSIZE(g_axis) - 1;
 		for (int i = 0; i < ARRAYSIZE(g_axis); ++i)
 		{
-			if (g_axis[i] == link->m_revoluteAxis)
+			if (g_axis[i] == link->m_prop.revoluteAxis)
 			{
 				axisIdx = i;
 				break;
@@ -1099,14 +1099,14 @@ void cGenoEditorView::RenderDistanceJointSetting(evc::cGLink *link)
 	ImGui::Separator();
 	ImGui::PushItemWidth(150);
 	ImGui::PushID(id++);
-	ImGui::Checkbox("Distance Limit", &link->m_limit.distance.isLimit);
+	ImGui::Checkbox("Distance Limit", &link->m_prop.limit.distance.isLimit);
 	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushID(id++);
-	ImGui::DragFloat("min distance", &link->m_limit.distance.minDistance, 0.001f);
+	ImGui::DragFloat("min distance", &link->m_prop.limit.distance.minDistance, 0.001f);
 	ImGui::PopID();
 	ImGui::PushID(id++);
-	ImGui::DragFloat("max distance", &link->m_limit.distance.maxDistance, 0.001f);
+	ImGui::DragFloat("max distance", &link->m_prop.limit.distance.maxDistance, 0.001f);
 	ImGui::PopID();
 	ImGui::Unindent(30);
 	ImGui::PopItemWidth();
@@ -1126,7 +1126,7 @@ void cGenoEditorView::RenderD6JointSetting(evc::cGLink *link)
 	const char *driveAxis[6] = { "X         ", "Y         ", "Z          "
 		, "Swing   ", "Twist", "Slerp" };
 
-	evc::sD6Limit &limit = link->m_limit.d6;
+	evc::sD6Limit &limit = link->m_prop.limit.d6;
 
 	// Motion
 	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
@@ -1269,15 +1269,15 @@ void cGenoEditorView::RenderSphericalJointSetting(evc::cGLink *link)
 	int id = (int)link;
 
 	ImGui::PushID(id++);
-	ImGui::Checkbox("Limit Cone (Radian)", &link->m_limit.cone.isLimit);
+	ImGui::Checkbox("Limit Cone (Radian)", &link->m_prop.limit.cone.isLimit);
 	ImGui::PopID();
 	ImGui::Indent(30);
 	ImGui::PushItemWidth(150);
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Y Limit Angle", &link->m_limit.cone.yAngle, 0.001f);
+	ImGui::DragFloat("Y Limit Angle", &link->m_prop.limit.cone.yAngle, 0.001f);
 	ImGui::PopID();
 	ImGui::PushID(id++);
-	ImGui::DragFloat("Z Limit Angle", &link->m_limit.cone.zAngle, 0.001f);
+	ImGui::DragFloat("Z Limit Angle", &link->m_prop.limit.cone.zAngle, 0.001f);
 	ImGui::PopID();
 	ImGui::PopItemWidth();
 	ImGui::Unindent(30);
@@ -1418,14 +1418,14 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 		{
 			g_geno->m_uiLink.m_gnode0 = gnode0;
 			g_geno->m_uiLink.m_gnode1 = gnode1;
-			g_geno->m_uiLink.m_nodeLocal0 = gnode0->m_transform;
-			g_geno->m_uiLink.m_nodeLocal1 = gnode1->m_transform;
-			g_geno->m_uiLink.m_revoluteAxis = revoluteAxis;
+			g_geno->m_uiLink.m_prop.nodeLocal0 = gnode0->m_transform;
+			g_geno->m_uiLink.m_prop.nodeLocal1 = gnode1->m_transform;
+			g_geno->m_uiLink.m_prop.revoluteAxis = revoluteAxis;
 
-			g_geno->m_uiLink.m_pivots[0].dir = Vector3::Zeroes;
-			g_geno->m_uiLink.m_pivots[0].len = 0;
-			g_geno->m_uiLink.m_pivots[1].dir = Vector3::Zeroes;
-			g_geno->m_uiLink.m_pivots[1].len = 0;
+			g_geno->m_uiLink.m_prop.pivots[0].dir = Vector3::Zeroes;
+			g_geno->m_uiLink.m_prop.pivots[0].len = 0;
+			g_geno->m_uiLink.m_prop.pivots[1].dir = Vector3::Zeroes;
+			g_geno->m_uiLink.m_prop.pivots[1].len = 0;
 
 			// auto pivot position targeting
 			const Vector3 pos0 = gnode0->m_transform.pos;
@@ -1442,8 +1442,8 @@ void cGenoEditorView::UpdateUILink(evc::cGNode *gnode0, evc::cGNode *gnode1
 					revoluteAxis * dist0 + pos1
 					: -revoluteAxis * dist1 + pos1;
 
-				g_geno->m_uiLink.m_pivots[0].dir = (pivot0 - pos0).Normal();
-				g_geno->m_uiLink.m_pivots[0].len = pivot0.Distance(pos0);
+				g_geno->m_uiLink.m_prop.pivots[0].dir = (pivot0 - pos0).Normal();
+				g_geno->m_uiLink.m_prop.pivots[0].len = pivot0.Distance(pos0);
 			}
 			//~auto pivot position
 

@@ -517,7 +517,7 @@ void cGenoView::UpdateSelectModelTransform_GNode()
 		const Vector3 delta = g_geno->m_gizmo.m_deltaTransform.scale / 5.f;
 
 		// change 3d model dimension
-		switch (gnode->m_shape)
+		switch (gnode->m_prop.shape)
 		{
 		case phys::eShapeType::Box: 
 		{
@@ -646,9 +646,9 @@ void cGenoView::UpdateSelectModelTransform_Link()
 	{
 		const Quaternion delta = g_geno->m_gizmo.m_deltaTransform.rot;
 		link->m_transform.rot *= delta;
-		link->m_revoluteAxis = link->m_revoluteAxis * delta;
-		link->m_rotRevolute = Quaternion(Vector3(1,0,0), link->m_revoluteAxis);
-		link->SetPivotPosByRevoluteAxis(link->m_revoluteAxis, link->m_transform.pos);
+		link->m_prop.revoluteAxis = link->m_prop.revoluteAxis * delta;
+		link->m_prop.rotRevolute = Quaternion(Vector3(1,0,0), link->m_prop.revoluteAxis);
+		link->SetPivotPosByRevoluteAxis(link->m_prop.revoluteAxis, link->m_transform.pos);
 	}
 	break;
 
@@ -754,7 +754,7 @@ int cGenoView::PickingNode(const int pickType, const POINT &mousePos
 	float minDist = FLT_MAX;
 	for (auto &gnode : g_geno->m_gnodes)
 	{
-		const bool isSpherePicking = (gnode->m_shape == phys::eShapeType::Sphere);
+		const bool isSpherePicking = (gnode->m_prop.shape == phys::eShapeType::Sphere);
 
 		float distance = FLT_MAX;
 		if (gnode->Picking(ray, eNodeType::MODEL, isSpherePicking, &distance))
@@ -822,10 +822,10 @@ void cGenoView::SpawnSelectIterator()
 	g_geno->AutoSave();
 
 	evc::cGNode *clone = nullptr;
-	if (gnode->m_cloneId >= 0)
+	if (gnode->m_prop.iteration >= 0)
 	{
 		// find original genotype node
-		if (evc::cGNode *p = g_geno->FindGNode(gnode->m_cloneId))
+		if (evc::cGNode *p = g_geno->FindGNode(gnode->m_prop.iteration))
 			clone = p->Clone(GetRenderer());
 	}
 	else

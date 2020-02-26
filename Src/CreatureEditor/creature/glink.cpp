@@ -8,19 +8,17 @@ using namespace evc;
 cGLink::cGLink()
 	: graphic::cNode(common::GenerateId(), "glink")
 	, m_autoDelete(true)
-	, m_revoluteAxis(Vector3(1, 0, 0))
-	, m_breakForce(2000.f)
-	//, m_breakForce(0.f)
 	, m_gnode0(nullptr)
 	, m_gnode1(nullptr)
 	, m_highlightRevoluteAxis(false)
-	, m_type(phys::eJointType::Fixed)
-	, m_isAngularSensor(false)
-	, m_isLimitSensor(false)
-	, m_isVelocitySensor(false)
-	, m_isAccelSensor(false)
-	, m_isContactSensor(false)
 {
+	m_prop.type = phys::eJointType::Fixed;
+	m_prop.isAngularSensor = false;
+	m_prop.isLimitSensor = false;
+	m_prop.isVelocitySensor = false;
+	m_prop.isAccelSensor = false;
+	m_prop.isContactSensor = false;
+	m_prop.revoluteAxis = Vector3(1, 0, 0);
 }
 
 cGLink::~cGLink()
@@ -45,30 +43,24 @@ bool cGLink::Create(const sGenotypeLink &glink, cGNode *gnode0, cGNode *gnode1)
 		break;
 	case phys::eJointType::Spherical:
 		result = CreateSpherical(gnode0, pivot0, gnode1, pivot1);
-		m_limit.cone = glink.limit.cone;
 		break;
 	case phys::eJointType::Revolute:
 		result = CreateRevolute(gnode0, pivot0, gnode1, pivot1, glink.revoluteAxis);
-		m_limit.angular = glink.limit.angular;
-		m_drive = glink.drive;
 		break;
 	case phys::eJointType::Prismatic:
 		result = CreatePrismatic(gnode0, pivot0, gnode1, pivot1, glink.revoluteAxis);
-		m_limit.linear = glink.limit.linear;
 		break;
 	case phys::eJointType::Distance:
 		result = CreateDistance(gnode0, pivot0, gnode1, pivot1);
-		m_limit.distance = glink.limit.distance;
 		break;
 	case phys::eJointType::D6:
 		result = CreateD6(gnode0, pivot0, gnode1, pivot1);
-		m_limit.d6 = glink.limit.d6;
 		break;
 	}
 	if (!result)
 		return false;
 
-	m_drive = glink.drive;
+	m_prop = glink;
 	return true;
 }
 
@@ -80,20 +72,20 @@ bool cGLink::CreateFixed(cGNode *gnode0 , const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::Fixed;
+	m_prop.type = phys::eJointType::Fixed;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -105,20 +97,20 @@ bool cGLink::CreateSpherical(cGNode *gnode0, const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::Spherical;
+	m_prop.type = phys::eJointType::Spherical;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -130,20 +122,20 @@ bool cGLink::CreateRevolute(cGNode *gnode0, const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::Revolute;
+	m_prop.type = phys::eJointType::Revolute;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(revoluteAxis);
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -155,20 +147,20 @@ bool cGLink::CreatePrismatic(cGNode *gnode0, const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::Prismatic;
+	m_prop.type = phys::eJointType::Prismatic;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(revoluteAxis);
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -180,20 +172,20 @@ bool cGLink::CreateDistance(cGNode *gnode0, const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::Distance;
+	m_prop.type = phys::eJointType::Distance;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -205,20 +197,20 @@ bool cGLink::CreateD6(cGNode *gnode0, const Vector3 &pivot0
 	const Transform &worldTfm1 = gnode1->m_transform;
 	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
 
-	m_type = phys::eJointType::D6;
+	m_prop.type = phys::eJointType::D6;
 	m_gnode0 = gnode0;
 	m_gnode1 = gnode1;
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_origPos = linkPos;
-	m_nodeLocal0 = worldTfm0;
-	m_nodeLocal1 = worldTfm1;
+	m_prop.origPos = linkPos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
-	m_pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
-	m_pivots[0].len = (pivot0 - worldTfm0.pos).Length();
-	m_pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
-	m_pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
 	return true;
 }
 
@@ -256,8 +248,8 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	//~
 
 	// render revolution axis
-	if ((phys::eJointType::Revolute == m_type)
-		|| (phys::eJointType::Prismatic == m_type))
+	if ((phys::eJointType::Revolute == m_prop.type)
+		|| (phys::eJointType::Prismatic == m_prop.type))
 	{
 		m_transform.pos = linkPos;
 
@@ -271,8 +263,8 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render pivot - revolution axis
-	if ((phys::eJointType::Revolute == m_type)
-		|| (phys::eJointType::Prismatic == m_type))
+	if ((phys::eJointType::Revolute == m_prop.type)
+		|| (phys::eJointType::Prismatic == m_prop.type))
 	{
 		Vector3 p0, p1;
 		GetRevoluteAxis(p0, p1);
@@ -288,7 +280,7 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render angular limit (origin axis)
-	if (0 && (phys::eJointType::Revolute == m_type))
+	if (0 && (phys::eJointType::Revolute == m_prop.type))
 	{
 		const float axisLen = 0.2f;
 		const float axisSize = 0.01f;
@@ -312,40 +304,40 @@ bool cGLink::Render(graphic::cRenderer &renderer
 	}
 
 	// render cone limit (y,z angle)
-	if ((phys::eJointType::Spherical == m_type) && (m_limit.cone.isLimit))
+	if ((phys::eJointType::Spherical == m_prop.type) && (m_prop.limit.cone.isLimit))
 	{
 		const float r = 0.2f;
-		const float ry = (float)sin(m_limit.cone.yAngle) * r;
-		const float hy = (float)cos(m_limit.cone.yAngle) * r;
-		const float rz = (float)sin(m_limit.cone.zAngle) * r;
-		const float hz = (float)cos(m_limit.cone.zAngle) * r;
+		const float ry = (float)sin(m_prop.limit.cone.yAngle) * r;
+		const float hy = (float)cos(m_prop.limit.cone.yAngle) * r;
+		const float rz = (float)sin(m_prop.limit.cone.zAngle) * r;
+		const float hz = (float)cos(m_prop.limit.cone.zAngle) * r;
 		const float h = max(max(hy, hz), 0.1f);
 		renderer.m_cone.SetDimension(r, h);
 		renderer.m_cone.SetRadiusXZ(ry, rz);
 
 		Quaternion q;
-		q.SetRotationArc(Vector3(0, -1, 0), m_revoluteAxis);
-		renderer.m_cone.m_transform.pos = m_origPos + m_revoluteAxis * h;
+		q.SetRotationArc(Vector3(0, -1, 0), m_prop.revoluteAxis);
+		renderer.m_cone.m_transform.pos = m_prop.origPos + m_prop.revoluteAxis * h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 
-		q.SetRotationArc(Vector3(0, -1, 0), -m_revoluteAxis);
-		renderer.m_cone.m_transform.pos = m_origPos + -m_revoluteAxis * h;
+		q.SetRotationArc(Vector3(0, -1, 0), -m_prop.revoluteAxis);
+		renderer.m_cone.m_transform.pos = m_prop.origPos + -m_prop.revoluteAxis * h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 	}
 
 	// render linear limit (lower, upper)
-	if ((phys::eJointType::Prismatic == m_type) && (m_limit.linear.isLimit))
+	if ((phys::eJointType::Prismatic == m_prop.type) && (m_prop.limit.linear.isLimit))
 	{
 		Vector3 r0, r1;
 		GetRevoluteAxis(r0, r1);
 		const Vector3 dir = (r1 - r0).Normal();
 		const Quaternion rot(Vector3(1, 0, 0), dir);
-		const float distance = abs(m_revoluteAxis.DotProduct(
+		const float distance = abs(m_prop.revoluteAxis.DotProduct(
 			m_gnode1->m_transform.pos - m_gnode0->m_transform.pos));
-		const float lower = distance + m_limit.linear.lower;
-		const float upper = distance + m_limit.linear.upper;
+		const float lower = distance + m_prop.limit.linear.lower;
+		const float upper = distance + m_prop.limit.linear.upper;
 		const Vector3 p0 = Vector3(1, 0, 0) * lower * rot + m_gnode0->m_transform.pos;
 		const Vector3 p1 = Vector3(1, 0, 0) * upper * rot + m_gnode0->m_transform.pos;
 
@@ -373,7 +365,7 @@ graphic::cNode* cGLink::Picking(const Ray &ray, const graphic::eNodeType::Enum t
 	, OUT float *dist //= NULL
 )
 {
-	if (phys::eJointType::Revolute != m_type)
+	if (phys::eJointType::Revolute != m_prop.type)
 		return nullptr;
 
 	Vector3 p0, p1;
@@ -397,9 +389,9 @@ graphic::cNode* cGLink::Picking(const Ray &ray, const graphic::eNodeType::Enum t
 // update pivot position, local transform
 bool cGLink::UpdateLinkInfo()
 {
-	SetPivotPosByRevoluteAxis(m_revoluteAxis, m_origPos);
-	m_nodeLocal0 = m_gnode0->m_transform;
-	m_nodeLocal1 = m_gnode1->m_transform;
+	SetPivotPosByRevoluteAxis(m_prop.revoluteAxis, m_prop.origPos);
+	m_prop.nodeLocal0 = m_gnode0->m_transform;
+	m_prop.nodeLocal1 = m_gnode1->m_transform;
 	return true;
 }
 
@@ -415,10 +407,10 @@ void cGLink::SetPivotPos(const int nodeIndex, const Vector3 &pos)
 	}
 
 	// change local coordinate system
-	const Transform tfm = (nodeIndex == 0) ? m_nodeLocal0 : m_nodeLocal1;
+	const Transform tfm = (nodeIndex == 0) ? m_prop.nodeLocal0 : m_prop.nodeLocal1;
 	const Vector3 dir = (pos - tfm.pos);
-	m_pivots[nodeIndex].dir = dir.Normal() * tfm.rot.Inverse();
-	m_pivots[nodeIndex].len = dir.Length();
+	m_prop.pivots[nodeIndex].dir = dir.Normal() * tfm.rot.Inverse();
+	m_prop.pivots[nodeIndex].len = dir.Length();
 }
 
 
@@ -432,7 +424,7 @@ Transform cGLink::GetPivotWorldTransform(const int nodeIndex)
 		return Transform();
 	}
 
-	const Transform tfm = (nodeIndex == 0) ? m_nodeLocal0 : m_nodeLocal1;
+	const Transform tfm = (nodeIndex == 0) ? m_prop.nodeLocal0 : m_prop.nodeLocal1;
 
 	Transform ret;
 	ret.pos = GetPivotPos(nodeIndex);
@@ -451,10 +443,10 @@ Vector3 cGLink::GetPivotPos(const int nodeIndex)
 	Vector3 pivotPos;
 	cGNode *gnode = (nodeIndex == 0) ? m_gnode0 : m_gnode1;
 
-	if (m_pivots[nodeIndex].len != 0.f)
+	if (m_prop.pivots[nodeIndex].len != 0.f)
 	{
-		const Vector3 localPos = m_pivots[nodeIndex].dir * gnode->m_transform.rot
-			* m_pivots[nodeIndex].len;
+		const Vector3 localPos = m_prop.pivots[nodeIndex].dir * gnode->m_transform.rot
+			* m_prop.pivots[nodeIndex].len;
 		pivotPos = gnode->m_transform.pos + localPos;
 	}
 	else
@@ -467,8 +459,8 @@ Vector3 cGLink::GetPivotPos(const int nodeIndex)
 
 void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis)
 {
-	m_revoluteAxis = revoluteAxis;
-	m_rotRevolute.SetRotationArc(Vector3(1, 0, 0), revoluteAxis);
+	m_prop.revoluteAxis = revoluteAxis;
+	m_prop.rotRevolute.SetRotationArc(Vector3(1, 0, 0), revoluteAxis);
 }
 
 
@@ -483,20 +475,20 @@ void cGLink::SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector
 	const Line line(r0, r1);
 
 	// update actor0 pivot pos
-	const Vector3 p0 = line.Projection(m_nodeLocal0.pos);
+	const Vector3 p0 = line.Projection(m_prop.nodeLocal0.pos);
 	const float len0 = pos.Distance(p0);
 	const Vector3 toP0 = (p0 - pos).Normal();
 	const Vector3 newPivotPos0 = toP0 * len0 + pos;
 
 	// update actor1 pivot pos
-	const Vector3 p1 = line.Projection(m_nodeLocal1.pos);
+	const Vector3 p1 = line.Projection(m_prop.nodeLocal1.pos);
 	const float len1 = pos.Distance(p1);
 	const Vector3 toP1 = (p1 - pos).Normal();
 	const Vector3 newPivotPos1 = toP1 * len1 + pos;
 
 	SetPivotPos(0, newPivotPos0);
 	SetPivotPos(1, newPivotPos1);
-	m_origPos = pos;
+	m_prop.origPos = pos;
 }
 
 
@@ -511,20 +503,20 @@ void cGLink::SetPivotPosByRevolutePos(const Vector3 &pos)
 	const Line line(r0, r1);
 
 	// update actor0 pivot pos
-	const Vector3 p0 = line.Projection(m_nodeLocal0.pos);
+	const Vector3 p0 = line.Projection(m_prop.nodeLocal0.pos);
 	const float len0 = pos.Distance(p0);
 	const Vector3 toP0 = (p0 - pos).Normal();
 	const Vector3 newPivotPos0 = toP0 * len0 + pos;
 
 	// update actor1 pivot pos
-	const Vector3 p1 = line.Projection(m_nodeLocal1.pos);
+	const Vector3 p1 = line.Projection(m_prop.nodeLocal1.pos);
 	const float len1 = pos.Distance(p1);
 	const Vector3 toP1 = (p1 - pos).Normal();
 	const Vector3 newPivotPos1 = toP1 * len1 + pos;
 
 	SetPivotPos(0, newPivotPos0);
 	SetPivotPos(1, newPivotPos1);
-	m_origPos = pos;
+	m_prop.origPos = pos;
 }
 
 
@@ -547,8 +539,8 @@ bool cGLink::GetRevoluteAxis(OUT Vector3 &out0, OUT Vector3 &out1
 	Vector3 dir;
 	if (pivotPos1.Distance(pivotPos0) < 0.2f)
 	{
-		const Quaternion rot = m_nodeLocal0.rot.Inverse() * m_gnode0->m_transform.rot;
-		dir = m_revoluteAxis * rot;
+		const Quaternion rot = m_prop.nodeLocal0.rot.Inverse() * m_gnode0->m_transform.rot;
+		dir = m_prop.revoluteAxis * rot;
 	}
 	else
 	{

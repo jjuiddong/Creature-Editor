@@ -1212,11 +1212,11 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	shape.put("name", gnode->m_name.c_str());
 	shape.put<int>("id", gnode->m_id);
 	shape.put<string>("type", "Dynamic");
-	shape.put<string>("shape", phys::eShapeType::ToString(gnode->m_shape));
+	shape.put<string>("shape", phys::eShapeType::ToString(gnode->m_prop.shape));
 
 	// find local transform from joint
 	Transform tfm = gnode->m_transform;
-	switch (gnode->m_shape)
+	switch (gnode->m_prop.shape)
 	{
 	case phys::eShapeType::Box: break;
 	case phys::eShapeType::Sphere: break;
@@ -1248,12 +1248,12 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	shape.put("rot", text.c_str());
 
 	shape.put<float>("mass", 0.f);
-	shape.put<float>("density", gnode->m_density);
+	shape.put<float>("density", gnode->m_prop.density);
 	shape.put<float>("angular damping", 0.5f);
 	shape.put<float>("linear damping", 0.5f);
 	shape.put<bool>("kinematic", false);
-	shape.put<int>("iteration", gnode->m_cloneId);
-	shape.put<unsigned int>("max generation", gnode->m_maxGeneration);
+	shape.put<int>("iteration", gnode->m_prop.iteration);
+	shape.put<unsigned int>("max generation", gnode->m_prop.maxGeneration);
 
 	parent.add_child("shape", shape);
 
@@ -1271,61 +1271,61 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 
 	ptree j;
 
-	j.put("type", phys::eJointType::ToString(glink->m_type));
+	j.put("type", phys::eJointType::ToString(glink->m_prop.type));
 	j.put("shape id0", glink->m_gnode0->m_id);
 	j.put("shape id1", glink->m_gnode1->m_id);
 
-	v = glink->m_origPos;
+	v = glink->m_prop.origPos;
 	text.Format("%f %f %f", v.x, v.y, v.z);
 	j.put("jointpos", text.c_str());
 
-	q = glink->m_rotRevolute;
+	q = glink->m_prop.rotRevolute;
 	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
 	j.put("revolute rot", text.c_str());
 
-	v = glink->m_pivots[0].dir;
+	v = glink->m_prop.pivots[0].dir;
 	text.Format("%f %f %f", v.x, v.y, v.z);
 	j.put("pivot dir0", text.c_str());
-	j.put("pivot len0", glink->m_pivots[0].len);
+	j.put("pivot len0", glink->m_prop.pivots[0].len);
 
-	v = glink->m_pivots[1].dir;
+	v = glink->m_prop.pivots[1].dir;
 	text.Format("%f %f %f", v.x, v.y, v.z);
 	j.put("pivot dir1", text.c_str());
-	j.put("pivot len1", glink->m_pivots[1].len);
+	j.put("pivot len1", glink->m_prop.pivots[1].len);
 
-	j.put("angular sensor", glink->m_isAngularSensor);
-	j.put("limit sensor", glink->m_isLimitSensor);
-	j.put("contact sensor", glink->m_isContactSensor);
-	j.put("accel sensor", glink->m_isAccelSensor);
-	j.put("velocity sensor", glink->m_isVelocitySensor);
+	j.put("angular sensor", glink->m_prop.isAngularSensor);
+	j.put("limit sensor", glink->m_prop.isLimitSensor);
+	j.put("contact sensor", glink->m_prop.isContactSensor);
+	j.put("accel sensor", glink->m_prop.isAccelSensor);
+	j.put("velocity sensor", glink->m_prop.isVelocitySensor);
 
-	switch (glink->m_type)
+	switch (glink->m_prop.type)
 	{
 	case phys::eJointType::Fixed: break;
 	case phys::eJointType::Spherical:
 	{
-		j.put<bool>("cone limit", glink->m_limit.cone.isLimit);
-		const sConeLimit coneLimit = glink->m_limit.cone;
+		j.put<bool>("cone limit", glink->m_prop.limit.cone.isLimit);
+		const sConeLimit coneLimit = glink->m_prop.limit.cone;
 		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
 		j.put<string>("cone limit config", text.c_str());
 	}
 	break;
 	case phys::eJointType::Revolute:
 	{
-		j.put<bool>("drive", glink->m_drive.isDrive);
-		j.put("drive velocity", glink->m_drive.velocity);
+		j.put<bool>("drive", glink->m_prop.drive.isDrive);
+		j.put("drive velocity", glink->m_prop.drive.velocity);
 
-		j.put<bool>("cycle", glink->m_drive.isCycle);
-		j.put("cycle period", glink->m_drive.period);
-		j.put("cycle accel", glink->m_drive.driveAccel);
+		j.put<bool>("cycle", glink->m_prop.drive.isCycle);
+		j.put("cycle period", glink->m_prop.drive.period);
+		j.put("cycle accel", glink->m_prop.drive.driveAccel);
 
-		j.put<bool>("cone limit", glink->m_limit.cone.isLimit);
-		const sConeLimit coneLimit = glink->m_limit.cone;
+		j.put<bool>("cone limit", glink->m_prop.limit.cone.isLimit);
+		const sConeLimit coneLimit = glink->m_prop.limit.cone;
 		text.Format("%f %f %f", coneLimit.yAngle, coneLimit.zAngle, 0.01f);
 		j.put<string>("cone limit config", text.c_str());
 
-		j.put<bool>("angular limit", glink->m_limit.angular.isLimit);
-		const sAngularLimit angularLimit = glink->m_limit.angular;
+		j.put<bool>("angular limit", glink->m_prop.limit.angular.isLimit);
+		const sAngularLimit angularLimit = glink->m_prop.limit.angular;
 		text.Format("%f %f %f", angularLimit.lower, angularLimit.upper, 0.01f);
 		j.put<string>("angular limit config", text.c_str());
 	}
@@ -1333,9 +1333,9 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 
 	case phys::eJointType::Prismatic:
 	{
-		j.put<bool>("linear limit", glink->m_limit.linear.isLimit);
-		j.put<bool>("spring limit", glink->m_limit.linear.isSpring);
-		const sLinearLimit linearLimit = glink->m_limit.linear;
+		j.put<bool>("linear limit", glink->m_prop.limit.linear.isLimit);
+		j.put<bool>("spring limit", glink->m_prop.limit.linear.isSpring);
+		const sLinearLimit linearLimit = glink->m_prop.limit.linear;
 		text.Format("%f %f %f", linearLimit.lower, linearLimit.upper
 			, linearLimit.stiffness);
 		j.put<string>("linear limit config 1", text.c_str());
@@ -1347,8 +1347,8 @@ bool evc::Put_GLink(boost::property_tree::ptree &parent, evc::cGLink *glink)
 
 	case phys::eJointType::Distance:
 	{
-		j.put<bool>("distance limit", glink->m_limit.distance.isLimit);
-		const sDistanceLimit dist = glink->m_limit.distance;
+		j.put<bool>("distance limit", glink->m_prop.limit.distance.isLimit);
+		const sDistanceLimit dist = glink->m_prop.limit.distance;
 		j.put<float>("min distance", dist.minDistance);
 		j.put<float>("max distance", dist.maxDistance);
 	}

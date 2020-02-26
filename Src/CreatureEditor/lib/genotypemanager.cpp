@@ -88,16 +88,16 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 	// update iteration id (genotype nod id -> cGNode id)
 	for (auto &p : addNodes)
 	{
-		if (p->m_cloneId < 0)
+		if (p->m_prop.iteration < 0)
 			continue;
-		if (gmap.find(p->m_cloneId) == gmap.end())
+		if (gmap.find(p->m_prop.iteration) == gmap.end())
 		{
-			if (!FindGNode(p->m_cloneId))
-				p->m_cloneId = -1; // not found parent clone id
+			if (!FindGNode(p->m_prop.iteration))
+				p->m_prop.iteration = -1; // not found parent clone id
 		}
 		else
 		{
-			p->m_cloneId = gmap[p->m_cloneId]->m_id;
+			p->m_prop.iteration = gmap[p->m_prop.iteration]->m_id;
 		}
 	}
 
@@ -266,7 +266,7 @@ bool cGenoTypeManager::RemoveGNode(evc::cGNode *gnode)
 	// if has iterator? remove all iterator gnode
 	set<evc::cGNode*> rms;
 	for (auto &p : m_gnodes)
-		if (p->m_cloneId == gnode->m_id)
+		if (p->m_prop.iteration == gnode->m_id)
 			rms.insert(p);
 	rms.insert(gnode);
 

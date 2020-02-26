@@ -60,37 +60,10 @@ namespace evc
 
 	public:
 		bool m_autoDelete; // default: true
-		phys::eJointType::Enum m_type;
+		sGenotypeLink m_prop; // joint property
 		cGNode *m_gnode0;
 		cGNode *m_gnode1;
 		bool m_highlightRevoluteAxis;
-
-		// joint property
-		const float m_breakForce;
-		float m_revoluteAxisLen; // revolute, prismatic joint axis
-		Vector3 m_revoluteAxis; // local space
-		Vector3 m_origPos; // joint origin pos (local space)
-		Quaternion m_rotRevolute; // Xaxis -> revoluteAxis rotation (local space)
-								  // revoluteAxis = normal(pivot1 - pivot0)
-		Transform m_nodeLocal0; // gnode0 local transform (local space)
-		Transform m_nodeLocal1; // gnode1 local transform (local space)
-
-		sPivot m_pivots[2]; // gnode0,1
-		sDriveInfo m_drive; // revolute joint
-
-		union sLimit {
-			sConeLimit cone;
-			sAngularLimit angular;
-			sLinearLimit linear;
-			sDistanceLimit distance;
-			sD6Limit d6;
-		};
-		sLimit m_limit;
-		bool m_isAngularSensor;
-		bool m_isLimitSensor;
-		bool m_isVelocitySensor;
-		bool m_isAccelSensor;
-		bool m_isContactSensor;
 	};
 
 }

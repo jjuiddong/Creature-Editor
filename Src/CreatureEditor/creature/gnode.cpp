@@ -10,12 +10,13 @@ cGNode::cGNode()
 	: graphic::cNode(common::GenerateId(), "gnode")
 	, m_wname(L"gnode")
 	, m_wnameId(L"-1")
-	, m_cloneId(-1)
-	, m_density(1.f)
-	, m_color(cColor::WHITE)
 	, m_txtColor(cColor::WHITE)
-	, m_maxGeneration(0)
 {
+	m_prop.id = m_id;
+	m_prop.color = cColor::WHITE;
+	m_prop.density = 1.f;
+	m_prop.iteration = -1;
+	m_prop.maxGeneration = 0;
 }
 
 cGNode::~cGNode()
@@ -60,12 +61,10 @@ bool cGNode::Create(graphic::cRenderer &renderer, const sGenotypeNode &gnode)
 	m_name = gnode.name;
 	m_wname = gnode.name.wstr();
 	m_wnameId.Format(L"%d", m_id);
-	m_density = gnode.density;
 	SetColor(gnode.color);
 	m_txtColor = cColor::WHITE;
-	m_cloneId = gnode.iteration;
-	m_maxGeneration = gnode.maxGeneration;
 	m_gid = gnode.id;
+	m_prop = gnode;
 
 	if (gnode.iteration >= 0) // iteration node? alpha blending
 	{
@@ -86,11 +85,12 @@ bool cGNode::CreateBox(graphic::cRenderer &renderer, const Transform &tfm)
 	cube->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(cube);
 
-	m_shape = phys::eShapeType::Box;
+	m_prop.shape = phys::eShapeType::Box;
 	m_transform = tfm;
 	m_name = "Box";
 	m_wname = m_name.wstr();
 	m_wnameId.Format(L"%d", m_id);
+	m_prop.name = "Box";
 	return true;
 }
 
@@ -104,12 +104,13 @@ bool cGNode::CreateSphere(graphic::cRenderer &renderer, const Transform &tfm
 	sphere->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(sphere);
 
-	m_shape = phys::eShapeType::Sphere;
+	m_prop.shape = phys::eShapeType::Sphere;
 	m_transform = tfm;
 	m_transform.scale = Vector3::Ones * radius;
 	m_name = "Sphere";
 	m_wname = m_name.wstr();
 	m_wnameId.Format(L"%d", m_id);
+	m_prop.name = "Sphere";
 	SetSphereRadius(radius);
 	return true;
 }
@@ -124,11 +125,12 @@ bool cGNode::CreateCapsule(graphic::cRenderer &renderer, const Transform &tfm
 	capsule->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(capsule);
 
-	m_shape = phys::eShapeType::Capsule;
+	m_prop.shape = phys::eShapeType::Capsule;
 	m_transform = tfm;
 	m_name = "Capsule";
 	m_wname = m_name.wstr();
 	m_wnameId.Format(L"%d", m_id);
+	m_prop.name = "Capsule";
 	SetCapsuleDimension(radius, halfHeight);
 	return true;
 }
@@ -143,12 +145,13 @@ bool cGNode::CreateCylinder(graphic::cRenderer &renderer, const Transform &tfm
 	cylinder->SetRenderFlag(eRenderFlag::TEXT, true);
 	AddChild(cylinder);
 
-	m_shape = phys::eShapeType::Cylinder;
+	m_prop.shape = phys::eShapeType::Cylinder;
 	m_transform = tfm;
 	m_transform.scale = Vector3(height/2.f, radius, radius);
 	m_name = "Cylinder";
 	m_wname = m_name.wstr();
 	m_wnameId.Format(L"%d", m_id);
+	m_prop.name = "Cylinder";
 	SetCylinderDimension(radius, height);
 	return true;
 }
@@ -244,7 +247,7 @@ bool cGNode::RemoveLink(const int linkId)
 
 void cGNode::SetSphereRadius(const float radius)
 {
-	if (m_shape != phys::eShapeType::Sphere)
+	if (m_prop.shape != phys::eShapeType::Sphere)
 		return;
 	m_transform.scale = Vector3::Ones * radius;
 }
@@ -252,7 +255,7 @@ void cGNode::SetSphereRadius(const float radius)
 
 float cGNode::GetSphereRadius()
 {
-	if (m_shape != phys::eShapeType::Sphere)
+	if (m_prop.shape != phys::eShapeType::Sphere)
 		return 0.f;
 	return m_transform.scale.x;
 }
@@ -260,7 +263,7 @@ float cGNode::GetSphereRadius()
 
 void cGNode::SetCapsuleDimension(const float radius, const float halfHeight)
 {
-	if (m_shape != phys::eShapeType::Capsule)
+	if (m_prop.shape != phys::eShapeType::Capsule)
 		return;
 	if (cCapsule *p = (cCapsule*)dynamic_cast<cCapsule*>(m_children[0]))
 		p->SetDimension(radius, halfHeight);
@@ -271,7 +274,7 @@ void cGNode::SetCapsuleDimension(const float radius, const float halfHeight)
 // return vector2(radius, halfHeight)
 Vector2 cGNode::GetCapsuleDimension()
 {
-	if (m_shape != phys::eShapeType::Capsule)
+	if (m_prop.shape != phys::eShapeType::Capsule)
 		return Vector2(0,0);
 	if (cCapsule *p = (cCapsule*)dynamic_cast<cCapsule*>(m_children[0]))
 		return Vector2(p->m_radius, p->m_halfHeight);
@@ -281,7 +284,7 @@ Vector2 cGNode::GetCapsuleDimension()
 
 void cGNode::SetCylinderDimension(const float radius, const float height)
 {
-	if (m_shape != phys::eShapeType::Cylinder)
+	if (m_prop.shape != phys::eShapeType::Cylinder)
 		return;
 	m_transform.scale = Vector3(height / 2.f, radius, radius);
 }
@@ -290,7 +293,7 @@ void cGNode::SetCylinderDimension(const float radius, const float height)
 // return Vector2(radius, height)
 Vector2 cGNode::GetCylinderDimension()
 {
-	if (m_shape != phys::eShapeType::Cylinder)
+	if (m_prop.shape != phys::eShapeType::Cylinder)
 		return Vector2(0,0);
 	return Vector2(m_transform.scale.y, m_transform.scale.x * 2.f);
 }
@@ -299,12 +302,12 @@ Vector2 cGNode::GetCylinderDimension()
 // update genotype node color
 void cGNode::SetColor(const graphic::cColor &color)
 {
-	m_color = color;
+	m_prop.color = color;
 
 	if (m_children.empty())
 		return;
 
-	switch (m_shape)
+	switch (m_prop.shape)
 	{
 	case phys::eShapeType::Box:
 		if (cCube *p = dynamic_cast<cCube*>(m_children[0]))
@@ -331,8 +334,9 @@ void cGNode::SetColor(const graphic::cColor &color)
 cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 {
 	cGNode *gnode = new cGNode();
-	
-	switch (m_shape)
+	gnode->m_prop = m_prop;
+
+	switch (m_prop.shape)
 	{
 	case phys::eShapeType::Box:
 		gnode->CreateBox(renderer, m_transform);
@@ -359,9 +363,9 @@ cGNode* cGNode::Clone(graphic::cRenderer &renderer)
 	gnode->m_wname = m_wname + L" iter";
 	const Vector3 scale = gnode->m_transform.scale * 2.f;
 	gnode->m_transform.pos += Vector3(scale.x, 0, scale.z);
-	const Vector4 vColor = m_color.GetColor();
+	const Vector4 vColor = m_prop.color.GetColor();
 	gnode->SetColor(cColor(vColor.x, vColor.y, vColor.z, 0.8f));
-	gnode->m_cloneId = m_id;
+	gnode->m_prop.iteration = m_id;
 	return gnode;
 }
 

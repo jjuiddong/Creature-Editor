@@ -124,7 +124,7 @@ bool cEvolutionManager::Update(const float deltaSeconds)
 
 		if (m_param.grabBestFit > 0)
 			m_grabBestAvrGraph[m_graphIdx] = (float)(bestAvr / (double)m_param.grabBestFit);
-		++m_graphIdx;
+		m_graphIdx = (m_graphIdx + 1) % ARRAYSIZE(m_fitnessGraph);
 
 		// finish evolution?
 		if (m_curEpochSize >= m_param.epochSize)
