@@ -302,6 +302,15 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 				g_geno->ChangeEditMode(eGenoEditMode::Normal);
 			}
 
+			ImGui::Text("Sensor Selection");
+			ImGui::Indent(30);
+			ImGui::Checkbox("Angular Sensor", &glink->m_prop.isAngularSensor);
+			ImGui::Checkbox("Limit Sensor", &glink->m_prop.isLimitSensor);
+			ImGui::Checkbox("Contact Sensor", &glink->m_prop.isContactSensor);
+			ImGui::Checkbox("Accel Sensor", &glink->m_prop.isAccelSensor);
+			ImGui::Checkbox("Velocity Sensor", &glink->m_prop.isVelocitySensor);
+			ImGui::Unindent(30);
+
 			switch (glink->m_prop.type)
 			{
 			case phys::eJointType::Fixed: break;
@@ -410,11 +419,14 @@ void cGenoEditorView::RenderLinkInfo()
 			if (ImGui::Combo("##joint type", &idx, jointType))
 				g_geno->m_uiLink.m_prop.type = (phys::eJointType::Enum)idx;
 
+			ImGui::Text("Sensor Selection");
+			ImGui::Indent(30);
 			ImGui::Checkbox("Angular Sensor", &g_geno->m_uiLink.m_prop.isAngularSensor);
 			ImGui::Checkbox("Limit Sensor", &g_geno->m_uiLink.m_prop.isLimitSensor);
 			ImGui::Checkbox("Contact Sensor", &g_geno->m_uiLink.m_prop.isContactSensor);
 			ImGui::Checkbox("Accel Sensor", &g_geno->m_uiLink.m_prop.isAccelSensor);
 			ImGui::Checkbox("Velocity Sensor", &g_geno->m_uiLink.m_prop.isVelocitySensor);
+			ImGui::Unindent(30);
 
 			ImGui::Separator();
 
@@ -467,6 +479,8 @@ void cGenoEditorView::RenderFixedJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
+
 		link->CreateFixed(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 
@@ -522,6 +536,8 @@ void cGenoEditorView::RenderSphericalJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
+
 		link->CreateSpherical(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 		link->m_prop.limit.cone = limit;
@@ -593,6 +609,8 @@ void cGenoEditorView::RenderRevoluteJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
+
 		link->CreateRevolute(gnode0, pivot0.pos, gnode1, pivot1.pos
 			, g_geno->m_uiLink.m_prop.revoluteAxis);
 		g_geno->AddGLink(link);
@@ -671,6 +689,7 @@ void cGenoEditorView::RenderPrismaticJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
 		link->CreatePrismatic(gnode0, pivot0.pos, gnode1, pivot1.pos
 			, g_geno->m_uiLink.m_prop.revoluteAxis);
 		g_geno->AddGLink(link);
@@ -738,6 +757,7 @@ void cGenoEditorView::RenderDistanceJoint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
 		link->CreateDistance(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 		link->m_prop.limit.distance = limit;
@@ -925,6 +945,7 @@ void cGenoEditorView::RenderD6Joint()
 		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
 
 		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
 		link->CreateD6(gnode0, pivot0.pos, gnode1, pivot1.pos);
 		g_geno->AddGLink(link);
 

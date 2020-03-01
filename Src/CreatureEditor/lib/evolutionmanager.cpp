@@ -54,6 +54,7 @@ bool cEvolutionManager::StopEvolution()
 
 	m_state = eState::Wait;
 	g_pheno->ClearCreature();
+	g_nn->SetCurrentCreature(nullptr);
 	m_incT = 0.f;
 	return true;
 }

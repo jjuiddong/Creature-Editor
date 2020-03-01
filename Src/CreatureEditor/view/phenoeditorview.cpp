@@ -61,6 +61,7 @@ void cPhenoEditorView::OnRender(const float deltaSeconds)
 	ImGui::SameLine(250);
 	if (ImGui::Button("Clear"))
 	{
+		g_nn->SetCurrentCreature(nullptr);
 		g_pheno->ClearCreature();
 	}
 	ImGui::PopStyleColor(3);

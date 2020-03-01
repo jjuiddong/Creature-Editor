@@ -774,7 +774,7 @@ int cGenoView::PickingNode(const int pickType, const POINT &mousePos
 		float distance = FLT_MAX;
 		if (g_geno->m_uiLink.Picking(ray, eNodeType::MODEL, false, &distance))
 		{
-			if (distance < minDist)
+			//if (distance < minDist)
 			{
 				minId = g_geno->m_uiLink.m_id;
 				minDist = distance;

@@ -16,6 +16,7 @@ using namespace common;
 #include "creature/angularsensor.h"
 #include "creature/limitsensor.h"
 #include "creature/velocitysensor.h"
+#include "creature/accelsensor.h"
 #include "creature/muscleeffector.h"
 #include "creature/gnode.h"
 #include "creature/pnode.h"

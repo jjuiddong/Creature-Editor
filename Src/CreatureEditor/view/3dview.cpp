@@ -1013,7 +1013,7 @@ int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 	phys::cPhysicsSync *sync = g_pheno->m_physSync;
 	for (auto &p : sync->m_syncs)
 	{
-		if ((p->name == "plane") || (p->name == "wall"))
+		if ((p->name == "ground") || (p->name == "wall"))
 			continue; // ground or wall?
 
 		if ((pickType == 0) && p->joint)

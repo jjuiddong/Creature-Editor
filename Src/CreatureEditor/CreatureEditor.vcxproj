@@ -158,6 +158,7 @@
     <ClCompile Include="creature\creature.cpp" />
     <ClCompile Include="creature\evc.cpp" />
     <ClCompile Include="creature\generator.cpp" />
+    <ClCompile Include="creature\genome.cpp" />
     <ClCompile Include="creature\glink.cpp" />
     <ClCompile Include="creature\gnode.cpp" />
     <ClCompile Include="creature\muscleeffector.cpp" />
@@ -184,11 +185,13 @@
     <ClCompile Include="view\simulationview.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="creature\accelsensor.h" />
     <ClInclude Include="creature\angularsensor.h" />
     <ClInclude Include="creature\creature.h" />
     <ClInclude Include="creature\effector.h" />
     <ClInclude Include="creature\evc.h" />
     <ClInclude Include="creature\generator.h" />
+    <ClInclude Include="creature\genome.h" />
     <ClInclude Include="creature\genotype.h" />
     <ClInclude Include="creature\glink.h" />
     <ClInclude Include="creature\gnode.h" />

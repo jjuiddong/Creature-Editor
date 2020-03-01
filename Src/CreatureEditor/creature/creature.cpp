@@ -196,6 +196,7 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		nodeMap[p->id] = pnode;
 	}
 
+	map<evc::sGenotypeLink*, phys::cJoint*> joints;
 	for (auto &p : m_glinks)
 	{
 		cPNode *pnode0 = nodeMap[p->parent->id];
@@ -203,7 +204,8 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 		if (!pnode0 || !pnode1)
 			continue;
 
-		evc::CreatePhenoTypeJoint(*p, pnode0, pnode1, generation);
+		phys::cJoint *joint = ::CreatePhenoTypeJoint(*p, pnode0, pnode1, generation);
+		joints[p] = joint;
 	}
 
 	// initialize neural network
@@ -211,21 +213,41 @@ void cCreature::LoadFromGenoType(graphic::cRenderer &renderer
 	{
 		cPNode *pnode = m_nodes[0];
 
-		set<phys::cJoint*> joints;
-		for (auto &p : m_nodes)
-			for (auto &j : p->m_actor->m_joints)
-				joints.insert(j);
-
-		for (auto &j : joints)
+		for (auto &kv : joints)
 		{
-			cAngularSensor *AngleSen = new cAngularSensor();
-			AngleSen->Create(j);
-			pnode->AddSensor(AngleSen);
+			evc::sGenotypeLink *glink = kv.first;
+			phys::cJoint *j = kv.second;
+			if (!j)
+				continue; // error occurred!!
 
-			cLimitSensor *limitSen = new cLimitSensor();
-			limitSen->Create(j);
-			pnode->AddSensor(limitSen);
+			if (glink->isAngularSensor)
+			{
+				cAngularSensor *sen = new cAngularSensor();
+				sen->Create(j);
+				pnode->AddSensor(sen);
+			}
+
+			if (glink->isLimitSensor)
+			{
+				cLimitSensor *sen = new cLimitSensor();
+				sen->Create(j);
+				pnode->AddSensor(sen);
+			}
+
+			if (glink->isAccelSensor)
+			{
+				cAccelSensor *sen = new cAccelSensor();
+				sen->Create(j);
+				pnode->AddSensor(sen);
+			}
 			
+			if (glink->isVelocitySensor)
+			{
+				cVelocitySensor *sen = new cVelocitySensor();
+				sen->Create(j);
+				pnode->AddSensor(sen);
+			}
+
 			cMuscleEffector *effector = new cMuscleEffector();
 			effector->Create(j);
 			pnode->AddEffector(effector);

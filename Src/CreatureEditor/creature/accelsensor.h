@@ -1,8 +1,8 @@
 //
-// 2020-02-22, jjuiddong
-// velocity sensor
+// 2020-03-01, jjuiddong
+// accelerometer sensor
 //	- output
-//		- joint drive velocity
+//		- joint accel
 //
 #pragma once
 
@@ -10,23 +10,27 @@
 namespace evc
 {
 
-	class cVelocitySensor : public iSensor
+	class cAccelSensor : public iSensor
 	{
 	public:
-		cVelocitySensor() : m_joint(nullptr), m_output(1, 0.f) {
+		cAccelSensor() : m_joint(nullptr), m_output(1, 0.f)
+			, m_oldVelocity(0){
 		}
-		virtual ~cVelocitySensor() {}
+		virtual ~cAccelSensor() {}
 
 		bool Create(phys::cJoint *joint) {
 			m_joint = joint;
-			m_type = eSensorType::Velocity;
+			m_type = eSensorType::Angular;
 			return true;
 		}
 
 		// iSensor iterface override
 		virtual const vector<double>& GetOutput() override {
 			RETV(!m_joint, m_output);
-			m_output[0] = m_joint->GetDriveVelocity();
+			// todo: divide delta time
+			const float velocity = m_joint->GetDriveVelocity();
+			m_output[0] = velocity - m_oldVelocity;
+			m_oldVelocity = velocity;
 			return m_output;
 		}
 
@@ -36,6 +40,7 @@ namespace evc
 
 	public:
 		phys::cJoint *m_joint; // reference
+		float m_oldVelocity;
 		vector<double> m_output;
 	};
 

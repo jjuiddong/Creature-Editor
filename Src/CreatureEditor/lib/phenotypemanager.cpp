@@ -35,7 +35,7 @@ bool cPhenoTypeManager::Init(graphic::cRenderer &renderer
 	m_physics = physics;
 	m_physSync = sync;
 
-	m_groundGridPlaneId = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0));
+	m_groundGridPlaneId = m_physSync->SpawnPlane(renderer, Vector3(0, 1, 0), "ground");
 
 	// wall
 	if (0)
@@ -598,6 +598,7 @@ void cPhenoTypeManager::ClearCreature()
 		delete p;
 	m_creatures.clear();
 	m_creatureMap.clear();
+	m_physSync->ClearSyncInfo(false);
 }
 
 
