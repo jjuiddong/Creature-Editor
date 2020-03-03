@@ -19,6 +19,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_generationCnt(1)
 	, m_nnLayerCnt(3)
 	, m_orbitId(-1)
+	, m_saveFileName("filename.pnt")
 {
 }
 

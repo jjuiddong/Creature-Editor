@@ -2,6 +2,7 @@
 // 2020-03-01, jjuiddong
 // genome management class
 //		- multiple genome management
+//		- *.gen
 //
 // Data Hierarchy
 //	- Genome
@@ -10,6 +11,7 @@
 //
 // format (binary)
 //  - field name (byte size)
+//		- "GEN" file format (3)
 //		- name (64)
 //		- genome count (4)
 //		- genome 1 chromo count (4)
@@ -21,23 +23,31 @@
 #pragma once
 
 
-class cGenome
+namespace evc
 {
-public:
-	cGenome();
-	virtual ~cGenome();
 
-	bool Read(const StrPath &fileName);
-	bool Write(const StrPath &fileName);
-	void Clear();
-
-
-public:
-	struct sGenome
+	class cGenome
 	{
-		vector<double> chromo;
+	public:
+		cGenome();
+		virtual ~cGenome();
+
+		bool Read(const StrPath &fileName);
+		bool Write(const StrPath &fileName);
+		void Clear();
+
+
+	public:
+		struct sGenome
+		{
+			uint layerCnt;
+			uint inputCnt;
+			uint outputCnt;
+			vector<double> chromo;
+		};
+		StrPath m_fileName;
+		StrId m_name;
+		vector<sGenome> m_genomes;
 	};
-	StrPath m_fileName;
-	StrId m_name;
-	vector<sGenome> m_genomes;
-};
+
+}

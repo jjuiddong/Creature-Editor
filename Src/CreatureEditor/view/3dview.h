@@ -66,6 +66,7 @@ public:
 	bool m_showJoint;
 	bool m_showSaveDialog;
 	bool m_isSaveOnlySelectionActor;
+	bool m_isSaveGenome;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
 	int m_popupMenuType; // 0:actor menu, 1:spawn selection menu
 	int m_saveFileSyncId; // save file id

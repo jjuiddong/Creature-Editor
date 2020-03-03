@@ -421,7 +421,7 @@ void cGenoView::RenderSaveDialog()
 		const bool isSaveBtnClick = ImGui::Button("Save");
 		if (isSaveBtnClick || isSave)
 		{
-			const StrPath filePath = StrPath("./media/creature/") + fileName;
+			const StrPath filePath = g_creatureResourcePath + fileName;
 			if (!g_geno->m_selects.empty())
 			{
 				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());

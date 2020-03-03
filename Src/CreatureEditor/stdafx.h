@@ -22,6 +22,7 @@ using namespace common;
 #include "creature/pnode.h"
 #include "creature/glink.h"
 #include "creature/creature.h"
+#include "creature/genome.h"
 #include "lib/jointrenderer.h"
 #include "lib/phenotypemanager.h"
 #include "lib/genotypemanager.h"
@@ -36,3 +37,6 @@ extern cGenoTypeManager *g_geno;
 extern cNNManager *g_nn;
 extern cEvolutionManager *g_evo;
 extern framework::cGameMain2 *g_application;
+
+const common::StrPath g_creatureResourcePath("./media/creature/");
+

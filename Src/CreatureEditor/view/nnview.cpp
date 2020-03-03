@@ -456,39 +456,9 @@ void cNNView::OnRender(const float deltaSeconds)
 	// Render Information
 	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y));
 	ImGui::SetNextWindowBgAlpha(0.f);
-	ImGui::SetNextWindowSize(ImVec2(min(m_viewRect.Width(), 350.f), m_viewRect.Height()));
+	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), m_viewRect.Height()));
 	if (ImGui::Begin("Neural Network Information", &isOpen, flags))
 	{
-		// genotype node change visible name
-		auto ChangeName = [&] {
-			for (auto &gnode : g_geno->m_gnodes)
-			{
-				if (m_showName)
-					gnode->m_wname = gnode->m_name.wstr();
-				if (m_showId)
-					gnode->m_wname.Format(L"%d", gnode->m_id);
-			}
-		};
-
-		//if (ImGui::Checkbox("id", &m_showId))
-		//{
-		//	if (m_showId)
-		//		m_showName = !m_showId;
-		//	ChangeName();
-		//}
-
-		//ImGui::SameLine();
-		//if (ImGui::Checkbox("name", &m_showName))
-		//{
-		//	if (m_showName)
-		//		m_showId = !m_showName;
-		//	ChangeName();
-		//}
-
-		//ImGui::SameLine();
-		//ImGui::Checkbox("joint", &m_showJoint);
-
-		//ImGui::SameLine();
 		ImGui::Checkbox("phenotype", &m_showPhenotype);
 		ImGui::SameLine();
 		ImGui::Checkbox("sensor", &m_showSensor);
@@ -503,6 +473,13 @@ void cNNView::OnRender(const float deltaSeconds)
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
 			ImGui::TextUnformatted("Orbit");
 			ImGui::PopStyleColor();
+		}
+
+		ImGui::SetCursorPos(ImVec2(m_viewRect.Width() - 90.f
+			, m_viewRect.Height()-30.f));
+		if (ImGui::Button("Genome List"))
+		{
+
 		}
 
 		ImGui::End();
@@ -644,7 +621,7 @@ void cNNView::OnRender(const float deltaSeconds)
 //		const bool isSaveBtnClick = ImGui::Button("Save");
 //		if (isSaveBtnClick || isSave)
 //		{
-//			const StrPath filePath = StrPath("./media/creature/") + fileName;
+//			const StrPath filePath = g_creatureResourcePath + fileName;
 //			if (!g_geno->m_selects.empty())
 //			{
 //				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());

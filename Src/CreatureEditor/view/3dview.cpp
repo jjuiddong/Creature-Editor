@@ -604,6 +604,7 @@ void c3DView::RenderPopupMenu()
 		{
 			m_showSaveDialog = true;
 			m_isSaveOnlySelectionActor = false;
+			m_isSaveGenome = true;
 			m_popupMenuState = 0;
 		}
 		if (ImGui::MenuItem("Select All", "A"))
@@ -731,7 +732,7 @@ void c3DView::RenderSaveDialog()
 
 	bool isOpen = true;
 	const sf::Vector2u psize((uint)m_rect.Width(), (uint)m_rect.Height());
-	const ImVec2 size(300, 135);
+	const ImVec2 size(300, 160);
 	const ImVec2 pos(psize.x / 2.f - size.x / 2.f
 		, psize.y / 2.f - size.y / 2.f);
 	ImGui::SetNextWindowPos(pos);
@@ -744,7 +745,7 @@ void c3DView::RenderSaveDialog()
 		ImGui::Text("FileName : ");
 		ImGui::SameLine();
 
-		static StrPath fileName("filename.pnt");
+		StrPath &fileName = g_pheno->m_saveFileName;
 
 		bool isSave = false;
 		const int flags = ImGuiInputTextFlags_AutoSelectAll 
@@ -756,6 +757,8 @@ void c3DView::RenderSaveDialog()
 
 		ImGui::SetCursorPosX(100);
 		ImGui::Checkbox("Save Only Selection Actor", &m_isSaveOnlySelectionActor);
+		ImGui::SetCursorPosX(100);
+		ImGui::Checkbox("Save Genome", &m_isSaveGenome);
 
 		ImGui::Spacing();
 		ImGui::Spacing();
@@ -765,8 +768,8 @@ void c3DView::RenderSaveDialog()
 		const bool isSaveBtnClick = ImGui::Button("Save");
 		if (isSaveBtnClick || isSave)
 		{
-			const StrPath filePath = StrPath("./media/creature/") + fileName;
-			if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(m_saveFileSyncId))				
+			const StrPath filePath = g_creatureResourcePath + fileName;
+			if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(m_saveFileSyncId))
 			{
 				bool isSave = true;
 				if (filePath.IsFileExist()) // file already exist?
@@ -802,8 +805,30 @@ void c3DView::RenderSaveDialog()
 					{
 						evc::WritePhenoTypeFileFrom_RigidActor(filePath, sync->actor);
 					}
-				}
-			}
+
+					if (m_isSaveGenome)
+					{
+						evc::cCreature *creature 
+							= g_pheno->FindCreatureContainNode(m_saveFileSyncId);
+
+						if (creature && !creature->m_nodes.empty())
+						{
+							ai::cNeuralNet *nn = creature->m_nodes[0]->m_nn;
+
+							evc::cGenome genome;
+							genome.m_name = fileName.GetFileNameExceptExt().c_str();
+							genome.m_genomes.resize(1);
+							genome.m_genomes[0].chromo = nn->GetWeights();
+
+							const StrPath genomeFileName = 
+								g_creatureResourcePath
+								+ fileName.GetFileNameExceptExt()
+								+ ".gen";
+							genome.Write(genomeFileName);
+						}
+					}
+				}//~isSave
+			}//~availible syncid
 			m_showSaveDialog = false;
 		} //~save operation
 

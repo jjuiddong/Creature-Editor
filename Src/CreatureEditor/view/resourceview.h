@@ -26,6 +26,7 @@ protected:
 
 public:
 	StrPath m_dirPath; // ./media/creatures/
-	vector<string> m_fileList;
+	vector<string> m_creatureFileList;
+	vector<string> m_genomeFileList;
 	int m_selectFileIdx;
 };

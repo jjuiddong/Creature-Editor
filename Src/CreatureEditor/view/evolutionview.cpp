@@ -103,10 +103,10 @@ void cEvolutionView::OnRender(const float deltaSeconds)
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0, 1));
 		if (resView->m_selectFileIdx >= 0)
 		{
-			if (resView->m_selectFileIdx < (int)resView->m_fileList.size())
+			if (resView->m_selectFileIdx < (int)resView->m_creatureFileList.size())
 			{
 				ImGui::SameLine();
-				ImGui::Text(resView->m_fileList[resView->m_selectFileIdx].c_str());
+				ImGui::Text(resView->m_creatureFileList[resView->m_selectFileIdx].c_str());
 			}
 		}
 		ImGui::PopStyleColor();

@@ -92,6 +92,9 @@ public:
 	graphic::cGizmo m_gizmo;
 	map<int, Vector3> m_chDimensions; // key:actorid, value:dimension
 
+	// save filename
+	StrPath m_saveFileName;
+
 	// joint
 	phys::cJoint *m_selJoint; // reference
 	bool m_showUIJoint;

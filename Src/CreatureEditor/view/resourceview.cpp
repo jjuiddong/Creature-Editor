@@ -10,7 +10,7 @@ using namespace graphic;
 cResourceView::cResourceView(const StrId &name)
 	: framework::cDockWindow(name)
 	, m_selectFileIdx(-1)
-	, m_dirPath("./media/creature/")
+	, m_dirPath(g_creatureResourcePath)
 {
 	//UpdateResourceFiles();
 }
@@ -56,12 +56,12 @@ bool cResourceView::RenderFileList(ImGuiTextFilter &filter)
 
 	if (ImGui::BeginChild("Resource FileList", ImVec2(0,0), true))
 	{
-		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
-		if (ImGui::TreeNode((void*)0, "Creature Files"))
+		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+		if (ImGui::TreeNode((void*)0, "Creature File List"))
 		{
-			ImGui::Columns(4, "texturecolumns5", false);
+			ImGui::Columns(4, "creaturecolumns4", false);
 			int i = 0;
-			for (auto &str : m_fileList)
+			for (auto &str : m_creatureFileList)
 			{
 				const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
 					| ImGuiTreeNodeFlags_OpenOnDoubleClick
@@ -97,6 +97,48 @@ bool cResourceView::RenderFileList(ImGuiTextFilter &filter)
 			}
 			ImGui::TreePop();
 		}
+
+		ImGui::Columns(1, "genomecolumns1", false);
+		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+		if (ImGui::TreeNode((void*)1, "Genome File List"))
+		{
+			ImGui::Columns(4, "genomecolumns4", false);
+			int i = 0;
+			for (auto &str : m_genomeFileList)
+			{
+				const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
+					| ImGuiTreeNodeFlags_OpenOnDoubleClick
+					| ImGuiTreeNodeFlags_Leaf
+					| ImGuiTreeNodeFlags_NoTreePushOnOpen
+					| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
+
+				if (filter.PassFilter(str.c_str()))
+				{
+					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
+
+					if (ImGui::IsItemClicked(1))
+					{
+						m_selectFileIdx = i;
+						isOpenPopup = true;
+					}
+
+					if (ImGui::IsItemClicked())
+					{
+						m_selectFileIdx = i;
+						if (ImGui::IsMouseDoubleClicked(0))
+						{
+							// create creature
+							const StrPath fileName = m_dirPath + str;
+							//LoadPhenotypeView(fileName);
+
+						}//~IsDoubleClicked
+					}//~IsItemClicked
+					ImGui::NextColumn();
+				}//~PassFilter
+				++i;
+			}
+			ImGui::TreePop();
+		}
 	}
 	ImGui::EndChild();
 
@@ -113,17 +155,17 @@ void cResourceView::RenderPopupMenu()
 	{
 		if (ImGui::MenuItem("Spawn PhenoType View"))
 		{
-			if (m_fileList.size() > (uint)m_selectFileIdx)
+			if (m_creatureFileList.size() > (uint)m_selectFileIdx)
 			{
-				const StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
+				const StrPath fileName = m_dirPath + m_creatureFileList[m_selectFileIdx];
 				LoadPhenotypeView(fileName);
 			}
 		}
 		if (ImGui::MenuItem("Spawn GenoType View"))
 		{
-			if (m_fileList.size() > (uint)m_selectFileIdx)
+			if (m_creatureFileList.size() > (uint)m_selectFileIdx)
 			{
-				const StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
+				const StrPath fileName = m_dirPath + m_creatureFileList[m_selectFileIdx];
 				LoadGenotypeView(fileName);
 			}
 		}
@@ -142,6 +184,7 @@ void cResourceView::LoadPhenotypeView(const StrPath &fileName)
 	const Plane ground(Vector3(0, 1, 0), 0);
 	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 	g_pheno->ReadCreatureFile(fileName, targetPos);
+	g_pheno->m_saveFileName = fileName.GetFileName(); // update save file dialog filename
 }
 
 
@@ -160,17 +203,33 @@ void cResourceView::LoadGenotypeView(const StrPath &fileName)
 
 void cResourceView::UpdateResourceFiles()
 {
-	m_fileList.clear();
+	m_creatureFileList.clear();
+	m_genomeFileList.clear();
 
-	list<string> fileList;
-	list<string> exts;
-	exts.push_back(".pnt");
-	exts.push_back(".gnt");
-	const StrPath dir = m_dirPath.GetFullFileName();
-	common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
+	// load creature file list
+	{
+		list<string> fileList;
+		list<string> exts;
+		exts.push_back(".pnt");
+		exts.push_back(".gnt");
+		const StrPath dir = m_dirPath.GetFullFileName();
+		common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
 
-	m_fileList.reserve(fileList.size());
-	std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_fileList));
+		m_creatureFileList.reserve(fileList.size());
+		std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_creatureFileList));
+	}
+
+	// load genome file list
+	{
+		list<string> fileList;
+		list<string> exts;
+		exts.push_back(".gen");
+		const StrPath dir = m_dirPath.GetFullFileName();
+		common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
+
+		m_genomeFileList.reserve(fileList.size());
+		std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_genomeFileList));
+	}
 }
 
 
@@ -179,9 +238,9 @@ StrPath cResourceView::GetSelectFileName()
 {
 	if (m_selectFileIdx < 0)
 		return "";
-	if (m_selectFileIdx >= (int)m_fileList.size())
+	if (m_selectFileIdx >= (int)m_creatureFileList.size())
 		return "";
 
-	StrPath fileName = m_dirPath + m_fileList[m_selectFileIdx];
+	StrPath fileName = m_dirPath + m_creatureFileList[m_selectFileIdx];
 	return fileName;
 }
