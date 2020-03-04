@@ -94,6 +94,7 @@ public:
 
 	// save filename
 	StrPath m_saveFileName;
+	StrPath m_saveGenomeFileName;
 
 	// joint
 	phys::cJoint *m_selJoint; // reference

@@ -22,6 +22,7 @@ protected:
 	void RenderPopupMenu();
 	void LoadPhenotypeView(const StrPath &fileName);
 	void LoadGenotypeView(const StrPath &fileName);
+	void LoadGenomeFile(const StrPath &fileName);
 
 
 public:

@@ -5,6 +5,7 @@
 #include "../creature/gnode.h"
 #include "genoeditorview.h"
 #include "phenoeditorview.h"
+#include "resourceview.h"
 
 using namespace graphic;
 using namespace framework;
@@ -25,6 +26,8 @@ cNNView::cNNView(const string &name)
 	, m_showNN(true)
 	, m_showPhenotype(true)
 	, m_line2DList(1024)
+	, m_showGenomeFileList(false)
+	, m_selectFileIdx(-1)
 {
 }
 
@@ -438,6 +441,89 @@ void cNNView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 }
 
 
+void cNNView::RenderGenomeFileList()
+{
+	ImVec2 pos = ImGui::GetCursorScreenPos();
+	//m_viewPos = { (int)(pos.x), (int)(pos.y) };
+	//m_viewRect = { pos.x + 5, pos.y, pos.x + m_rect.Width() - 30, pos.y + m_rect.Height() - 42 };
+
+	// HUD
+	bool isOpen = true;
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
+		//| ImGuiWindowFlags_NoBackground
+		;
+
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+	//ImGui::Image(m_renderTarget.m_resolvedSRV, ImVec2(m_rect.Width() - 15, m_rect.Height() - 42));
+
+	ImGui::SetNextWindowPos(ImVec2(pos.x, 100.f));
+	ImGui::SetNextWindowBgAlpha(0.f);
+	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), m_viewRect.Height()-200.f));
+	if (ImGui::Begin("NNView GenomeFileList", &isOpen, flags))
+	{
+		static ImGuiTextFilter filter;
+		ImGui::Text("Search");
+		ImGui::SameLine();
+		filter.Draw("##Search", 200);
+
+		ImGui::SameLine();
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
+		if (ImGui::Button("Refresh (F5)"))
+		{
+			//UpdateResourceFiles();
+		}
+		ImGui::PopStyleColor(3);
+
+		ImGui::Columns(1, "genomecolumns1", false);
+		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+		if (ImGui::TreeNode((void*)1, "Genome File List"))
+		{
+			ImGui::Columns(4, "genomecolumns4", false);
+			int i = 0;
+			for (auto &str : g_global->m_resView->m_genomeFileList)
+			{
+				const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
+					| ImGuiTreeNodeFlags_OpenOnDoubleClick
+					| ImGuiTreeNodeFlags_Leaf
+					| ImGuiTreeNodeFlags_NoTreePushOnOpen
+					| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
+
+				if (filter.PassFilter(str.c_str()))
+				{
+					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
+
+					if (ImGui::IsItemClicked())
+					{
+						if (m_selectFileIdx != i)
+						{
+							const StrPath fileName = g_creatureResourcePath + str;
+							m_genome.Read(fileName);
+						}
+
+						m_selectFileIdx = i;
+						if (ImGui::IsMouseDoubleClicked(0))
+						{
+							// create creature
+							//const StrPath fileName = m_dirPath + str;
+							//LoadGenomeFile(fileName);
+						}//~IsDoubleClicked
+					}//~IsItemClicked
+					ImGui::NextColumn();
+				}//~PassFilter
+				++i;
+			}
+			ImGui::TreePop();
+		}
+
+	}
+	ImGui::End();
+	ImGui::PopStyleColor();
+}
+
+
 void cNNView::OnRender(const float deltaSeconds)
 {
 	ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -447,7 +533,7 @@ void cNNView::OnRender(const float deltaSeconds)
 	// HUD
 	bool isOpen = true;
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
-		| ImGuiWindowFlags_NoBackground
+		//| ImGuiWindowFlags_NoBackground
 		;
 
 	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
@@ -456,7 +542,7 @@ void cNNView::OnRender(const float deltaSeconds)
 	// Render Information
 	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y));
 	ImGui::SetNextWindowBgAlpha(0.f);
-	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), m_viewRect.Height()));
+	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), 100.f));// m_viewRect.Height()));
 	if (ImGui::Begin("Neural Network Information", &isOpen, flags))
 	{
 		ImGui::Checkbox("phenotype", &m_showPhenotype);
@@ -474,17 +560,24 @@ void cNNView::OnRender(const float deltaSeconds)
 			ImGui::TextUnformatted("Orbit");
 			ImGui::PopStyleColor();
 		}
+	}
+	ImGui::End();
 
-		ImGui::SetCursorPos(ImVec2(m_viewRect.Width() - 90.f
-			, m_viewRect.Height()-30.f));
+	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y + m_viewRect.Height() - 30.f));
+	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), 30.f));
+	if (ImGui::Begin("Genome List Btn", &isOpen, flags))
+	{
+		ImGui::SetCursorPos(ImVec2(m_viewRect.Width() - 90.f, 0));
 		if (ImGui::Button("Genome List"))
 		{
-
+			m_showGenomeFileList = !m_showGenomeFileList;
 		}
-
-		ImGui::End();
 	}
+	ImGui::End();
 	ImGui::PopStyleColor();
+
+	if (m_showGenomeFileList)
+		RenderGenomeFileList();
 
 	//RenderPopupMenu();
 	//RenderSaveDialog();

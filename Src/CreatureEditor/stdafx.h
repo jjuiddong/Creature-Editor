@@ -28,6 +28,7 @@ using namespace common;
 #include "lib/genotypemanager.h"
 #include "lib/nnmanager.h"
 #include "lib/evolutionmanager.h"
+#include "lib/genomemanager.h"
 #include "global.h"
 
 
@@ -36,6 +37,7 @@ extern cPhenoTypeManager *g_pheno;
 extern cGenoTypeManager *g_geno;
 extern cNNManager *g_nn;
 extern cEvolutionManager *g_evo;
+extern cGenomeManager *g_genome;
 extern framework::cGameMain2 *g_application;
 
 const common::StrPath g_creatureResourcePath("./media/creature/");

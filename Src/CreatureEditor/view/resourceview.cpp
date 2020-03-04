@@ -129,7 +129,7 @@ bool cResourceView::RenderFileList(ImGuiTextFilter &filter)
 						{
 							// create creature
 							const StrPath fileName = m_dirPath + str;
-							//LoadPhenotypeView(fileName);
+							LoadGenomeFile(fileName);
 
 						}//~IsDoubleClicked
 					}//~IsItemClicked
@@ -184,7 +184,8 @@ void cResourceView::LoadPhenotypeView(const StrPath &fileName)
 	const Plane ground(Vector3(0, 1, 0), 0);
 	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 	g_pheno->ReadCreatureFile(fileName, targetPos);
-	g_pheno->m_saveFileName = fileName.GetFileName(); // update save file dialog filename
+	g_pheno->m_saveFileName = fileName.GetFileNameExceptExt() + ".pnt"; // update save file dialog filename
+	g_pheno->m_saveGenomeFileName = fileName.GetFileNameExceptExt() + ".gen"; // update save file dialog filename
 }
 
 
@@ -198,6 +199,18 @@ void cResourceView::LoadGenotypeView(const StrPath &fileName)
 	const Vector3 targetPos = ground.Pick(ray.orig, ray.dir);
 	g_geno->ReadCreatureFile(fileName, targetPos);
 	g_geno->m_saveFileName = fileName.GetFileName(); // update save file dialog filename
+}
+
+
+// load genome file and put selection creature
+void cResourceView::LoadGenomeFile(const StrPath &fileName)
+{
+	const uint cnt = g_genome->SetGenomeSelectCreature(fileName);
+
+	Str128 text;
+	text.Format("Update Creature Genome [ %d ]", cnt);
+	::MessageBoxA(m_owner->getSystemHandle()
+		, text.c_str(), "Confirm", MB_OK | MB_ICONINFORMATION);
 }
 
 

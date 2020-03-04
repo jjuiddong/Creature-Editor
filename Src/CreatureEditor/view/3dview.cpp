@@ -603,8 +603,9 @@ void c3DView::RenderPopupMenu()
 		if (ImGui::MenuItem("Save Creature"))
 		{
 			m_showSaveDialog = true;
-			m_isSaveOnlySelectionActor = false;
+			m_isSavePhenoType = true;
 			m_isSaveGenome = true;
+			m_isSaveOnlySelectionActor = false;
 			m_popupMenuState = 0;
 		}
 		if (ImGui::MenuItem("Select All", "A"))
@@ -732,7 +733,7 @@ void c3DView::RenderSaveDialog()
 
 	bool isOpen = true;
 	const sf::Vector2u psize((uint)m_rect.Width(), (uint)m_rect.Height());
-	const ImVec2 size(300, 160);
+	const ImVec2 size(400, 235);
 	const ImVec2 pos(psize.x / 2.f - size.x / 2.f
 		, psize.y / 2.f - size.y / 2.f);
 	ImGui::SetNextWindowPos(pos);
@@ -742,23 +743,52 @@ void c3DView::RenderSaveDialog()
 	if (ImGui::Begin("Save Creature", &isOpen, 0))
 	{
 		ImGui::Spacing();
-		ImGui::Text("FileName : ");
-		ImGui::SameLine();
 
-		StrPath &fileName = g_pheno->m_saveFileName;
+		StrPath &phenoFileName = g_pheno->m_saveFileName;
+		StrPath &genomeFileName = g_pheno->m_saveGenomeFileName;
 
 		bool isSave = false;
-		const int flags = ImGuiInputTextFlags_AutoSelectAll 
-			| ImGuiInputTextFlags_EnterReturnsTrue;
-		if (ImGui::InputText("##fileName", fileName.m_str, fileName.SIZE, flags))
+		// phenotype
 		{
-			isSave = true;
+			ImGui::Checkbox("PhenoType", &m_isSavePhenoType);
+			ImGui::Indent(30);
+			ImGui::TextUnformatted("FileName : ");
+			ImGui::SameLine();
+			const int flags = ImGuiInputTextFlags_AutoSelectAll 
+				| ImGuiInputTextFlags_EnterReturnsTrue;
+			if (ImGui::InputText("##phenotype fileName", phenoFileName.m_str
+				, phenoFileName.SIZE, flags))
+			{
+				isSave = true;
+			}
+			ImGui::SetCursorPosX(110);
+			ImGui::Checkbox("Save Only Selection Actor", &m_isSaveOnlySelectionActor);
+			ImGui::Unindent(30);
 		}
 
-		ImGui::SetCursorPosX(100);
-		ImGui::Checkbox("Save Only Selection Actor", &m_isSaveOnlySelectionActor);
-		ImGui::SetCursorPosX(100);
-		ImGui::Checkbox("Save Genome", &m_isSaveGenome);
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		// genome
+		{
+			ImGui::Checkbox("Genome", &m_isSaveGenome);
+			ImGui::Indent(30);
+			ImGui::TextUnformatted("FileName : ");
+			ImGui::SameLine();
+			const int flags = ImGuiInputTextFlags_AutoSelectAll
+				| ImGuiInputTextFlags_EnterReturnsTrue;
+			if (ImGui::InputText("##genome fileName", genomeFileName.m_str
+				, genomeFileName.SIZE, flags))
+			{
+				isSave = true;
+			}
+			ImGui::Unindent(30);
+		}
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
 
 		ImGui::Spacing();
 		ImGui::Spacing();
@@ -768,25 +798,28 @@ void c3DView::RenderSaveDialog()
 		const bool isSaveBtnClick = ImGui::Button("Save");
 		if (isSaveBtnClick || isSave)
 		{
-			const StrPath filePath = g_creatureResourcePath + fileName;
+			const StrPath phenoFilePath = g_creatureResourcePath + phenoFileName;
+			const StrPath genomeFilePath = g_creatureResourcePath + genomeFileName;
 			if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(m_saveFileSyncId))
 			{
-				bool isSave = true;
-				if (filePath.IsFileExist()) // file already exist?
+				bool isSaveConfirm = true;
+
+				// phenotype file already exist?
+				if (m_isSavePhenoType && phenoFilePath.IsFileExist())
 				{
-					isSave = false;
+					isSaveConfirm = false;
 
 					Str128 text;
 					text.Format("[ %s ] File Already Exist\nOverWrite?"
-						, filePath.c_str());
+						, phenoFilePath.c_str());
 					if (IDYES == ::MessageBoxA(m_owner->getSystemHandle(), text.c_str()
 						, "Confirm", MB_YESNO | MB_ICONWARNING))
 					{
-						isSave = true;
+						isSaveConfirm = true;
 					}
 				}
 
-				if (isSave)
+				if (isSaveConfirm && m_isSavePhenoType)
 				{
 					g_pheno->UpdateAllConnectionActorDimension(sync->actor, true);
 
@@ -799,35 +832,51 @@ void c3DView::RenderSaveDialog()
 						for (auto *a : actors)
 							g_pheno->UpdateActorDimension(a, true);
 
-						evc::WritePhenoTypeFileFrom_RigidActor(filePath, actors);
+						evc::WritePhenoTypeFileFrom_RigidActor(phenoFilePath, actors);
 					}
 					else
 					{
-						evc::WritePhenoTypeFileFrom_RigidActor(filePath, sync->actor);
+						evc::WritePhenoTypeFileFrom_RigidActor(phenoFilePath, sync->actor);
 					}
+				}
 
-					if (m_isSaveGenome)
+				// genome file already exist?
+				isSaveConfirm = true;
+				if (m_isSaveGenome && genomeFilePath.IsFileExist())
+				{
+					isSaveConfirm = false;
+
+					Str128 text;
+					text.Format("[ %s ] File Already Exist\nOverWrite?"
+						, genomeFilePath.c_str());
+					if (IDYES == ::MessageBoxA(m_owner->getSystemHandle(), text.c_str()
+						, "Confirm", MB_YESNO | MB_ICONWARNING))
 					{
-						evc::cCreature *creature 
-							= g_pheno->FindCreatureContainNode(m_saveFileSyncId);
-
-						if (creature && !creature->m_nodes.empty())
-						{
-							ai::cNeuralNet *nn = creature->m_nodes[0]->m_nn;
-
-							evc::cGenome genome;
-							genome.m_name = fileName.GetFileNameExceptExt().c_str();
-							genome.m_genomes.resize(1);
-							genome.m_genomes[0].chromo = nn->GetWeights();
-
-							const StrPath genomeFileName = 
-								g_creatureResourcePath
-								+ fileName.GetFileNameExceptExt()
-								+ ".gen";
-							genome.Write(genomeFileName);
-						}
+						isSaveConfirm = true;
 					}
-				}//~isSave
+				}
+
+				if (isSaveConfirm && m_isSaveGenome)
+				{
+					evc::cCreature *creature 
+						= g_pheno->FindCreatureContainNode(m_saveFileSyncId);
+
+					if (creature && !creature->m_nodes.empty())
+					{
+						ai::cNeuralNet *nn = creature->m_nodes[0]->m_nn;
+
+						evc::cGenome genome;
+						genome.m_name = genomeFileName.GetFileNameExceptExt().c_str();
+						genome.m_genomes.resize(1);
+						genome.m_genomes[0].layerCnt = nn->m_layers.size();
+						genome.m_genomes[0].inputCnt = nn->m_numInputs;
+						genome.m_genomes[0].outputCnt = nn->m_numOutputs;
+						genome.m_genomes[0].chromo = nn->GetWeights();
+
+						genome.Write(genomeFilePath);
+					}
+				}
+
 			}//~availible syncid
 			m_showSaveDialog = false;
 		} //~save operation

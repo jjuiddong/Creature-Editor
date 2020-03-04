@@ -167,6 +167,7 @@
     <ClCompile Include="creature\pnode.cpp" />
     <ClCompile Include="global.cpp" />
     <ClCompile Include="lib\evolutionmanager.cpp" />
+    <ClCompile Include="lib\genomemanager.cpp" />
     <ClCompile Include="lib\genotypemanager.cpp" />
     <ClCompile Include="lib\jointrenderer.cpp" />
     <ClCompile Include="lib\nnmanager.cpp" />
@@ -204,6 +205,7 @@
     <ClInclude Include="creature\velocitysensor.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="lib\evolutionmanager.h" />
+    <ClInclude Include="lib\genomemanager.h" />
     <ClInclude Include="lib\genotypemanager.h" />
     <ClInclude Include="lib\jointrenderer.h" />
     <ClInclude Include="lib\nnmanager.h" />

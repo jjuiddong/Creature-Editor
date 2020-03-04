@@ -65,6 +65,7 @@ public:
 	bool m_showShadow;
 	bool m_showJoint;
 	bool m_showSaveDialog;
+	bool m_isSavePhenoType;
 	bool m_isSaveOnlySelectionActor;
 	bool m_isSaveGenome;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close

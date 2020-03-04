@@ -44,6 +44,7 @@ public:
 	phys::cPhysicsSync *m_physSync;
 	cPhenoTypeManager *m_pheno; // reference
 	cGenoTypeManager *m_geno; // reference
+	cGenomeManager *m_genome; // reference
 	cNNManager *m_nn; // reference
 	cEvolutionManager *m_evo; // reference
 };

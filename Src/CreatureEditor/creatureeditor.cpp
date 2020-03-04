@@ -17,6 +17,7 @@ cPhenoTypeManager *g_pheno = nullptr;
 cGenoTypeManager *g_geno = nullptr;
 cNNManager *g_nn = nullptr;
 cEvolutionManager *g_evo = nullptr;
+cGenomeManager *g_genome = nullptr;
 
 using namespace graphic;
 using namespace framework;
@@ -51,6 +52,7 @@ cViewer::~cViewer()
 	SAFE_DELETE(g_pheno);
 	SAFE_DELETE(g_nn);
 	SAFE_DELETE(g_evo);
+	SAFE_DELETE(g_genome);
 	SAFE_DELETE(g_global);
 }
 
@@ -92,6 +94,10 @@ bool cViewer::OnInit()
 
 	g_evo = new cEvolutionManager();
 	if (!g_evo->Init())
+		return false;
+
+	g_genome = new cGenomeManager();
+	if (!g_genome->Init())
 		return false;
 
 	c3DView *p3dView = new c3DView("3D View");
@@ -137,6 +143,7 @@ bool cViewer::OnInit()
 	g_global->m_geno = g_geno;
 	g_global->m_nn = g_nn;
 	g_global->m_evo = g_evo;
+	g_global->m_genome = g_genome;
 
 	m_gui.SetContext();
 	m_gui.SetStyleColorsDark();

@@ -31,6 +31,7 @@ protected:
 	void RenderNeuralNetwork();
 	void RenderSelectModel(graphic::cRenderer &renderer, const bool buildOutline
 		, const XMMATRIX &tm);
+	void RenderGenomeFileList();
 	//void RenderPopupMenu();
 	//void RenderSaveDialog();
 
@@ -68,6 +69,7 @@ public:
 
 	evc::cCreature *m_curCreature;
 	Vector3 m_creatureOffsetPos;
+	evc::cGenome m_genome;
 
 	bool m_showGrid;
 	bool m_showName;
@@ -77,6 +79,7 @@ public:
 	bool m_showEffector;
 	bool m_showNN;
 	bool m_showPhenotype;
+	bool m_showGenomeFileList;
 
 	bool m_showSaveDialog;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
@@ -85,6 +88,7 @@ public:
 	Vector3 m_tempSpawnPos;
 	Vector3 m_pivotPos;
 	int m_clickedId;
+	int m_selectFileIdx; // genome file select index
 
 	// MouseMove Variable
 	POINT m_viewPos;

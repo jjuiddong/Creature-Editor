@@ -20,6 +20,7 @@ cPhenoTypeManager::cPhenoTypeManager()
 	, m_nnLayerCnt(3)
 	, m_orbitId(-1)
 	, m_saveFileName("filename.pnt")
+	, m_saveGenomeFileName("filename.gen")
 {
 }
 

@@ -73,6 +73,9 @@
     <ClCompile Include="creature\genome.cpp">
       <Filter>creature</Filter>
     </ClCompile>
+    <ClCompile Include="lib\genomemanager.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -166,6 +169,9 @@
     </ClInclude>
     <ClInclude Include="creature\genome.h">
       <Filter>creature</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\genomemanager.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
