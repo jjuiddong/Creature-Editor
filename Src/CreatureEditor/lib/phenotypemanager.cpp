@@ -593,6 +593,18 @@ graphic::cRenderer& cPhenoTypeManager::GetRenderer()
 }
 
 
+void cPhenoTypeManager::ClearJointEdit()
+{
+	ChangeEditMode(ePhenoEditMode::Normal);
+	m_showUIJoint = false;
+	m_uiJoint.m_actor0 = nullptr;
+	m_uiJoint.m_actor1 = nullptr;
+	m_uiJointRenderer.m_joint = nullptr;
+	m_uiJointRenderer.m_sync0 = nullptr;
+	m_uiJointRenderer.m_sync1 = nullptr;
+}
+
+
 void cPhenoTypeManager::ClearCreature()
 {
 	m_gizmo.SetControlNode(nullptr);

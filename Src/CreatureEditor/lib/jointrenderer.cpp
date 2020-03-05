@@ -427,9 +427,9 @@ cNode* cJointRenderer::Picking(const Ray &ray, const eNodeType::Enum type
 	, OUT float *dist //= NULL
 )
 {
+	RETV(!m_joint, nullptr);
 	if (phys::eJointType::Revolute != m_joint->m_type)
 		return nullptr;
-	RETV(!m_joint, nullptr);
 
 	Vector3 p0, p1;
 	GetRevoluteAxis(p0, p1);

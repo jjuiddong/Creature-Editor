@@ -1139,14 +1139,24 @@ void c3DView::DeleteConnectJointAll()
 	for (auto *actor : wakeups)
 		if (actor)
 			actor->WakeUp();
+
+	g_pheno->ClearJointEdit();
 }
 
 
 void c3DView::DeleteSelectCreature()
 {
 	for (auto id : g_pheno->m_selects)
+	{
 		if (evc::cCreature *creature = g_pheno->FindCreatureContainNode(id))
+		{
+			if (g_nn->m_creature == creature)
+				g_nn->SetCurrentCreature(nullptr);
 			g_pheno->RemoveCreature(creature);
+		}
+	}
+
+	g_pheno->ClearJointEdit();
 }
 
 

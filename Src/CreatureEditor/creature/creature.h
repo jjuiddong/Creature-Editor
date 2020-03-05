@@ -28,6 +28,7 @@ namespace evc
 		bool SetKinematic(const bool isKinematic);
 		void SetTransform(const Transform &tfm);
 		bool GetSyncIds(OUT vector<int> &out);
+		ai::cNeuralNet* GetNeuralNetwork(const uint idx=0) const;
 		ai::sGenome GetGenome() const;
 		bool SetGenome(const ai::sGenome &genome);
 		void Clear();

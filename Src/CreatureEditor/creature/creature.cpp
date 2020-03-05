@@ -120,18 +120,26 @@ bool cCreature::GetSyncIds(OUT vector<int> &out)
 }
 
 
+// return 
+ai::cNeuralNet* cCreature::GetNeuralNetwork(
+	const uint idx //=0
+) const
+{
+	if (m_nodes.empty())
+		return nullptr;
+	return m_nodes[0]->m_nn;
+}
+
+
 // return consist of neural network weight genome
 ai::sGenome cCreature::GetGenome() const
 {
 	ai::sGenome genome;
-
-	if (m_nodes.empty())
-		return genome;
-	if (!m_nodes[0]->m_nn)
-		return genome;
-
 	genome.fitness = 0.f;
-	genome.chromo = m_nodes[0]->m_nn->GetWeights();
+	if (ai::cNeuralNet *nn = GetNeuralNetwork())
+	{
+		genome.chromo = nn->GetWeights();
+	}
 	return genome;
 }
 

@@ -41,4 +41,5 @@ extern cGenomeManager *g_genome;
 extern framework::cGameMain2 *g_application;
 
 const common::StrPath g_creatureResourcePath("./media/creature/");
+const common::StrPath g_evolutionResourcePath("./media/evolution/");
 

@@ -218,6 +218,7 @@ void cResourceView::UpdateResourceFiles()
 {
 	m_creatureFileList.clear();
 	m_genomeFileList.clear();
+	m_evolutionFileList.clear();
 
 	// load creature file list
 	{
@@ -242,6 +243,18 @@ void cResourceView::UpdateResourceFiles()
 
 		m_genomeFileList.reserve(fileList.size());
 		std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_genomeFileList));
+	}
+
+	// load evolution genome file list
+	{
+		list<string> fileList;
+		list<string> exts;
+		exts.push_back(".gen");
+		const StrPath dir = g_evolutionResourcePath.GetFullFileName();
+		common::CollectFiles2(exts, dir.c_str(), dir.c_str(), fileList);
+
+		m_evolutionFileList.reserve(fileList.size());
+		std::copy(fileList.begin(), fileList.end(), std::back_inserter(m_evolutionFileList));
 	}
 }
 

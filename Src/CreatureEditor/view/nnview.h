@@ -88,6 +88,7 @@ public:
 	Vector3 m_tempSpawnPos;
 	Vector3 m_pivotPos;
 	int m_clickedId;
+	int m_selectFileType; // 0:creature, 1:evolution
 	int m_selectFileIdx; // genome file select index
 
 	// MouseMove Variable

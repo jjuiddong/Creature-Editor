@@ -62,6 +62,7 @@ public:
 	bool RefreshResourceView();
 
 	graphic::cRenderer& GetRenderer();
+	void ClearJointEdit();
 	void ClearCreature();
 	void Clear();
 

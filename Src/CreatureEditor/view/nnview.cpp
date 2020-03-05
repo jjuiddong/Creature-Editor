@@ -27,6 +27,7 @@ cNNView::cNNView(const string &name)
 	, m_showPhenotype(true)
 	, m_line2DList(1024)
 	, m_showGenomeFileList(false)
+	, m_selectFileType(0)
 	, m_selectFileIdx(-1)
 {
 }
@@ -451,7 +452,7 @@ void cNNView::RenderGenomeFileList()
 	const float width = m_viewRect.Width() + 15.f;
 	const float height = m_viewRect.Height() - 70.f;
 
-	ImGui::SetNextWindowPos(ImVec2((float)m_viewPos.x, (float)m_viewPos.y + 40.f));
+	ImGui::SetNextWindowPos(ImVec2((float)m_viewPos.x, (float)m_viewPos.y + 50.f));
 	ImGui::SetNextWindowSize(ImVec2(width, height));
 	if (ImGui::Begin("NNView GenomeFileList", &isOpen, flags))
 	{
@@ -475,10 +476,10 @@ void cNNView::RenderGenomeFileList()
 		ImGui::SetNextWindowBgAlpha(0.95f);
 		if (ImGui::BeginChild("NN GenomeFileList", ImVec2(0, height/2.f - 25.f), true))
 		{
-			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
-			if (ImGui::TreeNode((void*)1, "Genome File List"))
+			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+			if (ImGui::TreeNode((void*)(this + 0x01), "Genome File List"))
 			{
-				ImGui::Columns(1, "genomecolumns4", false);
+				ImGui::Columns(1, "nn gen genomecolumns1", false);
 				int i = 0;
 				for (auto &str : g_global->m_resView->m_genomeFileList)
 				{
@@ -486,7 +487,8 @@ void cNNView::RenderGenomeFileList()
 						| ImGuiTreeNodeFlags_OpenOnDoubleClick
 						| ImGuiTreeNodeFlags_Leaf
 						| ImGuiTreeNodeFlags_NoTreePushOnOpen
-						| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
+						| (((m_selectFileType == 0) && (i == m_selectFileIdx)) ? 
+							ImGuiTreeNodeFlags_Selected : 0);
 
 					if (filter.PassFilter(str.c_str()))
 					{
@@ -494,19 +496,48 @@ void cNNView::RenderGenomeFileList()
 
 						if (ImGui::IsItemClicked())
 						{
-							if (m_selectFileIdx != i)
+							if ((m_selectFileType != 0) || (m_selectFileIdx != i))
 							{
 								const StrPath fileName = g_creatureResourcePath + str;
 								m_genome.Read(fileName);
 							}
-
+							m_selectFileType = 0;
 							m_selectFileIdx = i;
-							if (ImGui::IsMouseDoubleClicked(0))
+						}//~IsItemClicked
+						ImGui::NextColumn();
+					}//~PassFilter
+					++i;
+				}
+				ImGui::TreePop();
+			}
+
+			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+			if (ImGui::TreeNode("Evolution File List"))
+			{
+				ImGui::Columns(1, "nn evo genomecolumns1", false);
+				int i = 0;
+				for (auto &str : g_global->m_resView->m_evolutionFileList)
+				{
+					const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
+						| ImGuiTreeNodeFlags_OpenOnDoubleClick
+						| ImGuiTreeNodeFlags_Leaf
+						| ImGuiTreeNodeFlags_NoTreePushOnOpen
+						| (((m_selectFileType == 1) && (i == m_selectFileIdx)) ?
+							ImGuiTreeNodeFlags_Selected : 0);
+
+					if (filter.PassFilter(str.c_str()))
+					{
+						ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
+
+						if (ImGui::IsItemClicked())
+						{
+							if ((m_selectFileType != 1) || (m_selectFileIdx != i))
 							{
-								// create creature
-								//const StrPath fileName = m_dirPath + str;
-								//LoadGenomeFile(fileName);
-							}//~IsDoubleClicked
+								const StrPath fileName = g_evolutionResourcePath + str;
+								m_genome.Read(fileName);
+							}
+							m_selectFileType = 1;
+							m_selectFileIdx = i;
 						}//~IsItemClicked
 						ImGui::NextColumn();
 					}//~PassFilter
@@ -517,12 +548,14 @@ void cNNView::RenderGenomeFileList()
 		}
 		ImGui::EndChild();
 
-		// genome information
+		// select genome information
 		ImGui::SetNextWindowBgAlpha(0.95f);
 		if (ImGui::BeginChild("NN GenomeFile Info", ImVec2(0, height / 2.f - 20.f), true))
 		{
 			ImGui::Columns(1, "nn genomecolumns1", false);
 			ImGui::TextUnformatted("Genome Information");
+			ImGui::Text("Name : %s", m_genome.m_name.c_str());
+			ImGui::Spacing();
 
 			ImGui::Columns(6, "nn genomecolumns1", true);
 			ImGui::Separator();
@@ -587,8 +620,8 @@ void cNNView::OnRender(const float deltaSeconds)
 
 	// HUD
 	bool isOpen = true;
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
-		| ImGuiWindowFlags_NoBackground
+	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
+		//| ImGuiWindowFlags_NoBackground
 		;
 
 	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
@@ -596,8 +629,8 @@ void cNNView::OnRender(const float deltaSeconds)
 
 	// Render Information
 	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y));
-	ImGui::SetNextWindowBgAlpha(0.f);
-	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), 100.f));// m_viewRect.Height()));
+	ImGui::SetNextWindowBgAlpha(0.6f);
+	ImGui::SetNextWindowSize(ImVec2(min(400.f,m_viewRect.Width()), 55.f));
 	if (ImGui::Begin("Neural Network Information", &isOpen, flags))
 	{
 		ImGui::Checkbox("phenotype", &m_showPhenotype);
@@ -615,15 +648,29 @@ void cNNView::OnRender(const float deltaSeconds)
 			ImGui::TextUnformatted("Orbit");
 			ImGui::PopStyleColor();
 		}
+
+		evc::cCreature *creature = g_nn->m_creature;
+		if (creature && !creature->m_nodes.empty())
+		{
+			ai::cNeuralNet *nn = creature->m_nodes[0]->m_nn;
+			if (nn)
+			{
+				ImGui::Text("input=%d, output=%d, layer=%d"
+					, nn->m_numInputs, nn->m_numOutputs, nn->m_layers.size());
+			}
+		}
 	}
 	ImGui::End();
 
 	// Render GenomeList Toggle Button
+	const ImGuiWindowFlags flags2 = ImGuiWindowFlags_NoDecoration
+		| ImGuiWindowFlags_NoBackground
+		;
 	const float toggleBtnX = pos.x + m_viewRect.Width() - 90.f;
 	const float toggleBtnY = pos.y + m_viewRect.Height() - 30.f;
 	ImGui::SetNextWindowPos(ImVec2(toggleBtnX, toggleBtnY));
 	ImGui::SetNextWindowSize(ImVec2(100, 30.f));
-	if (ImGui::Begin("Genome List Btn", &isOpen, flags))
+	if (ImGui::Begin("Genome List Btn", &isOpen, flags2))
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));

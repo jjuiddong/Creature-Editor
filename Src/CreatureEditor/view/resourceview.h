@@ -29,5 +29,6 @@ public:
 	StrPath m_dirPath; // ./media/creatures/
 	vector<string> m_creatureFileList;
 	vector<string> m_genomeFileList;
+	vector<string> m_evolutionFileList;
 	int m_selectFileIdx;
 };

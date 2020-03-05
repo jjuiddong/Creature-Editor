@@ -586,6 +586,13 @@ void cGenoEditorView::RenderRevoluteJoint()
 
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr);
+
+	evc::cGLink &curLink = g_geno->m_uiLink;
+	if (ImGui::DragFloat3("Axis Position", (float*)&curLink.m_prop.origPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		curLink.SetPivotPosByRevolutePos(curLink.m_prop.origPos);
+	}
 	ImGui::Spacing();
 
 	if (ImGui::Button("Pivot Setting"))

@@ -44,6 +44,7 @@ namespace evc
 			uint layerCnt;
 			uint inputCnt;
 			uint outputCnt;
+			double fitness;
 			vector<double> chromo;
 		};
 		StrPath m_fileName;

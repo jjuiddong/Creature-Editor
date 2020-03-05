@@ -31,6 +31,7 @@ public:
 
 protected:
 	void SpawnCreatures(const vector<ai::sGenome> &genomes = vector<ai::sGenome>());
+	bool SaveCreatureGenomes();
 
 
 public:

@@ -41,7 +41,7 @@ bool cEvolutionManager::RunEvolution(const sEvolutionParam &param)
 	
 	g_pheno->m_generationCnt = param.generation;
 	SpawnCreatures();
-
+	SaveCreatureGenomes();
 	return true;
 }
 
@@ -134,17 +134,19 @@ bool cEvolutionManager::Update(const float deltaSeconds)
 			return true;
 		}
 
-
 		m_creatures.clear();
 		g_pheno->ClearCreature();
 		SpawnCreatures(m_genetic.GetGenomes());
 
+		// temporal selection first creature
 		if (g_nn->m_creature)
 			g_nn->SetCurrentCreature(g_pheno->m_creatures.empty()?
 				nullptr : g_pheno->m_creatures[0]);
 
 		++m_curEpochSize;
 		m_incT = 0.f;
+
+		SaveCreatureGenomes();
 	}
 
 	return true;
@@ -187,5 +189,37 @@ void cEvolutionManager::SpawnCreatures(
 		if (creature && (i < genomes.size()))
 			creature->SetGenome(genomes[i]);
 	}
+}
 
+
+// save creature genomes
+bool cEvolutionManager::SaveCreatureGenomes()
+{
+	StrPath fileName;
+	fileName.Format("%s%s_%s_%d.gen"
+		, g_evolutionResourcePath.c_str()
+		, common::GetCurrentDateTime().c_str()
+		, m_param.creatureFileName.GetFileNameExceptExt().c_str()
+		, m_curEpochSize);
+
+	evc::cGenome allGenome;
+	allGenome.m_name = m_param.creatureFileName.GetFileNameExceptExt().c_str();
+	allGenome.m_dnas.reserve(m_param.spawnSize);
+	for (auto &creature : g_pheno->m_creatures)
+	{
+		ai::cNeuralNet *nn = creature->GetNeuralNetwork();
+		if (!nn)
+			continue;
+
+		evc::cGenome::sDna dna;
+		dna.layerCnt = nn->m_layers.size();
+		dna.inputCnt = nn->m_numInputs;
+		dna.outputCnt = nn->m_numOutputs;
+		dna.fitness = 0.f;
+		dna.chromo = nn->GetWeights();
+		allGenome.m_dnas.push_back(dna);
+	}
+	allGenome.Write(fileName);
+
+	return true;
 }
