@@ -1,24 +1,25 @@
 //
 // 2020-03-01, jjuiddong
 // genome management class
-//		- multiple genome management
+//		- multiple dna management
 //		- *.gen
 //
 // Data Hierarchy
 //	- Genome
-//		- Chromo array
+//		- DNA Array
+//			- Chromo array
 
 //
 // format (binary)
 //  - field name (byte size)
 //		- "GEN" file format (3)
 //		- name (64)
-//		- genome count (4)
-//		- genome 1 chromo count (4)
-//		- genome 1 chromo data double type (chromo count * 8)
+//		- dna count (4)
+//		- dna 1 chromo count (4)
+//		- dna 1 chromo data double type (chromo count * 8)
 //		- ....
-//		- genome N chromo count (4)
-//		- genome N chromo data double type (chromo count * 8)
+//		- dna N chromo count (4)
+//		- dna N chromo data double type (chromo count * 8)
 //
 #pragma once
 
@@ -38,7 +39,7 @@ namespace evc
 
 
 	public:
-		struct sGenome
+		struct sDna
 		{
 			uint layerCnt;
 			uint inputCnt;
@@ -47,7 +48,7 @@ namespace evc
 		};
 		StrPath m_fileName;
 		StrId m_name;
-		vector<sGenome> m_genomes;
+		vector<sDna> m_dnas;
 	};
 
 }

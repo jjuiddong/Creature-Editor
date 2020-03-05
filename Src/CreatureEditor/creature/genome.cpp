@@ -35,17 +35,17 @@ bool cGenome::Read(const StrPath &fileName)
 	int gsize = 0;
 	ifs.read((char*)&gsize, sizeof(gsize));
 
-	m_genomes.resize(gsize);
+	m_dnas.resize(gsize);
 
 	for (int i = 0; i < gsize; ++i)
 	{
 		int size = 0;
 		ifs.read((char*)&size, sizeof(size));
-		m_genomes[i].chromo.resize(size);
-		ifs.read((char*)&m_genomes[i].layerCnt, sizeof(m_genomes[i].layerCnt));
-		ifs.read((char*)&m_genomes[i].inputCnt, sizeof(m_genomes[i].inputCnt));
-		ifs.read((char*)&m_genomes[i].outputCnt, sizeof(m_genomes[i].outputCnt));
-		ifs.read((char*)&m_genomes[i].chromo[0], sizeof(double) * size);
+		m_dnas[i].chromo.resize(size);
+		ifs.read((char*)&m_dnas[i].layerCnt, sizeof(m_dnas[i].layerCnt));
+		ifs.read((char*)&m_dnas[i].inputCnt, sizeof(m_dnas[i].inputCnt));
+		ifs.read((char*)&m_dnas[i].outputCnt, sizeof(m_dnas[i].outputCnt));
+		ifs.read((char*)&m_dnas[i].chromo[0], sizeof(double) * size);
 	}
 
 	return true;
@@ -63,18 +63,18 @@ bool cGenome::Write(const StrPath &fileName)
 
 	ofs.write("GEN", 3); // file format
 	ofs.write(m_name.m_str, m_name.SIZE);
-	const int gsize = (int)m_genomes.size();
+	const int gsize = (int)m_dnas.size();
 	ofs.write((char*)&gsize, sizeof(gsize));
 
-	for (auto &genome : m_genomes)
+	for (auto &dna : m_dnas)
 	{
-		const int size = (int)genome.chromo.size();
+		const int size = (int)dna.chromo.size();
 		ofs.write((char*)&size, sizeof(size));
-		ofs.write((char*)&genome.layerCnt, sizeof(genome.layerCnt));
-		ofs.write((char*)&genome.inputCnt, sizeof(genome.inputCnt));
-		ofs.write((char*)&genome.outputCnt, sizeof(genome.outputCnt));
-		if (!genome.chromo.empty())
-			ofs.write((char*)&genome.chromo[0], sizeof(double) * size);
+		ofs.write((char*)&dna.layerCnt, sizeof(dna.layerCnt));
+		ofs.write((char*)&dna.inputCnt, sizeof(dna.inputCnt));
+		ofs.write((char*)&dna.outputCnt, sizeof(dna.outputCnt));
+		if (!dna.chromo.empty())
+			ofs.write((char*)&dna.chromo[0], sizeof(double) * size);
 	}
 
 	return true;
@@ -83,5 +83,5 @@ bool cGenome::Write(const StrPath &fileName)
 
 void cGenome::Clear()
 {
-	m_genomes.clear();
+	m_dnas.clear();
 }

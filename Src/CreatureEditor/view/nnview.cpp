@@ -443,28 +443,22 @@ void cNNView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 
 void cNNView::RenderGenomeFileList()
 {
-	ImVec2 pos = ImGui::GetCursorScreenPos();
-	//m_viewPos = { (int)(pos.x), (int)(pos.y) };
-	//m_viewRect = { pos.x + 5, pos.y, pos.x + m_rect.Width() - 30, pos.y + m_rect.Height() - 42 };
-
-	// HUD
 	bool isOpen = true;
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
-		//| ImGuiWindowFlags_NoBackground
+		| ImGuiWindowFlags_NoBackground
 		;
 
-	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-	//ImGui::Image(m_renderTarget.m_resolvedSRV, ImVec2(m_rect.Width() - 15, m_rect.Height() - 42));
+	const float width = m_viewRect.Width() + 15.f;
+	const float height = m_viewRect.Height() - 70.f;
 
-	ImGui::SetNextWindowPos(ImVec2(pos.x, 100.f));
-	ImGui::SetNextWindowBgAlpha(0.f);
-	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), m_viewRect.Height()-200.f));
+	ImGui::SetNextWindowPos(ImVec2((float)m_viewPos.x, (float)m_viewPos.y + 40.f));
+	ImGui::SetNextWindowSize(ImVec2(width, height));
 	if (ImGui::Begin("NNView GenomeFileList", &isOpen, flags))
 	{
 		static ImGuiTextFilter filter;
 		ImGui::Text("Search");
 		ImGui::SameLine();
-		filter.Draw("##Search", 200);
+		filter.Draw("##Genome Search", 145);
 
 		ImGui::SameLine();
 
@@ -473,54 +467,115 @@ void cNNView::RenderGenomeFileList()
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
 		if (ImGui::Button("Refresh (F5)"))
 		{
-			//UpdateResourceFiles();
+			g_global->m_resView->UpdateResourceFiles();
 		}
 		ImGui::PopStyleColor(3);
 
-		ImGui::Columns(1, "genomecolumns1", false);
-		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
-		if (ImGui::TreeNode((void*)1, "Genome File List"))
+		// genome file list
+		ImGui::SetNextWindowBgAlpha(0.95f);
+		if (ImGui::BeginChild("NN GenomeFileList", ImVec2(0, height/2.f - 25.f), true))
 		{
-			ImGui::Columns(4, "genomecolumns4", false);
-			int i = 0;
-			for (auto &str : g_global->m_resView->m_genomeFileList)
+			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Always);
+			if (ImGui::TreeNode((void*)1, "Genome File List"))
 			{
-				const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
-					| ImGuiTreeNodeFlags_OpenOnDoubleClick
-					| ImGuiTreeNodeFlags_Leaf
-					| ImGuiTreeNodeFlags_NoTreePushOnOpen
-					| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
-
-				if (filter.PassFilter(str.c_str()))
+				ImGui::Columns(1, "genomecolumns4", false);
+				int i = 0;
+				for (auto &str : g_global->m_resView->m_genomeFileList)
 				{
-					ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
+					const ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow
+						| ImGuiTreeNodeFlags_OpenOnDoubleClick
+						| ImGuiTreeNodeFlags_Leaf
+						| ImGuiTreeNodeFlags_NoTreePushOnOpen
+						| ((i == m_selectFileIdx) ? ImGuiTreeNodeFlags_Selected : 0);
 
-					if (ImGui::IsItemClicked())
+					if (filter.PassFilter(str.c_str()))
 					{
-						if (m_selectFileIdx != i)
-						{
-							const StrPath fileName = g_creatureResourcePath + str;
-							m_genome.Read(fileName);
-						}
+						ImGui::TreeNodeEx((void*)(intptr_t)i, node_flags, str.c_str());
 
-						m_selectFileIdx = i;
-						if (ImGui::IsMouseDoubleClicked(0))
+						if (ImGui::IsItemClicked())
 						{
-							// create creature
-							//const StrPath fileName = m_dirPath + str;
-							//LoadGenomeFile(fileName);
-						}//~IsDoubleClicked
-					}//~IsItemClicked
-					ImGui::NextColumn();
-				}//~PassFilter
-				++i;
+							if (m_selectFileIdx != i)
+							{
+								const StrPath fileName = g_creatureResourcePath + str;
+								m_genome.Read(fileName);
+							}
+
+							m_selectFileIdx = i;
+							if (ImGui::IsMouseDoubleClicked(0))
+							{
+								// create creature
+								//const StrPath fileName = m_dirPath + str;
+								//LoadGenomeFile(fileName);
+							}//~IsDoubleClicked
+						}//~IsItemClicked
+						ImGui::NextColumn();
+					}//~PassFilter
+					++i;
+				}
+				ImGui::TreePop();
 			}
-			ImGui::TreePop();
 		}
+		ImGui::EndChild();
 
+		// genome information
+		ImGui::SetNextWindowBgAlpha(0.95f);
+		if (ImGui::BeginChild("NN GenomeFile Info", ImVec2(0, height / 2.f - 20.f), true))
+		{
+			ImGui::Columns(1, "nn genomecolumns1", false);
+			ImGui::TextUnformatted("Genome Information");
+
+			ImGui::Columns(6, "nn genomecolumns1", true);
+			ImGui::Separator();
+			ImGui::TextUnformatted("Action");
+			ImGui::NextColumn();
+			ImGui::TextUnformatted("Order");
+			ImGui::NextColumn();
+			ImGui::TextUnformatted("Input");
+			ImGui::NextColumn();
+			ImGui::TextUnformatted("Output");
+			ImGui::NextColumn();
+			ImGui::TextUnformatted("Layer");
+			ImGui::NextColumn();
+			ImGui::TextUnformatted("DNA");
+			ImGui::NextColumn();
+			ImGui::Separator();
+
+			if (!m_genome.m_dnas.empty())
+			{
+				for (uint i=0; i < m_genome.m_dnas.size(); ++i)
+				{
+					auto &dna = m_genome.m_dnas[i];
+					ImGui::PushID(i+(int)this);
+					if (ImGui::SmallButton("Load"))
+					{
+						const uint cnt = g_genome->SetGenomeSelectCreature(m_genome, i);
+						Str128 text;
+						text.Format("Update Creature Genome [ %d ]", cnt);
+						::MessageBoxA(m_owner->getSystemHandle()
+							, text.c_str(), "Confirm", MB_OK | MB_ICONINFORMATION);
+					}
+					ImGui::PopID();
+
+					ImGui::NextColumn();
+					ImGui::Text("%d", i + 1);
+					ImGui::NextColumn();
+					ImGui::Text("%d", dna.inputCnt);
+					ImGui::NextColumn();
+					ImGui::Text("%d", dna.outputCnt);
+					ImGui::NextColumn();
+					ImGui::Text("%d", dna.layerCnt);
+					ImGui::NextColumn();
+					ImGui::Text("%d", dna.chromo.size());
+					ImGui::NextColumn();
+
+					ImGui::Separator();
+				}
+			}
+			ImGui::Separator();
+		}
+		ImGui::EndChild();
 	}
 	ImGui::End();
-	ImGui::PopStyleColor();
 }
 
 
@@ -533,7 +588,7 @@ void cNNView::OnRender(const float deltaSeconds)
 	// HUD
 	bool isOpen = true;
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration
-		//| ImGuiWindowFlags_NoBackground
+		| ImGuiWindowFlags_NoBackground
 		;
 
 	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
@@ -563,15 +618,21 @@ void cNNView::OnRender(const float deltaSeconds)
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y + m_viewRect.Height() - 30.f));
-	ImGui::SetNextWindowSize(ImVec2(m_viewRect.Width(), 30.f));
+	// Render GenomeList Toggle Button
+	const float toggleBtnX = pos.x + m_viewRect.Width() - 90.f;
+	const float toggleBtnY = pos.y + m_viewRect.Height() - 30.f;
+	ImGui::SetNextWindowPos(ImVec2(toggleBtnX, toggleBtnY));
+	ImGui::SetNextWindowSize(ImVec2(100, 30.f));
 	if (ImGui::Begin("Genome List Btn", &isOpen, flags))
 	{
-		ImGui::SetCursorPos(ImVec2(m_viewRect.Width() - 90.f, 0));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.9f, 0, 1));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0, 1));
 		if (ImGui::Button("Genome List"))
 		{
 			m_showGenomeFileList = !m_showGenomeFileList;
 		}
+		ImGui::PopStyleColor(3);
 	}
 	ImGui::End();
 	ImGui::PopStyleColor();
@@ -1197,8 +1258,10 @@ void cNNView::UpdateLookAt()
 // 카메라 앞에 박스가 있다면, 박스 정면에서 멈춘다.
 void cNNView::OnWheelMove(const float delta, const POINT mousePt)
 {
-	//if (m_showSaveDialog || (m_popupMenuState > 0))
-	//	return;
+	if (m_showGenomeFileList
+		//|| m_showSaveDialog || (m_popupMenuState > 0)
+		)
+		return;
 
 	UpdateLookAt();
 
@@ -1225,8 +1288,10 @@ void cNNView::OnMouseMove(const POINT mousePt)
 	m_mousePos = mousePt;
 	if (g_geno->m_gizmo.IsKeepEditMode())
 		return;
-	//if (m_showSaveDialog || (m_popupMenuState > 0))
-	//	return;
+	if (m_showGenomeFileList
+		//|| m_showSaveDialog || (m_popupMenuState > 0)
+		)
+		return;
 
 	// joint pivot setting mode
 	if ((eGenoEditMode::Pivot0 == g_geno->GetEditMode())
@@ -1302,8 +1367,10 @@ void cNNView::OnMouseDown(const sf::Mouse::Button &button, const POINT mousePt)
 	const Vector3 target = groundPlane.Pick(ray.orig, ray.dir);
 	m_rotateLen = ray.orig.y * 0.9f;// (target - ray.orig).Length();
 
-	//if (m_showSaveDialog || (m_popupMenuState > 0))
-	//	return;
+	if (m_showGenomeFileList 
+		//m_showSaveDialog || (m_popupMenuState > 0)
+		)
+		return;
 
 	// active genotype editor view
 	//m_owner->SetActiveWindow(g_global->m_geditorView);
@@ -1385,8 +1452,10 @@ void cNNView::OnMouseUp(const sf::Mouse::Button &button, const POINT mousePt)
 	m_mousePos = mousePt;
 	ReleaseCapture();
 
-	//if (m_showSaveDialog || (m_popupMenuState > 0))
-	//	return;
+	if (m_showGenomeFileList
+		//|| m_showSaveDialog || (m_popupMenuState > 0)
+		)
+		return;
 
 	switch (button)
 	{

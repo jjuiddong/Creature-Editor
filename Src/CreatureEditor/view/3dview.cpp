@@ -867,11 +867,11 @@ void c3DView::RenderSaveDialog()
 
 						evc::cGenome genome;
 						genome.m_name = genomeFileName.GetFileNameExceptExt().c_str();
-						genome.m_genomes.resize(1);
-						genome.m_genomes[0].layerCnt = nn->m_layers.size();
-						genome.m_genomes[0].inputCnt = nn->m_numInputs;
-						genome.m_genomes[0].outputCnt = nn->m_numOutputs;
-						genome.m_genomes[0].chromo = nn->GetWeights();
+						genome.m_dnas.resize(1);
+						genome.m_dnas[0].layerCnt = nn->m_layers.size();
+						genome.m_dnas[0].inputCnt = nn->m_numInputs;
+						genome.m_dnas[0].outputCnt = nn->m_numOutputs;
+						genome.m_dnas[0].chromo = nn->GetWeights();
 
 						genome.Write(genomeFilePath);
 					}
