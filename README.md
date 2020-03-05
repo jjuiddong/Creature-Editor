@@ -79,3 +79,6 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/evolution.jpg?raw=true)
 - Genetic Algorithm monitoring
 ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/evolution2.jpg?raw=true)
+- Genome Load
+![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/genome%20load.jpg?raw=true)
+
