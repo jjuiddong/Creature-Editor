@@ -5,4 +5,4 @@ Creature Editor With VS2017 C++, DX11, ImGui, PhysX
  - Genetic Algorithm
  - [Develop History (ScreenShot)](https://github.com/jjuiddong/Creature-Editor/wiki)
  - Latest Screen Shot
-   ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/factory1.jpg?raw=true)
+   ![](https://github.com/jjuiddong/Creature-Editor/blob/master/Doc/factory3.jpg?raw=true)
