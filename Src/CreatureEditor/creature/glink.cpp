@@ -78,7 +78,7 @@ bool cGLink::CreateFixed(cGNode *gnode0 , const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -103,7 +103,7 @@ bool cGLink::CreateSpherical(cGNode *gnode0, const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -128,7 +128,7 @@ bool cGLink::CreateRevolute(cGNode *gnode0, const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(revoluteAxis);
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -153,7 +153,7 @@ bool cGLink::CreatePrismatic(cGNode *gnode0, const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(revoluteAxis);
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -178,7 +178,7 @@ bool cGLink::CreateDistance(cGNode *gnode0, const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -203,7 +203,7 @@ bool cGLink::CreateD6(cGNode *gnode0, const Vector3 &pivot0
 	gnode0->AddLink(this);
 	gnode1->AddLink(this);
 	SetRevoluteAxis(Vector3(1, 0, 0));
-	m_prop.origPos = linkPos;
+	m_prop.origPos = linkPos - worldTfm0.pos;
 	m_prop.nodeLocal0 = worldTfm0;
 	m_prop.nodeLocal1 = worldTfm1;
 	// world -> local space
@@ -317,12 +317,14 @@ bool cGLink::Render(graphic::cRenderer &renderer
 
 		Quaternion q;
 		q.SetRotationArc(Vector3(0, -1, 0), m_prop.revoluteAxis);
-		renderer.m_cone.m_transform.pos = m_prop.origPos + m_prop.revoluteAxis * h;
+		renderer.m_cone.m_transform.pos = m_prop.origPos + m_prop.nodeLocal0.pos 
+			+ m_prop.revoluteAxis * h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 
 		q.SetRotationArc(Vector3(0, -1, 0), -m_prop.revoluteAxis);
-		renderer.m_cone.m_transform.pos = m_prop.origPos + -m_prop.revoluteAxis * h;
+		renderer.m_cone.m_transform.pos = m_prop.origPos + m_prop.nodeLocal0.pos 
+			+ -m_prop.revoluteAxis * h;
 		renderer.m_cone.m_transform.rot = q;
 		renderer.m_cone.Render(renderer, XMIdentity, eRenderFlag::WIREFRAME);
 	}
@@ -389,7 +391,7 @@ graphic::cNode* cGLink::Picking(const Ray &ray, const graphic::eNodeType::Enum t
 // update pivot position, local transform
 bool cGLink::UpdateLinkInfo()
 {
-	SetPivotPosByRevoluteAxis(m_prop.revoluteAxis, m_prop.origPos);
+	SetPivotPosByRevoluteAxis(m_prop.revoluteAxis, m_prop.origPos + m_prop.nodeLocal0.pos);
 	m_prop.nodeLocal0 = m_gnode0->m_transform;
 	m_prop.nodeLocal1 = m_gnode1->m_transform;
 	return true;
@@ -457,6 +459,7 @@ Vector3 cGLink::GetPivotPos(const int nodeIndex)
 }
 
 
+// revoluteAxis: revolute axis direction
 void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis)
 {
 	m_prop.revoluteAxis = revoluteAxis;
@@ -466,7 +469,7 @@ void cGLink::SetRevoluteAxis(const Vector3 &revoluteAxis)
 
 // update pivot position
 // revoluteAxis : revolute axis direction
-// aixsPos : revolute axis position
+// aixsPos : revolute axis position (world space position)
 void cGLink::SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector3 &axisPos)
 {
 	const Vector3 r0 = revoluteAxis * 2.f + axisPos;
@@ -488,11 +491,11 @@ void cGLink::SetPivotPosByRevoluteAxis(const Vector3 &revoluteAxis, const Vector
 
 	SetPivotPos(0, newPivotPos0);
 	SetPivotPos(1, newPivotPos1);
-	m_prop.origPos = pos;
+	m_prop.origPos = axisPos - m_prop.nodeLocal0.pos;
 }
 
 
-// pos : revolute axis world pos
+// pos : revolute axis world pos (world space position)
 // revolute axis pos store relative center pos
 void cGLink::SetPivotPosByRevolutePos(const Vector3 &pos)
 {
@@ -516,7 +519,7 @@ void cGLink::SetPivotPosByRevolutePos(const Vector3 &pos)
 
 	SetPivotPos(0, newPivotPos0);
 	SetPivotPos(1, newPivotPos1);
-	m_prop.origPos = pos;
+	m_prop.origPos = pos - m_prop.nodeLocal0.pos;
 }
 
 

@@ -50,6 +50,12 @@ public:
 	bool SelectObject(const int id, const bool isToggle = false);
 	bool ClearSelection();
 
+	// group
+	void SetGroupBySelection();
+	void AddGroup(const int id);
+	void RemoveGroup(const int id);
+	void ClearGroup();
+
 	// utility function
 	bool SetAllLinkedNodeSelect(evc::cGNode *gnode);
 	bool UpdateAllLinkedNodeTransform(evc::cGNode *gnode, const Transform &transform);
@@ -74,6 +80,9 @@ public:
 	Vector3 m_multiSelPos; // multi selection position offset (prev position)
 	int m_orbitId; // oribit moving focus genotype node id
 	Vector3 m_orbitTarget;
+
+	// group
+	set<int> m_group; // group id set
 
 	// manage Modify RigidActor information
 	graphic::cGizmo m_gizmo;

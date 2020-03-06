@@ -1581,10 +1581,26 @@ void c3DView::OnEventProc(const sf::Event &evt)
 		{
 			if ((m_popupMenuState == 2) && (m_popupMenuType == 0))
 			{
+				// if id is part of creature, unlock only if pnode kinematic false
 				for (auto id : g_pheno->m_selects)
-					if (phys::sSyncInfo *sync = g_pheno->FindSyncInfo(id))
+				{
+					evc::cCreature *creature = g_pheno->FindCreatureContainNode(id);
+					phys::sSyncInfo *sync = g_pheno->FindSyncInfo(id);
+					if (!sync)
+						continue;
+
+					if (creature)
+					{
+						if (evc::cPNode *pnode = creature->FindPNode(sync->actor))
+							if (!pnode->m_gnode->kinematic)
+								sync->actor->SetKinematic(false);
+					}
+					else
+					{
 						if (sync && sync->actor)
-							g_pheno->UpdateActorDimension(sync->actor, false);
+							sync->actor->SetKinematic(false);
+					}
+				}
 
 				m_popupMenuState = 3; // close popup
 			}

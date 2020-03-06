@@ -19,6 +19,7 @@ cGenoView::cGenoView(const string &name)
 	, m_popupMenuType(0)
 	, m_popupMenuState(0)
 	, m_showSaveDialog(false)
+	, m_groupSave(true)
 {
 }
 
@@ -323,7 +324,13 @@ void cGenoView::RenderPopupMenu()
 		if (ImGui::MenuItem("Save GenoType"))
 		{
 			m_showSaveDialog = true;
+			m_groupSave = true;
 			m_popupMenuState = 0;
+
+			// select node, group node
+			g_geno->SetAllLinkedNodeSelect(gnode);
+			for (auto &id : g_geno->m_group)
+				g_geno->SelectObject(id);
 		}
 		if (ImGui::MenuItem("Spawn", "W"))
 		{
@@ -336,6 +343,32 @@ void cGenoView::RenderPopupMenu()
 		if (ImGui::MenuItem("Select All", "A"))
 		{
 			g_geno->SetAllLinkedNodeSelect(gnode);
+		}
+
+		ImGui::Separator();
+		if (ImGui::BeginMenu("Group"))
+		{
+			if (ImGui::MenuItem("Select Group All"))
+			{
+				g_geno->ClearSelection();
+				for (auto &id : g_geno->m_group)
+					g_geno->SelectObject(id);
+			}
+			if (ImGui::MenuItem("Add to Group"))
+			{
+				for (auto &id : g_geno->m_selects)
+					g_geno->AddGroup(id);
+			}
+			if (ImGui::MenuItem("Remove From Group"))
+			{
+				for (auto &id : g_geno->m_selects)
+					g_geno->RemoveGroup(id);
+			}
+			if (ImGui::MenuItem("Clear Group"))
+			{
+				g_geno->ClearGroup();
+			}
+			ImGui::EndMenu();
 		}
 
 		ImGui::Separator();
@@ -374,6 +407,32 @@ void cGenoView::RenderPopupMenu()
 			ImGui::EndMenu();
 		}
 
+		ImGui::Separator();
+		if (ImGui::BeginMenu("Group"))
+		{
+			if (ImGui::MenuItem("Select Group All"))
+			{
+				g_geno->ClearSelection();
+				for (auto &id : g_geno->m_group)
+					g_geno->SelectObject(id);
+			}
+			if (ImGui::MenuItem("Add to Group"))
+			{
+				for (auto &id : g_geno->m_selects)
+					g_geno->AddGroup(id);
+			}
+			if (ImGui::MenuItem("Remove From Group"))
+			{
+				for (auto &id : g_geno->m_selects)
+					g_geno->RemoveGroup(id);
+			}
+			if (ImGui::MenuItem("Clear Group"))
+			{
+				g_geno->ClearGroup();
+			}
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndPopup();
 	}
 	else
@@ -390,7 +449,7 @@ void cGenoView::RenderSaveDialog()
 
 	bool isOpen = true;
 	const sf::Vector2u psize((uint)m_rect.Width(), (uint)m_rect.Height());
-	const ImVec2 size(300, 115);
+	const ImVec2 size(300, 135);
 	const ImVec2 pos(psize.x / 2.f - size.x / 2.f + m_rect.left
 		, psize.y / 2.f - size.y / 2.f + m_rect.top);
 	ImGui::SetNextWindowPos(pos);
@@ -413,6 +472,23 @@ void cGenoView::RenderSaveDialog()
 			isSave = true;
 		}
 
+		ImGui::SetCursorPosX(85);
+		if (ImGui::Checkbox("Group Save", &m_groupSave))
+		{
+			if (!g_geno->m_selects.empty())
+			{
+				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
+				if (gnode)
+					g_geno->SetAllLinkedNodeSelect(gnode);
+
+				if (m_groupSave)
+				{
+					for (auto &id : g_geno->m_group)
+						g_geno->SelectObject(id);
+				}
+			}
+		}
+
 		ImGui::Spacing();
 		ImGui::Spacing();
 		ImGui::Spacing();
@@ -424,7 +500,6 @@ void cGenoView::RenderSaveDialog()
 			const StrPath filePath = g_creatureResourcePath + fileName;
 			if (!g_geno->m_selects.empty())
 			{
-				evc::cGNode *gnode = g_geno->FindGNode(*g_geno->m_selects.begin());
 				bool isSave = true;
 				if (filePath.IsFileExist()) // file already exist?
 				{
@@ -442,7 +517,11 @@ void cGenoView::RenderSaveDialog()
 
 				if (isSave)
 				{
-					evc::WriteGenoTypeFileFrom_Node(filePath, gnode);
+					vector<evc::cGNode*> gnodes;
+					for (auto &id : g_geno->m_selects)
+						if (evc::cGNode *gnode = g_geno->FindGNode(id))
+							gnodes.push_back(gnode);
+					evc::WriteGenoTypeFileFrom_Node(filePath, gnodes);
 				}
 			}
 
@@ -798,7 +877,15 @@ void cGenoView::SpawnSelectNodeToPhenoTypeView()
 	if (!gnode)
 		return;
 
-	evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnode);
+	g_geno->SetAllLinkedNodeSelect(gnode);
+	for (auto &id : g_geno->m_group)
+		g_geno->SelectObject(id);
+
+	vector<evc::cGNode*> gnodes;
+	for (auto &id : g_geno->m_selects)
+		if (evc::cGNode *gnode = g_geno->FindGNode(id))
+			gnodes.push_back(gnode);
+	evc::WriteGenoTypeFileFrom_Node("tmp_spawn.gnt", gnodes);
 
 	// phenotype view load
 	{

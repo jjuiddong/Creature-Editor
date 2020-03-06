@@ -17,6 +17,7 @@ cGNode::cGNode()
 	m_prop.density = 1.f;
 	m_prop.iteration = -1;
 	m_prop.maxGeneration = 0;
+	m_prop.kinematic = false;
 }
 
 cGNode::~cGNode()

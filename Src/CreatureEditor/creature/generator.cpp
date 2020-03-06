@@ -244,7 +244,7 @@ cCreature* evc::ReadPhenoTypeFile(graphic::cRenderer &renderer
 					const float mass = vt0.second.get<float>("mass", 0.f);
 					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
 					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
-					const bool kinematic = vt0.second.get<bool >("kinematic", true);
+					const bool kinematic = vt0.second.get<bool >("kinematic", false);
 
 					int newId = -1;
 					switch (shape)
@@ -1251,7 +1251,7 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	shape.put<float>("density", gnode->m_prop.density);
 	shape.put<float>("angular damping", 0.5f);
 	shape.put<float>("linear damping", 0.5f);
-	shape.put<bool>("kinematic", false);
+	shape.put<bool>("kinematic", gnode->m_prop.kinematic);
 	shape.put<int>("iteration", gnode->m_prop.iteration);
 	shape.put<unsigned int>("max generation", gnode->m_prop.maxGeneration);
 
@@ -1586,7 +1586,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					const float density = vt0.second.get<float>("density", 1.f);
 					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
 					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
-					const bool kinematic = vt0.second.get<bool>("kinematic", true);
+					const bool kinematic = vt0.second.get<bool>("kinematic", false);
 					const int iteration = vt0.second.get<int>("iteration", -1);
 					const uint maxGeneration = vt0.second.get<unsigned int>("max generation", 0);
 
@@ -1602,6 +1602,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->angularDamping = angularDamping;
 					gnode->iteration = iteration;
 					gnode->maxGeneration = maxGeneration;
+					gnode->kinematic = kinematic;
 					gnode->generation = (iteration < 0)? 0 : 1;
 					gnode->clonable = true;
 					outNode.push_back(gnode);
@@ -1656,7 +1657,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					glink->type = type;
 					glink->parent = gnode0;
 					glink->child = gnode1;
-					glink->origPos = (pivot0 + pivot1) / 2.f;
+					glink->origPos = (pivot0 + pivot1) / 2.f - tfm0.pos;
 					glink->revoluteAxis = revoluteAxis;
 					glink->rotRevolute = revoluteQ;
 					glink->drive.isCycle = false;

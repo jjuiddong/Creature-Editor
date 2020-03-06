@@ -98,6 +98,7 @@ namespace evc
 		float angularDamping;
 		int iteration; // iterate genotype node id
 		uint maxGeneration; // maximum generation size, 0:infinity
+		bool kinematic;
 		Transform transform; // dimension
 							 //           box : scale
 							 //           sphere : radius = scale.x
@@ -119,11 +120,11 @@ namespace evc
 
 		// joint property
 		Vector3 revoluteAxis; // local space
-		Vector3 origPos; // joint origin pos (local space)
+		Vector3 origPos; // joint origin pos (relaste to parent node pos)
 		Quaternion rotRevolute; // X-axis -> revoluteAxis rotation (local space)
 							    // revoluteAxis = normal(pivot1 - pivot0)
-		Transform nodeLocal0; // gnode0 local transform (local space)
-		Transform nodeLocal1; // gnode1 local transform (local space)
+		Transform nodeLocal0; // parent local transform (local space)
+		Transform nodeLocal1; // child local transform (local space)
 
 		union sLimit {
 			sConeLimit cone;

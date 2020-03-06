@@ -64,6 +64,7 @@ public:
 	bool m_showJoint;
 
 	bool m_showSaveDialog;
+	bool m_groupSave;
 	int m_popupMenuState; // 0:no show, 1:open, 2:show, 3:close
 	int m_popupMenuType; // 0: genotype menu
 

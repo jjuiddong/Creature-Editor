@@ -214,6 +214,16 @@ void cGenoEditorView::RenderSelectionInfo()
 		ImGui::SameLine();
 		const bool edit2 = ImGui::DragFloat3("##rotation2", (float*)&m_eulerAngle, 0.1f);
 
+		// edit density
+		ImGui::TextUnformatted("Density      ");
+		ImGui::SameLine();
+		ImGui::DragFloat("##density2", &gnode->m_prop.density, 0.001f, 0.f, 100.f);
+
+		// edit kinematic
+		ImGui::TextUnformatted("Static         ");
+		ImGui::SameLine();
+		ImGui::Checkbox("##static rigidbody", &gnode->m_prop.kinematic);
+
 		if (gnode->m_prop.iteration >= 0)
 		{
 			ImGui::PushItemWidth(175);
@@ -513,6 +523,15 @@ void cGenoEditorView::RenderSphericalJoint()
 
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Joint Axis", &axisIdx, g_axisStr);
+
+	evc::cGLink &curLink = g_geno->m_uiLink;
+	Vector3 jointPos = curLink.m_prop.nodeLocal0.pos + curLink.m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		curLink.SetPivotPosByRevolutePos(jointPos);
+	}
+
 	ImGui::Spacing();
 
 	UpdateUILink(gnode0, gnode1, editAxis, g_axis[axisIdx]);
@@ -588,11 +607,13 @@ void cGenoEditorView::RenderRevoluteJoint()
 	const bool editAxis = ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr);
 
 	evc::cGLink &curLink = g_geno->m_uiLink;
-	if (ImGui::DragFloat3("Axis Position", (float*)&curLink.m_prop.origPos
+	Vector3 jointPos = curLink.m_prop.nodeLocal0.pos + curLink.m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
 		, 0.001f, 0.f, 1000.f))
 	{
-		curLink.SetPivotPosByRevolutePos(curLink.m_prop.origPos);
+		curLink.SetPivotPosByRevolutePos(jointPos);
 	}
+
 	ImGui::Spacing();
 
 	if (ImGui::Button("Pivot Setting"))
@@ -673,6 +694,15 @@ void cGenoEditorView::RenderPrismaticJoint()
 
 	static int axisIdx = 0;
 	const bool editAxis = ImGui::Combo("Axis", &axisIdx, g_axisStr);
+
+	evc::cGLink &curLink = g_geno->m_uiLink;
+	Vector3 jointPos = curLink.m_prop.nodeLocal0.pos + curLink.m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		curLink.SetPivotPosByRevolutePos(jointPos);
+	}
+
 	ImGui::Spacing();
 
 	if (ImGui::Button("Pivot Setting"))
@@ -1025,9 +1055,17 @@ void cGenoEditorView::RenderRevoluteJointSetting(evc::cGLink *link)
 
 	ImGui::PushID(id++);
 	if (ImGui::Combo("Revolute Axis", &axisIdx, g_axisStr))
-		link->m_prop.revoluteAxis = g_axis[axisIdx];
+		link->SetRevoluteAxis(g_axis[axisIdx]);
 	ImGui::PopID();
 
+	ImGui::PushID(id++);
+	Vector3 jointPos = link->m_prop.nodeLocal0.pos + link->m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		link->SetPivotPosByRevolutePos(jointPos);
+	}
+	ImGui::PopID();
 }
 
 
@@ -1090,6 +1128,15 @@ void cGenoEditorView::RenderPrismaticJointSetting(evc::cGLink *link)
 	ImGui::PushID(id++);
 	if (ImGui::Combo("Axis", &axisIdx, g_axisStr))
 		link->SetRevoluteAxis(g_axis[axisIdx]);
+	ImGui::PopID();
+
+	ImGui::PushID(id++);
+	Vector3 jointPos = link->m_prop.nodeLocal0.pos + link->m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		link->SetPivotPosByRevolutePos(jointPos);
+	}
 	ImGui::PopID();
 
 	ImGui::Spacing();
@@ -1314,6 +1361,13 @@ void cGenoEditorView::RenderSphericalJointSetting(evc::cGLink *link)
 	if (ImGui::Combo("Joint Axis", &axisIdx, g_axisStr))
 	{
 		link->SetRevoluteAxis(g_axis[axisIdx]);
+	}
+
+	Vector3 jointPos = link->m_prop.nodeLocal0.pos + link->m_prop.origPos;
+	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
+		, 0.001f, 0.f, 1000.f))
+	{
+		link->SetPivotPosByRevolutePos(jointPos);
 	}
 }
 

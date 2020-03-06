@@ -83,7 +83,8 @@ void cCreature::Update(const float deltaSeconds)
 bool cCreature::SetKinematic(const bool isKinematic)
 {
 	for (auto &p : m_nodes)
-		p->m_actor->SetKinematic(isKinematic);
+		if (!p->m_gnode->kinematic)
+			p->m_actor->SetKinematic(isKinematic);
 	return true;
 }
 
@@ -117,6 +118,16 @@ bool cCreature::GetSyncIds(OUT vector<int> &out)
 		if (phys::sSyncInfo *sync = g_evc->m_sync->FindSyncInfo(p->m_actor))
 			out.push_back(sync->id);
 	return !out.empty();
+}
+
+
+// return phenotype node same rigid actor ptr
+cPNode* cCreature::FindPNode(phys::cRigidActor *actor)
+{
+	for (auto &p : m_nodes)
+		if (p->m_actor == actor)
+			return p;
+	return nullptr;
 }
 
 

@@ -140,6 +140,11 @@ bool cGenoTypeManager::ReadGenoTypeNodeFile(const StrPath &fileName
 		}
 	}
 
+	// add group
+	ClearGroup();
+	for (auto &p : addNodes)
+		AddGroup(p->m_id);	
+
 	return true;
 }
 
@@ -417,6 +422,35 @@ bool cGenoTypeManager::ClearSelection()
 	for (auto &p : m_gnodes)
 		p->m_txtColor = graphic::cColor::WHITE;
 	return true;
+}
+
+
+// add group selection object
+void cGenoTypeManager::SetGroupBySelection()
+{
+	for (auto id : m_selects)
+		AddGroup(id);
+}
+
+
+// add object to group
+void cGenoTypeManager::AddGroup(const int id)
+{
+	m_group.insert(id);
+}
+
+
+// remove object from group
+void cGenoTypeManager::RemoveGroup(const int id)
+{
+	m_group.erase(id);
+}
+
+
+// clear group
+void cGenoTypeManager::ClearGroup()
+{
+	m_group.clear();
 }
 
 
