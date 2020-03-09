@@ -226,8 +226,20 @@ void c3DView::RenderScene(graphic::cRenderer &renderer
 			continue;
 		if (!m_showJoint && p->joint)
 			continue;
-		p->node->SetTechnique(techiniqName.c_str());
-		p->node->Render(renderer, parentTm);
+
+		if (p->actor)
+		{
+			for (auto &mesh : p->actor->m_meshes)
+			{
+				mesh.node->SetTechnique(techiniqName.c_str());
+				mesh.node->Render(renderer, parentTm);
+			}
+		}
+		else if (p->node)
+		{
+			p->node->SetTechnique(techiniqName.c_str());
+			p->node->Render(renderer, parentTm);
+		}
 	}
 
 	if (!isBuildShadowMap)
@@ -277,17 +289,24 @@ void c3DView::RenderSelectModel(graphic::cRenderer &renderer, const bool buildOu
 
 	// render function object
 	auto render = [&](phys::sSyncInfo *sync) {
-		if (buildOutline)
-		{
-			sync->node->SetTechnique("DepthTech");
-			Matrix44 parentTm = sync->node->GetParentWorldMatrix();
-			sync->node->Render(renderer, parentTm.GetMatrixXM());
-		}
-		else
-		{
+
+		const char *technique = (buildOutline) ? "DepthTech" : "Outline";
+		if (!buildOutline)
 			renderer.BindTexture(m_depthBuff, 7);
-			sync->node->SetTechnique("Outline");
-			Matrix44 parentTm = sync->node->GetParentWorldMatrix();
+
+		if (sync->actor)
+		{
+			for (auto &mesh : sync->actor->m_meshes)
+			{
+				mesh.node->SetTechnique(technique);
+				const Matrix44 parentTm = mesh.node->GetParentWorldMatrix();
+				mesh.node->Render(renderer, parentTm.GetMatrixXM());
+			}
+		}
+		else if (sync->node)
+		{
+			sync->node->SetTechnique(technique);
+			const Matrix44 parentTm = sync->node->GetParentWorldMatrix();
 			sync->node->Render(renderer, parentTm.GetMatrixXM());
 		}
 	};
@@ -1084,32 +1103,53 @@ int c3DView::PickingRigidActor(const int pickType, const POINT &mousePos
 
 	int minId = -1;
 	float minDist = FLT_MAX;
-	phys::cPhysicsSync *sync = g_pheno->m_physSync;
-	for (auto &p : sync->m_syncs)
+	phys::cPhysicsSync *physSync = g_pheno->m_physSync;
+	for (auto &sync : physSync->m_syncs)
 	{
-		if ((p->name == "ground") || (p->name == "wall"))
+		if ((sync->name == "ground") || (sync->name == "wall"))
 			continue; // ground or wall?
 
-		if ((pickType == 0) && p->joint)
+		if ((pickType == 0) && sync->joint)
 			continue; // ignore joint
-		if ((pickType == 1) && p->actor)
+		if ((pickType == 1) && sync->actor)
 			continue; // ignore actor
-		if (((pickType == 1) || (pickType == 2)) && p->joint)
-			if (p->joint != &g_pheno->m_uiJoint)
+		if (((pickType == 1) || (pickType == 2)) && sync->joint)
+			if (sync->joint != &g_pheno->m_uiJoint)
 				continue; // picking only ui joint
 
-		const bool isSpherePicking = (p->actor && (p->actor->m_shape == phys::eShapeType::Sphere));
-
-		graphic::cNode *node = p->node;
-		float distance = FLT_MAX;
-		if (node->Picking(ray, eNodeType::MODEL, isSpherePicking, &distance))
+		if (sync->actor)
 		{
-			if (distance < minDist)
+			for (auto &mesh : sync->actor->m_meshes)
 			{
-				minId = p->id;
-				minDist = distance;
-				if (outDistance)
-					*outDistance = distance;
+				const bool isSpherePicking = (mesh.shape == phys::eShapeType::Sphere);
+
+				graphic::cNode *node = mesh.node;
+				float distance = FLT_MAX;
+				if (node->Picking(ray, eNodeType::MODEL, isSpherePicking, &distance))
+				{
+					if (distance < minDist)
+					{
+						minId = sync->id;
+						minDist = distance;
+						if (outDistance)
+							*outDistance = distance;
+					}
+				}
+			}
+		}
+		else if (sync->joint)
+		{
+			graphic::cNode *node = sync->node;
+			float distance = FLT_MAX;
+			if (node->Picking(ray, eNodeType::MODEL, false, &distance))
+			{
+				if (distance < minDist)
+				{
+					minId = sync->id;
+					minDist = distance;
+					if (outDistance)
+						*outDistance = distance;
+				}
 			}
 		}
 	}

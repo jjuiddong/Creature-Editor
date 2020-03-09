@@ -654,6 +654,10 @@ cPNode* evc::CreatePhenoTypeNode(graphic::cRenderer &renderer
 	{
 		if (gnode.mass != 0.f)
 			sync->actor->SetMass(gnode.mass);
+		if (gnode.linearDamping != 0.f)
+			sync->actor->SetLinearDamping(gnode.linearDamping);
+		if (gnode.angularDamping != 0.f)
+			sync->actor->SetAngularDamping(gnode.angularDamping);
 
 		cPNode *pnode = new cPNode();
 		pnode->Create(renderer, gnode);
@@ -847,6 +851,27 @@ phys::cJoint* evc::CreatePhenoTypeJoint(const sGenotypeLink &glink
 		cJointRenderer *jointRenderer = new cJointRenderer();
 		jointRenderer->Create(*g_evc->m_sync, joint);
 		g_evc->m_sync->AddJoint(joint, jointRenderer);
+	}
+	break;
+
+	case phys::eJointType::Compound:
+	{
+		//joint = new phys::cJoint();
+		//joint->CreateFixed(*g_evc->m_phys
+		//	, pnode0->m_actor, pnode0->m_node->m_transform, pivot0
+		//	, pnode1->m_actor, pnode1->m_node->m_transform, pivot1);
+
+		//cJointRenderer *jointRenderer = new cJointRenderer();
+		//jointRenderer->Create(*g_evc->m_sync, joint);
+		//g_evc->m_sync->AddJoint(joint, jointRenderer);
+
+		//g_evc->m_sync->AddCompound(sync0, sync1);
+		//g_pheno->ClearJointEdit();
+
+		pnode0->m_actor->Compound(*g_evc->m_phys, pnode1->m_actor);
+		//sync1->node = nullptr;
+		//RemoveSyncInfo(sync1);
+
 	}
 	break;
 
@@ -1249,8 +1274,8 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 
 	shape.put<float>("mass", 0.f);
 	shape.put<float>("density", gnode->m_prop.density);
-	shape.put<float>("angular damping", 0.5f);
-	shape.put<float>("linear damping", 0.5f);
+	shape.put<float>("angular damping", gnode->m_prop.angularDamping);
+	shape.put<float>("linear damping", gnode->m_prop.linearDamping);
 	shape.put<bool>("kinematic", gnode->m_prop.kinematic);
 	shape.put<int>("iteration", gnode->m_prop.iteration);
 	shape.put<unsigned int>("max generation", gnode->m_prop.maxGeneration);
@@ -1584,8 +1609,8 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					const Quaternion q(rot.x, rot.y, rot.z, rot.w);
 					const float mass = vt0.second.get<float>("mass", 0.f);
 					const float density = vt0.second.get<float>("density", 1.f);
-					const float angularDamping = vt0.second.get<float>("angular damping", 1.f);
-					const float linearDamping = vt0.second.get<float>("linear damping", 1.f);
+					const float angularDamping = vt0.second.get<float>("angular damping", 0.5f);
+					const float linearDamping = vt0.second.get<float>("linear damping", 0.5f);
 					const bool kinematic = vt0.second.get<bool>("kinematic", false);
 					const int iteration = vt0.second.get<int>("iteration", -1);
 					const uint maxGeneration = vt0.second.get<unsigned int>("max generation", 0);
@@ -1795,6 +1820,8 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 						*(Vector3*)glink->limit.d6.angularVelocity = angularDriveVelocity;
 					}
 					break;
+
+					case phys::eJointType::Compound: break;
 
 					default:
 						throw std::exception("joint type error");

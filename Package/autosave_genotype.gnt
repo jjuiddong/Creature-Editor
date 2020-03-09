@@ -4,19 +4,36 @@
         "name": "creature genotype",
         "shapes": {
             "shape": {
-                "name": "Capsule",
-                "id": "10073",
+                "name": "Cylinder",
+                "id": "10321",
                 "type": "Dynamic",
-                "shape": "Capsule",
-                "pos": "7.296359 3.179119 -7.204007",
-                "dim": "0.185591 0.038651 0.038651",
-                "rot": "0.042075 0.296913 0.133870 0.944539",
+                "shape": "Cylinder",
+                "pos": "0.631037 2.489722 0.325879",
+                "dim": "0.200000 0.500000 0.500000",
+                "rot": "0.000000 1.005862 0.000000 -0.003414",
+                "mass": "0",
+                "density": "0.100000001",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Leg1",
+                "id": "10331",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "0.399643 1.477954 -0.077294",
+                "dim": "0.100000 1.000000 0.100000",
+                "rot": "0.000000 1.005862 0.000000 -0.003414",
                 "mass": "0",
                 "density": "1",
                 "angular damping": "0.5",
                 "linear damping": "0.5",
                 "kinematic": "false",
-                "iteration": "-1"
+                "iteration": "-1",
+                "max generation": "0"
             }
         },
         "joints": ""

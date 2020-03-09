@@ -400,7 +400,7 @@ void cPhenoEditorView::RenderSelectActorJointInfo(const int syncId)
 		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 		if (ImGui::TreeNodeEx((void*)((int)actor + i), node_flags, "Joint-%d", i + 1))
 		{
-			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6" };
+			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6", "Compound" };
 			ImGui::Text("%s JointType", jointStr[(int)joint->m_type]);
 
 			if (ImGui::Button("Pivot Setting"))
@@ -428,6 +428,7 @@ void cPhenoEditorView::RenderSelectActorJointInfo(const int syncId)
 			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(joint, info); break;
 			case phys::eJointType::Distance: RenderDistanceJointSetting(joint, info); break;
 			case phys::eJointType::D6: RenderD6JointSetting(joint, info); break;
+			case phys::eJointType::Compound: RenderCompoundSetting(joint, info); break;
 			default:
 				assert(0);
 				break;
@@ -512,7 +513,7 @@ void cPhenoEditorView::RenderJointInfo()
 		{
 			ImGui::Checkbox("Fix Selection", &g_pheno->m_fixJointSelection);
 
-			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
+			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0Compound\0\0";
 			static int idx = 0;
 			ImGui::TextUnformatted("Joint");
 			ImGui::SameLine();
@@ -527,6 +528,7 @@ void cPhenoEditorView::RenderJointInfo()
 			case phys::eJointType::Prismatic: RenderPrismaticJoint(); break;
 			case phys::eJointType::Distance: RenderDistanceJoint(); break;
 			case phys::eJointType::D6: RenderD6Joint(); break;
+			case phys::eJointType::Compound: RenderCompound(); break;
 			}
 		}
 	}
@@ -1153,6 +1155,32 @@ void cPhenoEditorView::RenderD6Joint()
 }
 
 
+void cPhenoEditorView::RenderCompound()
+{
+	const int syncId0 = g_pheno->m_pairSyncId0;
+	const int syncId1 = g_pheno->m_pairSyncId1;
+
+	phys::cPhysicsSync *physSync = g_pheno->m_physSync;
+	phys::sSyncInfo *sync0 = physSync->FindSyncInfo(syncId0);
+	phys::sSyncInfo *sync1 = physSync->FindSyncInfo(syncId1);
+	if (!sync0 || !sync1)
+		return;
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Compound"))
+	{
+		g_pheno->UpdateActorDimension(sync0->actor, true);
+		g_pheno->UpdateActorDimension(sync1->actor, true);
+
+		physSync->AddCompound(sync0, sync1);
+		g_pheno->ClearJointEdit();
+	}
+	ImGui::PopStyleColor(3);
+}
+
+
 void cPhenoEditorView::RenderRevoluteJointSetting(phys::cJoint *joint
 	, INOUT evc::sGenotypeLink &info)
 {
@@ -1501,6 +1529,13 @@ void cPhenoEditorView::RenderD6JointSetting(phys::cJoint *joint
 			, *(Vector3*)info.limit.d6.angularVelocity);
 	}
 	ImGui::PopStyleColor(3);
+}
+
+
+void cPhenoEditorView::RenderCompoundSetting(phys::cJoint *joint
+	, INOUT evc::sGenotypeLink &info)
+{
+
 }
 
 

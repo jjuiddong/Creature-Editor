@@ -18,6 +18,7 @@ public:
 protected:
 	void RenderSpawnTransform();
 	void RenderSelectionInfo();
+	void RenderMultiSelectionInfo();
 	void RenderLinkInfo();
 	void RenderFixedJoint();
 	void RenderSphericalJoint();
@@ -25,6 +26,7 @@ protected:
 	void RenderPrismaticJoint();
 	void RenderDistanceJoint();
 	void RenderD6Joint();
+	void RenderCompound();
 	void RenderSelectNodeLinkInfo(const int id);
 	void RenderSphericalJointSetting(evc::cGLink *link);
 	void RenderRevoluteJointSetting(evc::cGLink *link);

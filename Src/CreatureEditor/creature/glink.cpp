@@ -215,6 +215,31 @@ bool cGLink::CreateD6(cGNode *gnode0, const Vector3 &pivot0
 }
 
 
+bool cGLink::CreateCompound(cGNode *gnode0, const Vector3 &pivot0
+	, cGNode *gnode1, const Vector3 &pivot1)
+{
+	const Transform &worldTfm0 = gnode0->m_transform;
+	const Transform &worldTfm1 = gnode1->m_transform;
+	const Vector3 linkPos = (pivot0 + pivot1) / 2.f;
+
+	m_prop.type = phys::eJointType::Compound;
+	m_gnode0 = gnode0;
+	m_gnode1 = gnode1;
+	gnode0->AddLink(this);
+	gnode1->AddLink(this);
+	SetRevoluteAxis(Vector3(1, 0, 0));
+	m_prop.origPos = linkPos - worldTfm0.pos;
+	m_prop.nodeLocal0 = worldTfm0;
+	m_prop.nodeLocal1 = worldTfm1;
+	// world -> local space
+	m_prop.pivots[0].dir = (pivot0 - worldTfm0.pos).Normal() * worldTfm0.rot.Inverse();
+	m_prop.pivots[0].len = (pivot0 - worldTfm0.pos).Length();
+	m_prop.pivots[1].dir = (pivot1 - worldTfm1.pos).Normal() * worldTfm1.rot.Inverse();
+	m_prop.pivots[1].len = (pivot1 - worldTfm1.pos).Length();
+	return true;
+}
+
+
 bool cGLink::Render(graphic::cRenderer &renderer
 	, const XMMATRIX &parentTm //= XMIdentity
 	, const int flags //= 1

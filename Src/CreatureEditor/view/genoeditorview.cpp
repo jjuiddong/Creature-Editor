@@ -52,6 +52,7 @@ void cGenoEditorView::OnRender(const float deltaSeconds)
 
 	RenderSpawnTransform();
 	RenderSelectionInfo();
+	RenderMultiSelectionInfo();
 	RenderLinkInfo();
 
 	// final process, recovery
@@ -219,6 +220,18 @@ void cGenoEditorView::RenderSelectionInfo()
 		ImGui::SameLine();
 		ImGui::DragFloat("##density2", &gnode->m_prop.density, 0.001f, 0.f, 100.f);
 
+		ImGui::PushItemWidth(160);
+		// edit linear damping
+		ImGui::TextUnformatted("Linear Damping     ");
+		ImGui::SameLine();
+		ImGui::DragFloat("##lineardamping", &gnode->m_prop.linearDamping, 0.001f, 0.f, 100.f);
+
+		// edit angular damping
+		ImGui::TextUnformatted("Angular Damping  ");
+		ImGui::SameLine();
+		ImGui::DragFloat("##angulardamping", &gnode->m_prop.angularDamping, 0.001f, 0.f, 100.f);
+		ImGui::PopItemWidth();
+
 		// edit kinematic
 		ImGui::TextUnformatted("Static         ");
 		ImGui::SameLine();
@@ -271,6 +284,89 @@ void cGenoEditorView::RenderSelectionInfo()
 }
 
 
+void cGenoEditorView::RenderMultiSelectionInfo()
+{
+	using namespace graphic;
+	if (g_geno->m_selects.size() <= 1)
+		return;
+
+	ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
+	if (ImGui::CollapsingHeader("Multi Select GenoType Node"))
+	{
+		static float density = 1.f;
+		static bool kinematic = false;
+		static float angularDamping = 0.5f;
+		static float linearDamping = 0.5f;
+
+		if (m_isChangeSelection)
+		{
+			angularDamping = 0.f;
+			linearDamping = 0.f;
+			density = 0.f;
+
+			for (auto id : g_geno->m_selects)
+			{
+				if (evc::cGNode *gnode = g_geno->FindGNode(id))
+				{
+					if (gnode->m_prop.kinematic)
+						kinematic = true;
+					angularDamping += gnode->m_prop.angularDamping;
+					linearDamping += gnode->m_prop.linearDamping;
+					density += gnode->m_prop.density;
+				}
+			}
+
+			angularDamping /= (float)g_geno->m_selects.size();
+			linearDamping /= (float)g_geno->m_selects.size();
+			density /= (float)g_geno->m_selects.size();
+		}
+
+		// edit density
+		ImGui::TextUnformatted("Density      ");
+		ImGui::SameLine();
+		const bool edit0 = ImGui::DragFloat("##density2", &density, 0.001f, 0.f, 100.f);
+
+		ImGui::PushItemWidth(160);
+		// edit linear damping
+		ImGui::TextUnformatted("Linear Damping     ");
+		ImGui::SameLine();
+		const bool edit1 = ImGui::DragFloat("##lineardamping", &linearDamping, 0.001f, 0.f, 100.f);
+
+		// edit angular damping
+		ImGui::TextUnformatted("Angular Damping  ");
+		ImGui::SameLine();
+		const bool edit2 = ImGui::DragFloat("##angulardamping", &angularDamping, 0.001f, 0.f, 100.f);
+		ImGui::PopItemWidth();
+
+		// edit kinematic
+		ImGui::TextUnformatted("Static         ");
+		ImGui::SameLine();
+		const bool edit3 = ImGui::Checkbox("##static rigidbody", &kinematic);
+
+		if (edit0 || edit1 || edit2 || edit3)
+		{
+			for (auto id : g_geno->m_selects)
+			{
+				if (evc::cGNode *gnode = g_geno->FindGNode(id))
+				{
+					if (edit0)
+						gnode->m_prop.density = density;
+					if (edit1)
+						gnode->m_prop.linearDamping = linearDamping;
+					if (edit2)
+						gnode->m_prop.angularDamping = angularDamping;
+					if (edit3)
+						gnode->m_prop.kinematic = kinematic;
+				}
+			}
+		}
+
+		ImGui::Spacing();
+		ImGui::Spacing();
+	}//~CollapsingHeader
+}
+
+
 // show select actor joint information
 void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 {
@@ -292,7 +388,7 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Once);
 		if (ImGui::TreeNodeEx((void*)((int)glink + i), node_flags, "link-%d", i + 1))
 		{
-			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6" };
+			const char *jointStr[] = { "Fixed", "Spherical", "Revolute", "Prismatic", "Distance", "D6", "Compound" };
 			ImGui::Text("%s Joint (Link to %d)", jointStr[(int)glink->m_prop.type]
 				, ((glink->m_gnode0 == gnode)? glink->m_gnode1->m_id : glink->m_gnode0->m_id));
 
@@ -329,6 +425,7 @@ void cGenoEditorView::RenderSelectNodeLinkInfo(const int id)
 			case phys::eJointType::Prismatic: RenderPrismaticJointSetting(glink); break;
 			case phys::eJointType::Distance: RenderDistanceJointSetting(glink); break;
 			case phys::eJointType::D6: RenderD6JointSetting(glink); break;
+			case phys::eJointType::Compound: break;
 			default:
 				assert(0);
 				break;
@@ -422,7 +519,7 @@ void cGenoEditorView::RenderLinkInfo()
 		{
 			ImGui::Checkbox("Fix Selection", &g_geno->m_fixJointSelection);
 
-			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0\0";
+			const char *jointType = "Fixed\0Spherical\0Revolute\0Prismatic\0Distance\0D6\0Compound\0\0";
 			static int idx = 0;
 			ImGui::TextUnformatted("Joint");
 			ImGui::SameLine();
@@ -448,6 +545,7 @@ void cGenoEditorView::RenderLinkInfo()
 			case phys::eJointType::Prismatic: RenderPrismaticJoint(); break;
 			case phys::eJointType::Distance: RenderDistanceJoint(); break;
 			case phys::eJointType::D6: RenderD6Joint(); break;
+			case phys::eJointType::Compound: RenderCompound(); break;
 			}
 		}
 	}
@@ -995,6 +1093,41 @@ void cGenoEditorView::RenderD6Joint()
 	ImGui::PopStyleColor(3);
 	ImGui::Spacing();
 	ImGui::Spacing();
+}
+
+
+void cGenoEditorView::RenderCompound()
+{
+	const int id0 = g_geno->m_pairId0;
+	const int id1 = g_geno->m_pairId1;
+	evc::cGNode *gnode0 = g_geno->FindGNode(id0);
+	evc::cGNode *gnode1 = g_geno->FindGNode(id1);
+	if (!gnode0 || !gnode1)
+		return;
+
+	UpdateUILink(gnode0, gnode1, false, Vector3(1,0,0));
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.8f, 0, 1));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.3f, 0, 1));
+	if (ImGui::Button("Create Compound"))
+	{
+		const Transform pivot0 = g_geno->m_uiLink.GetPivotWorldTransform(0);
+		const Transform pivot1 = g_geno->m_uiLink.GetPivotWorldTransform(1);
+
+		evc::cGLink *link = new evc::cGLink();
+		link->m_prop = g_geno->m_uiLink.m_prop;
+
+		link->CreateCompound(gnode0, pivot0.pos, gnode1, pivot1.pos);
+		g_geno->AddGLink(link);
+
+		g_geno->AutoSave();
+		g_geno->ChangeEditMode(eGenoEditMode::Normal);
+	}
+	ImGui::PopStyleColor(3);
 }
 
 

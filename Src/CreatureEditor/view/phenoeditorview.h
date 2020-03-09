@@ -28,12 +28,14 @@ protected:
 	void RenderPrismaticJoint();
 	void RenderDistanceJoint();
 	void RenderD6Joint();
+	void RenderCompound();
 	void RenderSelectActorJointInfo(const int syncId);
 	void RenderSphericalJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	void RenderRevoluteJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	void RenderPrismaticJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	void RenderDistanceJointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	void RenderD6JointSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
+	void RenderCompoundSetting(phys::cJoint *joint, INOUT evc::sGenotypeLink &info);
 	bool CheckCancelUIJoint();
 	void CheckChangeSelection();
 	void UpdateUIJoint(phys::sSyncInfo *sync0

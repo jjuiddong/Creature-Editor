@@ -18,6 +18,8 @@ cGNode::cGNode()
 	m_prop.iteration = -1;
 	m_prop.maxGeneration = 0;
 	m_prop.kinematic = false;
+	m_prop.angularDamping = 0.5f;
+	m_prop.linearDamping = 0.5f;
 }
 
 cGNode::~cGNode()

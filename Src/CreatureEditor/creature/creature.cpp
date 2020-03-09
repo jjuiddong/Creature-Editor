@@ -83,8 +83,13 @@ void cCreature::Update(const float deltaSeconds)
 bool cCreature::SetKinematic(const bool isKinematic)
 {
 	for (auto &p : m_nodes)
-		if (!p->m_gnode->kinematic)
+	{
+		if (p->m_gnode && !p->m_gnode->kinematic)
 			p->m_actor->SetKinematic(isKinematic);
+		else
+			p->m_actor->SetKinematic(isKinematic);
+	}
+
 	return true;
 }
 

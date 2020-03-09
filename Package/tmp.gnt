@@ -4,18 +4,20 @@
         "name": "creature genotype",
         "shapes": {
             "shape": {
-                "name": "Cylinder",
-                "id": "10074",
+                "name": "Box",
+                "id": "11730",
                 "type": "Dynamic",
-                "shape": "Cylinder",
-                "pos": "-3.775890 3.000000 1.309409",
-                "dim": "0.448066 0.500000 0.500000",
+                "shape": "Box",
+                "pos": "7.856998 0.181913 -9.146214",
+                "dim": "0.500000 0.135070 0.306953",
                 "rot": "0.000000 0.000000 0.000000 1.000000",
                 "mass": "0",
                 "density": "1",
-                "angular damping": "0.5",
-                "linear damping": "0.5",
-                "kinematic": "false"
+                "angular damping": "0",
+                "linear damping": "0",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
             }
         },
         "joints": ""

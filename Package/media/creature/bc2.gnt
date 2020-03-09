@@ -1,0 +1,58 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Box",
+                "id": "10079",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-2.154599 3.000000 0.129113",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Box",
+                "id": "10081",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "-0.082548 3.000000 0.128784",
+                "dim": "0.500000 0.500000 0.500000",
+                "rot": "0.000000 0.000000 0.000000 1.000000",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Compound",
+                "shape id0": "10079",
+                "shape id1": "10081",
+                "jointpos": "1.036026 0.000000 -0.000164",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.000000 0.000000 0.000000",
+                "pivot len0": "0",
+                "pivot dir1": "0.000000 0.000000 0.000000",
+                "pivot len1": "0",
+                "angular sensor": "false",
+                "limit sensor": "false",
+                "contact sensor": "false",
+                "accel sensor": "false",
+                "velocity sensor": "false"
+            }
+        }
+    }
+}

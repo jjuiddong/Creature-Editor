@@ -36,6 +36,9 @@ namespace evc
 		bool CreateD6(cGNode *gnode0, const Vector3 &pivot0
 			, cGNode *gnode1, const Vector3 &pivot1);
 
+		bool CreateCompound(cGNode *gnode0, const Vector3 &pivot0
+			, cGNode *gnode1, const Vector3 &pivot1);
+
 		virtual bool Render(graphic::cRenderer &renderer
 			, const XMMATRIX &parentTm = graphic::XMIdentity
 			, const int flags = 1) override;
