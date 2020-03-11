@@ -1268,7 +1268,7 @@ bool evc::Put_GNode(boost::property_tree::ptree &parent, evc::cGNode *gnode)
 	text.Format("%f %f %f", v.x, v.y, v.z);
 	shape.put("dim", text.c_str());
 
-	q = tfm.rot;
+	q = tfm.rot.Normal();
 	text.Format("%f %f %f %f", q.x, q.y, q.z, q.w);
 	shape.put("rot", text.c_str());
 
@@ -1619,7 +1619,7 @@ bool evc::ReadGenoTypeFile(const StrPath &fileName
 					gnode->id = id;
 					gnode->name = name;
 					gnode->shape = shape;
-					gnode->transform = Transform(pos, dim, q);
+					gnode->transform = Transform(pos, dim, q.Normal());
 					gnode->density = density;
 					gnode->color = graphic::cColor::WHITE;
 					gnode->mass = mass;

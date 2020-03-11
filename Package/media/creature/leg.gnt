@@ -1,0 +1,67 @@
+{
+    "creature": {
+        "version": "1.01",
+        "name": "creature genotype",
+        "shapes": {
+            "shape": {
+                "name": "Cylinder",
+                "id": "10081",
+                "type": "Dynamic",
+                "shape": "Cylinder",
+                "pos": "9.465069 2.335991 -9.502481",
+                "dim": "0.200000 0.500000 0.500000",
+                "rot": "0.000000 -1.001372 0.000000 0.004805",
+                "mass": "0",
+                "density": "0.100000001",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            },
+            "shape": {
+                "name": "Leg1",
+                "id": "10083",
+                "type": "Dynamic",
+                "shape": "Box",
+                "pos": "9.242328 1.333242 -9.098640",
+                "dim": "0.100000 1.000000 0.100000",
+                "rot": "0.000000 -1.001372 0.000000 0.004805",
+                "mass": "0",
+                "density": "1",
+                "angular damping": "0.5",
+                "linear damping": "0.5",
+                "kinematic": "false",
+                "iteration": "-1",
+                "max generation": "0"
+            }
+        },
+        "joints": {
+            "joint": {
+                "type": "Revolute",
+                "shape id0": "10081",
+                "shape id1": "10083",
+                "jointpos": "-0.102585 -0.070948 0.396776",
+                "revolute rot": "0.000000 0.000000 0.000000 1.000000",
+                "pivot dir0": "0.024045 -0.188041 -0.984687",
+                "pivot len0": "0.406122506",
+                "pivot dir1": "-0.025215 1.002406 0.009561",
+                "pivot len1": "0.937349677",
+                "angular sensor": "false",
+                "limit sensor": "false",
+                "contact sensor": "false",
+                "accel sensor": "false",
+                "velocity sensor": "false",
+                "drive": "true",
+                "drive velocity": "1",
+                "cycle": "false",
+                "cycle period": "1",
+                "cycle accel": "1",
+                "cone limit": "false",
+                "cone limit config": "-1.570796 1.570796 0.010000",
+                "angular limit": "false",
+                "angular limit config": "-1.570796 1.570796 0.010000"
+            }
+        }
+    }
+}

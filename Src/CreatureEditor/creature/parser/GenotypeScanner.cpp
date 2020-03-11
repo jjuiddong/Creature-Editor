@@ -707,7 +707,8 @@ sExpr* FindGenotypeRec(sExpr *expr, const string &id, set<string> &symbols)
 		return NULL;
 	}
 
-	if (boost::iequals(expr->id, id))
+	//if (boost::iequals(expr->id, id))
+	if (expr->id == id)
 		return expr;
 
 	symbols.insert(expr->id);

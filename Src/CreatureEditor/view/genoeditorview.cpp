@@ -707,7 +707,7 @@ void cGenoEditorView::RenderRevoluteJoint()
 	evc::cGLink &curLink = g_geno->m_uiLink;
 	Vector3 jointPos = curLink.m_prop.nodeLocal0.pos + curLink.m_prop.origPos;
 	if (ImGui::DragFloat3("Axis Position", (float*)&jointPos
-		, 0.001f, 0.f, 1000.f))
+		, 0.001f, -1000.f, 1000.f))
 	{
 		curLink.SetPivotPosByRevolutePos(jointPos);
 	}

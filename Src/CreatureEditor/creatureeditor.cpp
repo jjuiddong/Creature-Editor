@@ -40,8 +40,8 @@ cViewer::cViewer()
 {
 	m_windowName = L"Creature Editor";
 	m_isLazyMode = true;
-	//const RECT r = { 0, 0, 1024, 768 };
-	const RECT r = { 0, 0, 1280, 960 };
+	const RECT r = { 0, 0, 1024, 768 };
+	//const RECT r = { 0, 0, 1280, 960 };
 	m_windowRect = r;
 	graphic::cResourceManager::Get()->SetMediaDirectory("./media/");
 }

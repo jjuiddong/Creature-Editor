@@ -354,3 +354,5 @@ Package/imgui.ini
 Package/log.txt
 Package/CreatureEditord.exe
 Package/media/evolution/
+Src/CreatureEditor/errlog.txt
+Src/CreatureEditor/log.txt

@@ -249,7 +249,8 @@ bool cGLink::Render(graphic::cRenderer &renderer
 
 	Vector3 pivotPos0 = GetPivotPos(0);
 	Vector3 pivotPos1 = GetPivotPos(1);
-	Vector3 linkPos = (pivotPos0 + pivotPos1) / 2.f;
+	//Vector3 linkPos = (pivotPos0 + pivotPos1) / 2.f;
+	Vector3 linkPos = m_prop.origPos + m_gnode0->m_transform.pos;
 
 	// render link position
 	Transform tfm;
