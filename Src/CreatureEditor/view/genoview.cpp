@@ -39,7 +39,7 @@ bool cGenoView::Init(cRenderer &renderer)
 	GetMainLight().Init(graphic::cLight::LIGHT_DIRECTIONAL);
 	GetMainLight().SetDirection(Vector3(-1, -2, -1.3f).Normal());
 
-	sf::Vector2u size((u_int)m_rect.Width() - 15, (u_int)m_rect.Height() - 50);
+	sf::Vector2u size((uint)m_rect.Width() - 15, (uint)m_rect.Height() - 50);
 	cViewport vp = renderer.m_viewPort;
 	vp.m_vp.Width = (float)size.x;
 	vp.m_vp.Height = (float)size.y;
